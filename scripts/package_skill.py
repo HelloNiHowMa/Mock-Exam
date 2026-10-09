@@ -84,7 +84,7 @@ def main():
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(blob)
-    ver = re.search(r"引擎版本：(\d{4}-\d{2}-\d{2})", (ROOT / "assets" / "template.html").read_text(encoding="utf-8"))
+    ver = re.search(r"引擎版本：(\d{4}-\d{2}-\d{2}[a-z]?)",(ROOT / "assets" / "template.html").read_text(encoding="utf-8"))
     print(f"已產生 {out}（{len(fs)} 個檔案，引擎版本 {ver.group(1) if ver else '未知'}）")
     for f in fs:
         print(f"  {NAME}/{f.relative_to(ROOT).as_posix()}")
