@@ -1,0 +1,3 @@
+# scripts/package_skill.py 產生的 skill 檔
+dist/
+__pycache__/

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 250" width="680" height="250" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif">
+<rect width="680" height="250" fill="#ffffff"/>
+<text x="340.0" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#1c2433">N3 上的 GTP-U 封包（由外到內）</text>
+<rect x="30" y="70" width="80" height="56" fill="#e9ecef" stroke="#1c2433" stroke-width="1.5"/>
+<text x="70.0" y="104.0" text-anchor="middle" font-size="16" fill="#1c2433">Ethernet</text>
+<rect x="110" y="70" width="110" height="56" fill="#cfe3ff" stroke="#1c2433" stroke-width="1.5"/>
+<text x="165.0" y="104.0" text-anchor="middle" font-size="16" fill="#1c2433">外層 IP</text>
+<rect x="220" y="70" width="70" height="56" fill="#d8f0dc" stroke="#1c2433" stroke-width="1.5"/>
+<text x="255.0" y="104.0" text-anchor="middle" font-size="16" fill="#1c2433">UDP</text>
+<rect x="290" y="70" width="120" height="56" fill="#ffe8c2" stroke="#1c2433" stroke-width="1.5"/>
+<text x="350.0" y="104.0" text-anchor="middle" font-size="16" fill="#1c2433">GTP-U 標頭</text>
+<rect x="410" y="70" width="110" height="56" fill="#f3d9fa" stroke="#1c2433" stroke-width="1.5"/>
+<text x="465.0" y="104.0" text-anchor="middle" font-size="16" fill="#1c2433">內層 IP</text>
+<rect x="520" y="70" width="130" height="56" fill="#eeeeee" stroke="#1c2433" stroke-width="1.5"/>
+<text x="585.0" y="104.0" text-anchor="middle" font-size="16" fill="#1c2433">UE 的資料</text>
+<line x1="165.0" y1="126" x2="165.0" y2="160" stroke="#5a6376" stroke-width="1.5"/>
+<rect x="103.0" y="162" width="124" height="34" rx="6" fill="#f5b82e"/>
+<text x="165.0" y="185" text-anchor="middle" font-size="18" font-weight="700" fill="#2b2100">？ ↔ ？</text>
+<line x1="465.0" y1="126" x2="465.0" y2="160" stroke="#5a6376" stroke-width="1.5"/>
+<rect x="403.0" y="162" width="124" height="34" rx="6" fill="#f5b82e"/>
+<text x="465.0" y="185" text-anchor="middle" font-size="18" font-weight="700" fill="#2b2100">？ ↔ ？</text>
+<path d="M412 62 v-8 h236 v8" fill="none" stroke="#5a6376" stroke-width="1.5"/>
+<text x="530.0" y="48" text-anchor="middle" font-size="14" fill="#5a6376">GTP-U payload</text>
+</svg>
