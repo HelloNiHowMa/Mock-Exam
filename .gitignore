@@ -1,3 +1,3 @@
-# scripts/package_skill.py 產生的 skill 檔
+# 用 package_skill.py --out 打包到其他位置時的暫存資料夾；要 commit 的是根目錄的 mock-exam-workbook.skill
 dist/
 __pycache__/

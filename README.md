@@ -14,7 +14,7 @@
 
 | 你有 | 怎麼做 |
 |---|---|
-| Claude（claude.ai） | 安裝這個 repo 打包出來的 skill，上傳教材，Claude 會出題、檢查並發佈練習簿。步驟見 [`操作說明.md`](操作說明.md)「方法一」。 |
+| Claude（claude.ai） | 下載 [`mock-exam-workbook.skill`](https://github.com/HelloNiHowMa/Mock-Exam/raw/main/mock-exam-workbook.skill) 安裝，上傳教材，Claude 會出題、檢查並發佈練習簿。步驟見 [`操作說明.md`](操作說明.md)「方法一」。 |
 | ChatGPT、Copilot 等其他 AI | 用 [`PROMPT.md`](PROMPT.md) 請 AI 出題，再把題庫貼進範本，不需要 Python。步驟見 [`操作說明.md`](操作說明.md)「方法二」。 |
 | Python 3，想自己寫題庫 | 照下面「做一份自己的練習簿」的步驟，用 `build.py` 產生。 |
 
@@ -152,15 +152,20 @@ python3 scripts/build.py --bank old/bank.json --images-json old/images.json --ou
 
 練習簿發佈成 Claude artifact 時，紀錄會改成跟著帳號同步，題目解析旁也會多一個「AI 解析」按鈕。放在其他地方時這兩項自動隱藏，不影響作答。
 
-## 打包成 Claude skill
+## Claude skill
 
-repo 的根目錄就是 skill 的資料夾：`SKILL.md` 告訴 Claude 怎麼出題，其餘用到的是 `assets/`、`references/` 和 `scripts/build.py`。打包成可以安裝的檔案：
+repo 根目錄的 `mock-exam-workbook.skill` 是打包好的 Claude skill，[直接下載](https://github.com/HelloNiHowMa/Mock-Exam/raw/main/mock-exam-workbook.skill)就能安裝，安裝方式見 [`操作說明.md`](操作說明.md)「方法一」。
+
+### 給維護的人：更新 skill 檔
+
+repo 的根目錄就是 skill 的資料夾：`SKILL.md` 告訴 Claude 怎麼出題，其餘用到的是 `assets/`、`references/` 和 `scripts/build.py`。改了這幾個地方之後，要重新打包，把新的 `mock-exam-workbook.skill` 和改動放在同一個 commit：
 
 ```bash
-python3 scripts/package_skill.py
+python3 scripts/package_skill.py          # 重新產生根目錄的 mock-exam-workbook.skill
+python3 scripts/package_skill.py --check  # 檢查 skill 檔有沒有跟上目前的檔案
 ```
 
-會產生 `dist/mock-exam-workbook.skill`，安裝方式見 [`操作說明.md`](操作說明.md)「方法一」。repo 更新後要重新打包、重新安裝，Claude 才會用到新版的範本。
+打包時檔案的時間戳記是固定的，內容沒變就會產生一模一樣的檔案，所以只有真的改了東西，skill 檔才會出現在 diff 裡。合併到 `main` 之後，大家用同一個下載連結就會拿到新版。
 
 ## 檔案說明
 
@@ -173,8 +178,9 @@ python3 scripts/package_skill.py
 | `references/writing-guide.md` | 出題指引：干擾選項、解析寫法、題型選擇。 |
 | `PROMPT.md` | 給 ChatGPT、Copilot 等其他 AI 用的出題提示詞。 |
 | `操作說明.md` | 給各單位的完整操作說明：用 Claude、用其他 AI、放到內部網站。 |
+| `mock-exam-workbook.skill` | 打包好的 Claude skill，下載後直接安裝。 |
 | `SKILL.md` | Claude skill 的說明，打包時放進 skill。 |
-| `scripts/package_skill.py` | 把 repo 打包成 `mock-exam-workbook.skill`。 |
+| `scripts/package_skill.py` | 把 repo 打包成 `mock-exam-workbook.skill`；`--check` 檢查 skill 檔有沒有跟上。 |
 | `known-issues.md` | 已知問題和避法。 |
 
 ## 注意事項
