@@ -10,6 +10,14 @@
 
 下載 `assets/template.html`，用瀏覽器打開。它內含一份 15 題的範例題庫，六種題型各三題，可以直接試用。
 
+## 三種做法
+
+| 你有 | 怎麼做 |
+|---|---|
+| Claude（claude.ai） | 安裝這個 repo 打包出來的 skill，上傳教材，Claude 會出題、檢查並發佈練習簿。步驟見 [`操作說明.md`](操作說明.md)「方法一」。 |
+| ChatGPT、Copilot 等其他 AI | 用 [`PROMPT.md`](PROMPT.md) 請 AI 出題，再把題庫貼進範本，不需要 Python。步驟見 [`操作說明.md`](操作說明.md)「方法二」。 |
+| Python 3，想自己寫題庫 | 照下面「做一份自己的練習簿」的步驟，用 `build.py` 產生。 |
+
 ## 需要什麼
 
 - **作答的人**：只要瀏覽器。
@@ -53,13 +61,7 @@ cd Mock-Exam
 }
 ```
 
-想從完整的例子開始改，可以把範例題庫取出來：
-
-```bash
-python3 scripts/build.py --extract assets/template.html --dump example
-```
-
-會得到 `example/bank.json` 和 `example/images.json`。
+想從完整的例子開始改，範例題庫的原始檔就是 `assets/example-bank.json`，範例圖片在 `assets/example-images/`，複製一份來改就好。出題前建議先看 [`references/writing-guide.md`](references/writing-guide.md)，裡面有干擾選項和解析的寫法。
 
 ### 3. 檢查格式
 
@@ -150,13 +152,29 @@ python3 scripts/build.py --bank old/bank.json --images-json old/images.json --ou
 
 練習簿發佈成 Claude artifact 時，紀錄會改成跟著帳號同步，題目解析旁也會多一個「AI 解析」按鈕。放在其他地方時這兩項自動隱藏，不影響作答。
 
+## 打包成 Claude skill
+
+repo 的根目錄就是 skill 的資料夾：`SKILL.md` 告訴 Claude 怎麼出題，其餘用到的是 `assets/`、`references/` 和 `scripts/build.py`。打包成可以安裝的檔案：
+
+```bash
+python3 scripts/package_skill.py
+```
+
+會產生 `dist/mock-exam-workbook.skill`，安裝方式見 [`操作說明.md`](操作說明.md)「方法一」。repo 更新後要重新打包、重新安裝，Claude 才會用到新版的範本。
+
 ## 檔案說明
 
 | 路徑 | 內容 |
 |---|---|
 | `assets/template.html` | 範本引擎，內含範例題庫。不需要修改，題庫由 `build.py` 放進去。 |
+| `assets/example-bank.json`、`assets/example-images/` | 範例題庫的原始檔和圖片，和範本裡的內容相同。 |
 | `scripts/build.py` | 檢查題庫、產生練習簿、從現有練習簿取出題庫。 |
 | `references/schema.md` | 題庫格式的完整說明。 |
+| `references/writing-guide.md` | 出題指引：干擾選項、解析寫法、題型選擇。 |
+| `PROMPT.md` | 給 ChatGPT、Copilot 等其他 AI 用的出題提示詞。 |
+| `操作說明.md` | 給各單位的完整操作說明：用 Claude、用其他 AI、放到內部網站。 |
+| `SKILL.md` | Claude skill 的說明，打包時放進 skill。 |
+| `scripts/package_skill.py` | 把 repo 打包成 `mock-exam-workbook.skill`。 |
 | `known-issues.md` | 已知問題和避法。 |
 
 ## 注意事項
