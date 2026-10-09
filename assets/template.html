@@ -742,6 +742,14 @@ header.top{margin-bottom:26px}
 .opt.elim .otext{text-decoration:line-through;text-decoration-thickness:1.5px;opacity:.5}
 .opt.elim .let{opacity:.45}
 .opt.elim{border-style:dashed}
+.marks{flex:none;display:flex;gap:8px}
+.opt.maybe{border-color:var(--amber);box-shadow:inset 5px 0 0 var(--amber)}
+.opt.maybe .let{background:var(--amber-2);border-color:var(--amber);color:var(--amber-ink)}
+.opt.maybe.picked{border-color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink),inset 6.5px 0 0 var(--amber)}
+.obtn{font-size:1.05rem}
+.obtn[aria-pressed="true"]{background:var(--amber);border-color:var(--amber);color:var(--amber-ink)}
+.marknote{margin:0 0 .6em;font-size:.92rem}
+@media (max-width:560px){.marks{flex-direction:column;gap:6px}.marks .xbtn{flex:1;min-height:2.25rem}}
 .opt{
   display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;
   background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:14px 16px;cursor:pointer;
@@ -1684,15 +1692,38 @@ function toggleExclude(n){
   render();
   const b = document.querySelector('[data-act="exclude"]'); if (b) b.focus();
 }
-/* 刪去法：× 只暫時標記這次作答中「不是答案」的選項，存在這一回的練習裡，不影響任何紀錄。 */
-function toggleElim(n, oi){
+/* 刪去法與可能記號：× 標「不是答案」，○ 標「可能是答案」。兩種記號互斥，只是這次作答中的暫時記號，不算作答，也不影響任何紀錄。 */
+function toggleOptMark(n, oi, key){
   const s = state.session; if (!s || s.answers[n] !== undefined || timerHalted()) return;
-  if (!s.elim) s.elim = {};
-  const list = s.elim[n] || [];
-  s.elim[n] = list.includes(oi) ? list.filter(x => x !== oi) : list.concat([oi]);
+  const other = key === "elim" ? "maybe" : "elim";
+  if (!s[key]) s[key] = {};
+  const list = s[key][n] || [];
+  const on = !list.includes(oi);
+  s[key][n] = on ? list.concat([oi]) : list.filter(x => x !== oi);
+  if (on && s[other] && s[other][n]) s[other][n] = s[other][n].filter(x => x !== oi);
   saveLocal();
   render();
-  const b = document.querySelector(`.xbtn[data-oi="${oi}"]`); if (b) b.focus();
+  const b = document.querySelector(`[data-act="${key}"][data-oi="${oi}"]`); if (b) b.focus();
+}
+function toggleElim(n, oi){ toggleOptMark(n, oi, "elim"); }
+function toggleMaybe(n, oi){ toggleOptMark(n, oi, "maybe"); }
+/* 作答後對照 ○ × 記號和正解：刪掉正解代表理解有誤，把正解標成可能卻沒選代表在選項之間猶豫。只顯示提示，不影響紀錄和複習排程。 */
+function markNoteHTML(s, n, q, order, chosen, ok){
+  if (!q || !Array.isArray(q.o) || chosen === undefined || chosen === null) return "";
+  const el = (s.elim && s.elim[n]) || [], mb = (s.maybe && s.maybe[n]) || [];
+  if (!el.length && !mb.length) return "";
+  const multi = q.type === "multi";
+  const right = multi ? q.a : [q.a];
+  const sel = multi ? (chosen.sel || []) : [chosen];
+  const L = a => a.map(i => LETTERS[order.indexOf(i)]).sort().join("、");
+  const xRight = el.filter(i => right.includes(i));
+  const oMissed = mb.filter(i => right.includes(i) && !sel.includes(i));
+  const oWrong = mb.filter(i => !right.includes(i) && !sel.includes(i));
+  const out = [];
+  if (xRight.length) out.push(`你刪掉了正確答案 ${L(xRight)}，代表對這個選項的理解有誤，請特別看它為什麼對。`);
+  if (oMissed.length) out.push(`你把正確答案 ${L(oMissed)} 標成可能，最後沒有選。這是在選項之間猶豫，請比較它和你選的選項差在哪裡。`);
+  if (ok && oWrong.length) out.push(`你也把 ${L(oWrong)} 標成可能，可以再確認它為什麼不對。`);
+  return out.length ? `<p class="marknote">${out.join("<br>")}</p>` : "";
 }
 /* 多選題：勾選的選項先存在 session.msel[n]，按「送出答案」才判分；全部選對、沒有多選也沒有漏選才算答對。 */
 function toggleMulti(n, oi, focusOpt){
@@ -1812,13 +1843,13 @@ function examBodyHTML(s, n, q){
   if (kind === "mcq" || kind === "multi"){
     const order = s.orders[n] || optIdx(n);
     const pk = s.picks ? s.picks[n] : undefined;
-    const elim = (s.elim && s.elim[n]) || [];
+    const elim = (s.elim && s.elim[n]) || [], maybe = (s.maybe && s.maybe[n]) || [];
     const opts = order.map((oi, pos) => {
-      const out = elim.includes(oi), on = kind === "multi" ? (Array.isArray(pk) && pk.includes(oi)) : pk === oi;
-      return `<div class="optwrap"><button class="opt${on ? " picked" : ""}${out ? " elim" : ""}" data-opt="${oi}" ${kind === "multi" ? `role="checkbox" aria-checked="${on}"` : `aria-pressed="${on}"`} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}${optImgHTML(q, oi)}</span>${on ? `<span class="tag">已選</span>` : ""}</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div>`;
+      const out = elim.includes(oi), cand = maybe.includes(oi), on = kind === "multi" ? (Array.isArray(pk) && pk.includes(oi)) : pk === oi;
+      return `<div class="optwrap"><button class="opt${on ? " picked" : ""}${out ? " elim" : ""}${cand ? " maybe" : ""}" data-opt="${oi}" ${kind === "multi" ? `role="checkbox" aria-checked="${on}"` : `aria-pressed="${on}"`} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}${optImgHTML(q, oi)}</span>${on ? `<span class="tag">已選</span>` : ""}</button><div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
     }).join("");
     body = `<p class="qtext">${esc(q.q)}</p>${qimgHTML(q)}${kind === "multi" ? `<p class="multi-hint">複選題：選出所有正確答案。</p>` : ""}<div class="opts${kind === "multi" ? " multi" : ""}">${opts}</div>`;
-    keys = `按 1–${order.length} 或 A–${LETTERS[order.length - 1]} ${kind === "multi" ? "勾選" : "選答案"}（可以改），← → 換題，Shift + 數字刪去選項，按 M 標記`;
+    keys = `按 1–${order.length} 或 A–${LETTERS[order.length - 1]} ${kind === "multi" ? "勾選" : "選答案"}（可以改），← → 換題，Shift + 數字刪去、Shift + 字母標為可能，按 M 標記`;
   } else if (kind === "abbr"){
     const v = s.picks && typeof s.picks[n] === "string" ? s.picks[n] : "";
     body = `<p class="abbr-prompt">寫出這個縮寫的英文全名</p><p class="abbr" lang="en">${esc(q.q)}</p><p class="abbr-cat">類別：${esc(q.cat || "自訂")}</p>
@@ -3223,12 +3254,13 @@ function renderQuiz(){
 
   const pill = !answered && !reviewMiss && st !== "new" ? `<span class="pill s-${st}">${st === "red" ? "上次答錯" : st === "amber" ? "複習中" : st === "master" ? "熟練" : "已掌握"}</span>` : "";
 
-  const elim = (s.elim && s.elim[n]) || [];
+  const elim = (s.elim && s.elim[n]) || [], maybe = (s.maybe && s.maybe[n]) || [];
   const mq = q.type === "multi";
   const msel = mq ? ((s.msel && s.msel[n]) || []) : [];
   const opts = order.map((oi, pos) => {
     let cls = "", tag = "";
     const out = !answered && !reviewMiss && elim.includes(oi);
+    const cand = !answered && !reviewMiss && maybe.includes(oi);
     if (mq && answered){
       const isC = q.a.includes(oi), pk = chosen.sel.includes(oi);
       cls = isC ? (pk ? "correct" : "missed") : (pk ? "wrong" : "dim");
@@ -3238,12 +3270,12 @@ function renderQuiz(){
       else if (oi === chosen){ cls = "wrong"; tag = `<span class="tag">你的答案</span>`; }
       else cls = "dim";
     } else {
-      if (out) cls = "elim";
+      if (out) cls = "elim"; else if (cand) cls = "maybe";
       if (mq && msel.includes(oi)) cls += " picked";
     }
     const mOn = mq && !answered && msel.includes(oi);
-    const optBtn = `<button class="opt ${cls}" data-opt="${oi}" ${answered || reviewMiss ? "disabled" : ""}${mq && !answered ? ` role="checkbox" aria-checked="${mOn}"` : ""} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}${optImgHTML(q, oi)}</span>${tag}</button>`;
-    return answered || reviewMiss ? optBtn : `<div class="optwrap">${optBtn}<button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div>`;
+    const optBtn = `<button class="opt ${cls}" data-opt="${oi}" ${answered || reviewMiss ? "disabled" : ""}${mq && !answered ? ` role="checkbox" aria-checked="${mOn}"` : ""} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}${optImgHTML(q, oi)}</span>${tag}</button>`;
+    return answered || reviewMiss ? optBtn : `<div class="optwrap">${optBtn}<div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
   }).join("");
 
   const nextLabel = s.mode === "lucky" ? "再來一題" : s.ids.length === 1 ? "回到總覽" : (s.i === s.ids.length - 1 ? "看這回結果" : "下一題");
@@ -3270,6 +3302,7 @@ function renderQuiz(){
         const extra = chosen.sel.filter(i => !q.a.includes(i)).map(i => LETTERS[order.indexOf(i)]).sort();
         return `<p class="nextrev" style="margin:0 0 .5em">${miss.length ? `漏選 ${miss.join("、")}` : ""}${miss.length && extra.length ? "；" : ""}${extra.length ? `多選了 ${extra.join("、")}` : ""}</p>`;
       })() : ""}
+      ${answered && !abbr && !drag ? markNoteHTML(s, n, q, order, chosen, ok) : ""}
       ${abbr ? `<div class="abbr-result">
         <p>正確全名：<strong>${esc(q.ans)}</strong></p>
         ${q.alts && q.alts.length ? `<p>也接受：${esc(q.alts.join("、"))}</p>` : ""}
@@ -3294,7 +3327,7 @@ function renderQuiz(){
       ${s.exam && s.submitted && s.i > 0 ? `<button class="btn ghost" data-act="review-prev">上一題</button>` : ""}
       ${!s.exam && s.ids.length > 1 ? `<button class="btn ghost" data-act="go-prev" ${s.i === 0 ? "disabled" : ""}>上一題</button>` : ""}
       <button class="btn primary big" data-act="next">${nextLabel}</button>
-    </div>` : `<div class="nextrow"><span class="keys">${idd ? "想好後按 Enter 看答案，再自己評分；按 M 標記" : cq ? "點項目再點格子，放好後按「送出答案」；Esc 取消選取，按 M 標記" : mq && !hidden ? "按數字或字母勾選，按 Enter 送出，按 M 標記" : drag ? "排好後按「送出答案」，按 M 標記" : abbr ? "輸入後按 Enter 送出" : hidden ? "想好後按 Enter 顯示選項" : `可以按 1–${order.length} 或 A–${LETTERS[order.length - 1]} 作答，Shift + 數字刪去選項，按 M 標記`}</span>${!s.exam && s.ids.length > 1 ? `
+    </div>` : `<div class="nextrow"><span class="keys">${idd ? "想好後按 Enter 看答案，再自己評分；按 M 標記" : cq ? "點項目再點格子，放好後按「送出答案」；Esc 取消選取，按 M 標記" : mq && !hidden ? "按數字或字母勾選，Shift + 數字刪去、Shift + 字母標為可能，按 Enter 送出，按 M 標記" : drag ? "排好後按「送出答案」，按 M 標記" : abbr ? "輸入後按 Enter 送出" : hidden ? "想好後按 Enter 顯示選項" : `可以按 1–${order.length} 或 A–${LETTERS[order.length - 1]} 作答，Shift + 數字刪去、Shift + 字母標為可能，按 M 標記`}</span>${!s.exam && s.ids.length > 1 ? `
       <button class="btn ghost" data-act="go-prev" ${s.i === 0 ? "disabled" : ""}>上一題</button>
       <button class="btn ghost" data-act="skip-next">${s.i === s.ids.length - 1 ? "結束，看結果" : "下一題"}</button>` : ""}</div>`;
 
@@ -3567,6 +3600,7 @@ $app.addEventListener("click", e => {
   if (act === "cls-submit"){ clsSubmit(); return; }
   if (act === "multi-submit"){ submitMulti(); return; }
   if (act === "elim"){ const n = currentN(); if (n !== null) toggleElim(n, Number(b.dataset.oi)); return; }
+  if (act === "maybe"){ const n = currentN(); if (n !== null) toggleMaybe(n, Number(b.dataset.oi)); return; }
   if (act === "lucky"){ luckyGo(null); return; }
   if (act === "browse-open"){ openBrowse(); return; }
   if (act === "b-prev"){ if (browse) browseGo(browse.i - 1); return; }
@@ -3673,7 +3707,7 @@ document.addEventListener("keydown", e => {
     if (k === "m"){ e.preventDefault(); toggleMark(n); render(); return; }
     const ord = s.orders[n] || optIdx(n);
     const mm = /^(?:Digit([1-6])|Key([A-F]))$/.exec(e.code || "");
-    if (e.shiftKey){ if (mm){ const ix = mm[1] ? Number(mm[1]) - 1 : "ABCDEF".indexOf(mm[2]); if (ix < ord.length){ e.preventDefault(); toggleElim(n, ord[ix]); } } return; }
+    if (e.shiftKey){ if (mm){ const ix = mm[1] ? Number(mm[1]) - 1 : "ABCDEF".indexOf(mm[2]); if (ix < ord.length){ e.preventDefault(); (mm[1] ? toggleElim : toggleMaybe)(n, ord[ix]); } } return; }
     let ix = "123456".indexOf(k); if (ix < 0) ix = "abcdef".indexOf(k);
     if (ix >= 0 && k.length === 1 && ix < ord.length){ e.preventDefault(); pick(n, ord[ix]); return; }
     if ((k === "arrowright" || k === "enter") && !onButton){ e.preventDefault(); examGo(s.i + 1); return; }
@@ -3709,7 +3743,7 @@ document.addEventListener("keydown", e => {
   if (!answered && e.shiftKey){
     const ord = s.orders[n] || optIdx(n);
     const m = /^(?:Digit([1-6])|Key([A-F]))$/.exec(e.code || "");
-    if (m){ const idx = m[1] ? Number(m[1]) - 1 : "ABCDEF".indexOf(m[2]); if (idx < ord.length){ e.preventDefault(); toggleElim(n, ord[idx]); } }
+    if (m){ const idx = m[1] ? Number(m[1]) - 1 : "ABCDEF".indexOf(m[2]); if (idx < ord.length){ e.preventDefault(); (m[1] ? toggleElim : toggleMaybe)(n, ord[idx]); } }
     return;
   }
   if (!answered){
