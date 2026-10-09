@@ -68,8 +68,8 @@ def validate(bank, image_keys):
         if t not in TYPES:
             bad(f"type「{t}」不認得，只能是 {'、'.join(TYPES)}（縮寫題放在 abbr）。"); continue
         n = q.get("n")
-        if not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= 9998:
-            bad("n 要是 1 到 9998 的整數。"); continue
+        if not isinstance(n, int) or isinstance(n, bool) or not 1 <= n <= 9998 or n == 1000:
+            bad("n 要是 1 到 999（題庫）或 1001 到 9998（頁面內建的補充題）的整數。"); continue
         if n in seen:
             bad("n 重複了。"); continue
         if t in ("mcq", "multi", "cls") and not s(q.get("q")):
