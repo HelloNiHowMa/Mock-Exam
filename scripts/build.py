@@ -35,10 +35,23 @@ def dup(arr):
     return None
 
 
+def void_fields(r):
+    """不可作答的兩個欄位：回傳 (錯誤訊息或 None, 是否缺 voidNote)。和頁面引擎的檢查一致。"""
+    if "void" in r and not isinstance(r["void"], bool):
+        return "void 要是 true 或 false（不加引號）。", False
+    if "voidNote" in r and not isinstance(r["voidNote"], str):
+        return "voidNote 要是文字。", False
+    return None, r.get("void") is True and not s(r.get("voidNote"))
+
+
+VOID_NO_NOTE = "標成不可作答（void），但沒有用 voidNote 說明這題哪裡有問題。"
+
+
 def validate(bank, image_keys):
+    """回傳 (錯誤, 提醒, 不可作答的題數)。不可作答只算格式正確、會出現在頁面上的題目和縮寫題。"""
     errors, notes = [], []
     if not isinstance(bank, dict):
-        return ["題庫要是一個 { } 物件。"], notes
+        return ["題庫要是一個 { } 物件。"], notes, 0
     cfg = bank.get("config")
     if not isinstance(cfg, dict):
         errors.append("缺少 config 設定。")
@@ -90,6 +103,12 @@ def validate(bank, image_keys):
                     errors.append(f"{where}：{f} 用到的圖片 {'、'.join(miss)} 找不到（圖片檔名去掉副檔名就是代號）。")
         if img_bad:
             continue
+        # 不可作答只是多一個狀態，題目原本的欄位下面照常檢查
+        verr, no_note = void_fields(q)
+        if verr:
+            bad(verr); continue
+        if no_note:
+            notes.append(f"{where}：{VOID_NO_NOTE}")
         if t in ("mcq", "multi"):
             o = q.get("o")
             if not (isinstance(o, list) and 2 <= len(o) <= 6 and all(s(x) for x in o)):
@@ -155,7 +174,7 @@ def validate(bank, image_keys):
     ab = bank.get("abbr", [])
     if not isinstance(ab, list):
         errors.append("abbr 要是陣列。"); ab = []
-    seen_ab = set()
+    seen_ab, void_ab = set(), []
     for i, r in enumerate(ab, 1):
         if isinstance(r, list):
             r = {"cat": r[0] if len(r) > 0 else "", "abbr": r[1] if len(r) > 1 else "", "full": r[2] if len(r) > 2 else "", "alts": r[3] if len(r) > 3 else [], "e": r[4] if len(r) > 4 else ""}
@@ -166,12 +185,20 @@ def validate(bank, image_keys):
             errors.append(f"縮寫題第 {i} 筆（{r['abbr']}）：縮寫重複了。"); continue
         if "alts" in r and not (isinstance(r["alts"], list) and all(isinstance(x, str) for x in r["alts"])):
             errors.append(f"縮寫題第 {i} 筆（{r['abbr']}）：alts 要是文字陣列。"); continue
+        verr, no_note = void_fields(r)
+        if verr:
+            errors.append(f"縮寫題第 {i} 筆（{r['abbr']}）：{verr}"); continue
+        if no_note:
+            notes.append(f"縮寫題第 {i} 筆（{r['abbr']}）：{VOID_NO_NOTE}")
+        if r.get("void") is True:
+            void_ab.append(r["abbr"].strip())
         seen_ab.add(k)
 
     gs = bank.get("groups", [])
     if not isinstance(gs, list):
         errors.append("groups 要是陣列。"); gs = []
     vn = {q["n"] for q in valid}
+    void_n = sorted(q["n"] for q in valid if q.get("void") is True)
     for i, g in enumerate(gs, 1):
         if not (isinstance(g, dict) and s(g.get("name")) and isinstance(g.get("qs"), list)):
             errors.append(f"易混淆組第 {i} 組：要有名稱 name 和題號陣列 qs。"); continue
@@ -180,9 +207,14 @@ def validate(bank, image_keys):
             errors.append(f"易混淆組第 {i} 組（{g['name']}）：題號 {'、'.join(map(str, miss))} 不存在或有錯。")
         if len([x for x in g["qs"] if x in vn]) < 2:
             errors.append(f"易混淆組第 {i} 組（{g['name']}）：至少要有兩題有效的題目。")
+        elif len([x for x in g["qs"] if x in vn and x not in void_n]) < 2:
+            notes.append(f"易混淆組第 {i} 組（{g['name']}）：扣掉不可作答的題目後不到兩題，這一組不會出現在練習裡。")
+    if void_n or void_ab:
+        which = ([f"第 {'、'.join(map(str, void_n))} 題"] if void_n else []) + ([f"縮寫題 {'、'.join(void_ab)}"] if void_ab else [])
+        notes.append(f"有 {len(void_n) + len(void_ab)} 題標成不可作答（{'，'.join(which)}）：這些題目不計入題數，也不會出題；拿掉 void 就會恢復，原本的作答紀錄都還在。")
     if not valid and not ab:
         errors.append("題庫裡沒有任何有效的題目。")
-    return errors, notes + quality(valid)
+    return errors, notes + quality(valid), len(void_n) + len(void_ab)
 
 
 def quality(qs):
@@ -391,12 +423,13 @@ def main():
         if unused:
             img_notes.append(f"images.json 有 {len(unused)} 張圖沒有被題目用到，沒有放進練習簿。")
         imgs.update({k: v for k, v in extra.items() if k in wanted and isinstance(v, str) and v})
-    errors, notes = validate(bank, set(imgs))
+    errors, notes, nvoid = validate(bank, set(imgs))
     notes = img_notes + notes
 
     qs = [q for q in bank.get("questions", []) if isinstance(q, dict)]
     mix = Counter(q.get("type", "mcq") for q in qs)
-    print("題型：" + "、".join(f"{TYPE_ZH.get(k, k)} {v}" for k, v in mix.items()) + f"、縮寫 {len(bank.get('abbr', []))}、易混淆組 {len(bank.get('groups', []))}")
+    print("題型：" + "、".join(f"{TYPE_ZH.get(k, k)} {v}" for k, v in mix.items()) + f"、縮寫 {len(bank.get('abbr', []))}、易混淆組 {len(bank.get('groups', []))}"
+          + (f"、不可作答 {nvoid}" if nvoid else ""))
     for e in errors:
         print("錯誤：" + e)
     for n in notes:
