@@ -1932,21 +1932,29 @@ function skipNext(){
   timerStop();
   next();
 }
-/* 考我一題：依序從到期複習、弱點與答錯待複習、還沒做過、尚未熟練的題目中抽一題，
-   沿用目前的題型與題目來源設定，並避開剛做完的那一題。 */
+/* 考我一題：先廣度再深度。目前的題型與題目來源範圍裡還有沒做過的題目時，一律先抽沒做過的；
+   全部做過一輪後，才依序從到期複習、弱點與答錯待複習、尚未熟練的題目中抽一題，並避開剛做完的那一題。 */
 function luckyPick(exclude){
   const ok = n => byN[n] && n !== exclude && srcOk(n) && typeOk(n);
   const rnd = a => a[Math.floor(Math.random() * a.length)];
   const all = ALLQ.map(q => q.n).filter(ok);
   const tiers = [
+    all.filter(n => status(n) === "new"),
     dueList().filter(ok),
     Array.from(new Set(weakList().filter(ok).concat(all.filter(n => status(n) === "red" || status(n) === "amber")))),
-    all.filter(n => status(n) === "new"),
     all.filter(n => !isMastered(n)),
     all
   ];
   const t = tiers.find(x => x.length);
   return t ? rnd(t) : null;
+}
+function luckyNote(){
+  const list = ALLQ.map(q => q.n).filter(n => byN[n] && srcOk(n) && typeOk(n));
+  const fresh = list.filter(n => status(n) === "new").length;
+  const tail = "沿用下方的題型和題目來源設定。";
+  if (!list.length) return "目前的篩選設定下沒有題目。";
+  if (fresh) return `先把題目做過一輪，再回頭加深：這個範圍有 ${list.length} 題，還有 ${fresh} 題沒做過，會先從這些題目抽。全部做過一輪後，才抽到期複習、弱點與答錯的題目。${tail}`;
+  return `這個範圍的 ${list.length} 題都做過一輪了，現在依序抽到期複習、弱點與答錯、尚未熟練的題目。${tail}`;
 }
 function luckyGo(exclude){
   const n = luckyPick(exclude);
@@ -3053,7 +3061,7 @@ function renderHome(){
   ${dailyHomeHTML()}
   ${(() => {
     const avail = ALLQ.some(q => srcOk(q.n) && typeOk(q.n));
-    return `<div class="lucky"><button class="btn primary big" data-act="lucky" ${avail ? "" : "disabled"}>考我一題</button><p class="note">從現在最值得練的題目抽一題：先抽到期複習，再抽弱點與答錯的題目，然後是還沒做過的題目。沿用下方的題型和題目來源設定。</p></div>`;
+    return `<div class="lucky"><button class="btn primary big" data-act="lucky" ${avail ? "" : "disabled"}>考我一題</button><p class="note">${luckyNote()}</p></div>`;
   })()}
   ${sess ? `<section class="resume" aria-label="未完成的練習">
     <p>${sess.exam ? `上次的模擬考還沒交卷，已作答 ${sess.ids.filter(x => examDone(sess, x)).length} / ${sess.ids.length} 題。` : `上次的練習做到第 ${sess.i + 1} / ${sess.ids.length} 題。`}</p>
