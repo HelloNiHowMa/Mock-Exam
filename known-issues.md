@@ -38,4 +38,4 @@ A 裝置做完今天的每日一題後，B 裝置的「每日一題」按鈕仍�
 2. 作答後立即上傳，不等 1.2 秒。
 3. 同一天的「已完成」狀態單獨合併，不被較舊的 prefs 蓋回去。
 
-涉及 `template.html` 的 `dailyGo`、`dailyMark`、`mergeRemote`、`scheduleRemote`。修了之後，已發佈的練習簿要用新範本重新產生；用 Claude 的人要重新打包、安裝 skill。
+涉及 `template.html` 的 `dailyGo`、`dailyMark`、`mergeRemote`、`scheduleRemote`。修了之後，已發佈的練習簿要用新範本重新產生；repo 根目錄的 `mock-exam-workbook.skill` 要重新產生，用 Claude 的人重新下載安裝。

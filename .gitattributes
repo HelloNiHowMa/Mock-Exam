@@ -1,0 +1,2 @@
+# 打包好的 skill 是 zip 檔，不做換行轉換、不顯示文字 diff
+*.skill binary
