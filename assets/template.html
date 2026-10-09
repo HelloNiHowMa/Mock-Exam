@@ -11,8 +11,11 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-09（加入選項的 ○「標為可能」與作答後的 ○× 提示、「考我一題」先抽沒做過的題目、題目來源「只出題庫」、
-  頁面內建的補充題區、題庫地圖標出爭議題、未完成練習的提示）
+  引擎版本：2026-10-09b（修正「AI 解析」的提示詞：選擇題的選項不再標 A、B、C，改成照題庫順序、行尾帶題庫判定的清單，
+  避免解析引用和畫面不同的代號；規則加上「自己加的內容要明講是補充」；有圖片選項時說明每張圖對應哪個選項。
+  只改提示詞，判分、選項打亂、畫面上的字母和已存的 AI 解析都沒有動。）
+  上一版 2026-10-09：加入選項的 ○「標為可能」與作答後的 ○× 提示、「考我一題」先抽沒做過的題目、題目來源「只出題庫」、
+  頁面內建的補充題區、題庫地圖標出爭議題、未完成練習的提示。
   題號規則：1 到 999 是題庫；1001 到 9998（1000 + k）是頁面內建的補充題，依題型排在補充題區。1000 不能用。
   補充題在畫面上的號碼是各區自己從 1 編（補充選擇題、補充變化題、補充拖拉題），依 k 的先後排；k 只是內部編號。
   新增內建補充題時，k 要接在「頁面裡的補充題」和「帳號裡的補充題（作答紀錄的 extras）」兩邊最大的號碼後面。
@@ -2308,7 +2311,14 @@ function clsBodyHTML(s, n, q, answered, noSubmit){
 
 /* ---------- 請 AI 幫忙寫解析：用 sample 能力，花的是使用者自己的 Claude 用量，只在按下按鈕時呼叫 ---------- */
 let sampleApi = null, aiBusy = false, aiCtl = null, aiMsg = "", aiUndo = null;
-const AI_RULES = "你是" + CONFIG.aiRole + "，要替學員寫一段解析。\n規則：\n- 用繁體中文（台灣用語）" + (CONFIG.aiTerms ? "，" + CONFIG.aiTerms : "") + "。\n- 不要標題、不要重述題目、不要用 Markdown 語法（例如 ** 或 #），只輸出解析本身。\n- " + CONFIG.aiBasis + "。如果你認為標示的正確答案有問題，最後用一句話指出並說明理由。\n\n";
+const AI_RULES = "你是" + CONFIG.aiRole + "，要替學員寫一段解析。\n規則：\n- 用繁體中文（台灣用語）" + (CONFIG.aiTerms ? "，" + CONFIG.aiTerms : "") + "。\n- 不要標題、不要重述題目、不要用 Markdown 語法（例如 ** 或 #），只輸出解析本身。\n- " + CONFIG.aiBasis + "。如果你認為標示的正確答案有問題，最後用一句話指出並說明理由。\n- 教材或題庫解析沒有寫到、由你自己加上的內容，要明講是你的補充，不要寫成教材或題庫的說法。只有真的寫進這段解析的內容才能稱為補充；沒有加，就不要提到補充。\n\n";
+/* 選擇題的提示詞不帶任何選項字母或序號：作答時選項順序是打亂的，AI 手上有代號就會引用，學員照畫面讀會對到別的選項。
+   選項照題庫順序列成清單，每行行尾標出題庫的判定；有圖片選項時，附上的圖也照這份清單由上到下的順序。 */
+const AI_NO_LABEL = "提到選項時直接引用選項內容，不要用 A、B、C 這種代號，也不要用「第幾個選項」這種序號，因為作答時選項順序是打亂的，學員看到的順序和下面的清單不同。";
+const AI_OPT_HEAD = "選項（每行一個，行尾是題庫的判定）：\n";
+function aiOptLine(text, ok, tag){
+  return "- " + String(text == null ? "" : text).replace(/\s*[\r\n]+\s*/g, " ").trim() + (tag || "") + " 〔題庫標示：" + (ok ? "正確" : "不正確") + "〕";
+}
 function buildAiPrompt(f){
   if (f.type === "abbr"){
     const ab = f.abbr.trim(), ans = f.ans.trim();
@@ -2330,9 +2340,9 @@ function buildAiPrompt(f){
   const filled = opts.filter(Boolean);
   const marks = f.multi ? f.am : (f.a >= 0 ? [f.a] : []);
   if (!q || filled.length < 2 || !marks.length || marks.some(i => !opts[i])) return {ok: false, msg: "要先填好題目、至少兩個選項，並標出正確答案，AI 才能寫解析。"};
-  const kept = [], ai = [];
-  opts.forEach((x, i) => { if (x){ if (marks.includes(i)) ai.push(kept.length); kept.push(x); } });
-  return {ok: true, text: AI_RULES + "這是一題選擇題。請用 2 到 4 句話先說明為什麼正確答案是對的，再點出最容易混淆的選項錯在哪裡。\n\n題目：\n" + q + "\n\n選項：\n" + kept.map((x, i) => LETTERS[i] + ". " + x).join("\n") + "\n\n正確答案：" + ai.map(i => LETTERS[i]).join("、") + (f.multi ? "（複選題，必須全部選對才算對）" : "")};
+  const lines = [];
+  opts.forEach((x, i) => { if (x) lines.push(aiOptLine(x, marks.includes(i))); });
+  return {ok: true, text: AI_RULES + (f.multi ? "這是一題複選題，必須全部選對才算對。" : "這是一題單選題。") + "請用 2 到 4 句話先說明為什麼正確答案是對的，再點出最容易混淆的選項錯在哪裡。" + AI_NO_LABEL + "\n\n題目：\n" + q + "\n\n" + AI_OPT_HEAD + lines.join("\n")};
 }
 function aiRowHTML(f){
   if (!sampleApi) return "";
@@ -2416,26 +2426,38 @@ async function saveAiRemote(n){
     await ref.set({notes: cur});
   } catch(e){}
 }
-function aiPromptFor(q){
+function optHasImg(q, i){ return !!(q && q.oimg && q.oimg[i] && IMG[q.oimg[i]]); }
+/* sentOpt：圖片真的有附給 AI 的選項索引（aiImagesFor 的 optIdx）；沒傳就當作都沒有附上。 */
+function aiPromptFor(q, sentOpt){
   const multi = q.type === "multi";
   const ans = multi ? q.a : [q.a];
-  const parts = [AI_RULES + (multi ? "這是一題複選題，必須全部選對才算對。" : "這是一題單選題。") + "請用 3 到 6 句話，先說明為什麼正確答案是對的，再點出最容易混淆的選項錯在哪裡。提到選項時直接引用選項內容，不要用 A、B、C 這種代號，因為作答時選項順序是打亂的。"];
+  const sent = sentOpt || [];
+  const parts = [AI_RULES + (multi ? "這是一題複選題，必須全部選對才算對。" : "這是一題單選題。") + "請用 3 到 6 句話，先說明為什麼正確答案是對的，再點出最容易混淆的選項錯在哪裡。" + AI_NO_LABEL];
   parts.push("題目：\n" + q.q);
-  parts.push("選項：\n" + q.o.map((x, i) => LETTERS[i] + ". " + x).join("\n"));
-  parts.push("題庫標示的正確答案：" + ans.map(i => LETTERS[i] + ". " + q.o[i]).join("；"));
+  parts.push(AI_OPT_HEAD + q.o.map((x, i) => {
+    const pic = optHasImg(q, i);
+    return aiOptLine(x || (pic ? "（這個選項只有圖片，沒有文字）" : ""), ans.includes(i), pic ? (sent.includes(i) ? " 〔這個選項有附圖〕" : " 〔這個選項有圖片，但沒有附上〕") : "");
+  }).join("\n"));
   if (q.e) parts.push("題庫附的解析（僅供參考）：\n" + q.e);
   return parts.join("\n\n");
 }
+/* 附給 AI 的圖：先是題目的 exhibit，再是圖片選項（依選項索引排序，也就是提示詞裡選項清單由上到下的順序）。
+   SVG、外部檔案和超過張數上限的圖不會送，所以另外回傳實際附上的 exhibit 張數（nExhibit）和選項索引（optIdx），
+   提示詞才能標出哪些選項的圖真的附上了。 */
 async function aiImagesFor(q){
-  const ids = (Array.isArray(q.img) ? q.img : []).concat(q.oimg ? Object.keys(q.oimg).sort().map(k => q.oimg[k]) : []).filter(id => IMG[id]);
-  const out = {has: ids.length > 0, blobs: []};
-  if (!ids.length || !sampleApi || typeof sampleApi.limits !== "function") return out;
+  const items = (Array.isArray(q.img) ? q.img : []).map(id => ({id, oi: -1}))
+    .concat(q.oimg ? Object.keys(q.oimg).sort().map(k => ({id: q.oimg[k], oi: Number(k)})) : []).filter(x => IMG[x.id]);
+  const out = {has: items.length > 0, blobs: [], nExhibit: 0, optIdx: []};
+  if (!items.length || !sampleApi || typeof sampleApi.limits !== "function") return out;
   let lim = null;
   try { lim = await sampleApi.limits(); } catch(e){ lim = null; }
   if (!lim || !lim.images) return out;
   const okTypes = lim.images.mediaTypes || [];
-  out.blobs = ids.map(imgInline).filter(x => x && okTypes.includes(x.type))
-    .slice(0, Math.max(0, lim.images.maxCount || 0)).map(x => b64Blob(x.b64, x.type));
+  const sent = items.map(x => ({oi: x.oi, im: imgInline(x.id)})).filter(x => x.im && okTypes.includes(x.im.type))
+    .slice(0, Math.max(0, lim.images.maxCount || 0));
+  out.blobs = sent.map(x => b64Blob(x.im.b64, x.im.type));
+  out.nExhibit = sent.filter(x => x.oi < 0).length;
+  out.optIdx = sent.filter(x => x.oi >= 0).map(x => x.oi);
   return out;
 }
 function qaiHTML(n, q){
@@ -2460,12 +2482,16 @@ async function qaiRun(){
   const ctl = new AbortController();
   qai = {n, busy: true, ctl, text: "", msg: ""};
   render();
-  const base = aiPromptFor(q);
-  let im = {has: false, blobs: []};
+  let im = {has: false, blobs: [], nExhibit: 0, optIdx: []};
   try { im = await aiImagesFor(q); } catch(e){}
-  const SEEN = "\n\n題目附圖已經附上（依序是題目的 exhibit" + (q.oimg ? "，最後是圖片選項" : "") + "），請根據圖中的內容說明。";
+  const nOpt = im.optIdx.length;
+  const optMissing = q.o.some((_, i) => optHasImg(q, i) && !im.optIdx.includes(i));
+  const SEEN = "\n\n" + (nOpt
+    ? "圖片已經附上，共 " + im.blobs.length + " 張：" + (im.nExhibit ? "前 " + im.nExhibit + " 張是題目的 exhibit，後 " + nOpt + " 張是圖片選項的圖。" : "全部是圖片選項的圖。") + "圖片選項的圖照上面選項清單由上到下的順序排，一張對應一個標有〔這個選項有附圖〕的選項。請根據圖中的內容說明；提到圖片選項時，用圖裡的內容來描述是哪一個選項，不要說是第幾張圖，也不要用代號或序號。"
+    : "題目附圖已經附上（依序是題目的 exhibit），請根據圖中的內容說明。")
+    + (optMissing ? "標有〔這個選項有圖片，但沒有附上〕的選項你看不到圖，解析需要時請根據題目和其他資訊合理推論，並說明你是怎麼推論的。" : "");
   const UNSEEN = "\n\n這題有附圖，但你看不到圖。如果解析需要圖中的資訊，請根據題目、選項和正確答案合理推論，並說明你是怎麼推論的。";
-  const call = withImg => sampleApi(base + (im.has ? (withImg ? SEEN : UNSEEN) : ""), Object.assign({signal: ctl.signal, cache: false, modelTier: "default",
+  const call = withImg => sampleApi(aiPromptFor(q, withImg ? im.optIdx : []) + (im.has ? (withImg ? SEEN : UNSEEN) : ""), Object.assign({signal: ctl.signal, cache: false, modelTier: "default",
     onText: ({text}) => { if (qai.n === n && qai.busy){ qai.text = text; const el = document.getElementById("qai-text"); if (el) el.textContent = text; } }},
     withImg ? {images: im.blobs} : {}));
   try {
