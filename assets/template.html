@@ -11,7 +11,12 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-04（加入 CTIA 練習簿的熟練狀態、誤選分析、考我一題、考前快速瀏覽）
+  引擎版本：2026-10-09（加入選項的 ○「標為可能」與作答後的 ○× 提示、「考我一題」先抽沒做過的題目、題目來源「只出題庫」、
+  頁面內建的補充題區、題庫地圖標出爭議題、未完成練習的提示）
+  題號規則：1 到 999 是題庫；1001 到 9998（1000 + k）是頁面內建的補充題，依題型排在補充題區。1000 不能用。
+  補充題在畫面上的號碼是各區自己從 1 編（補充選擇題、補充變化題、補充拖拉題），依 k 的先後排；k 只是內部編號。
+  新增內建補充題時，k 要接在「頁面裡的補充題」和「帳號裡的補充題（作答紀錄的 extras）」兩邊最大的號碼後面。
+  未完成練習的提示：只有一題而且已經答完的練習視同結束、不再提示；多題全部答完但還沒看結果時，提示改成「看這回結果／關閉」。
 ================================================================= -->
 <script type="application/json" id="bank">
 {
@@ -556,6 +561,13 @@ header.top{margin-bottom:26px}
   filter:drop-shadow(-1px 1px 0 var(--surface));
 }
 .sw.sw-mark::after{border-width:0 9px 9px 0}
+:root{--flagc:#7c3aed}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--flagc:#b197fc}}
+:root[data-theme="dark"]{--flagc:#b197fc}
+.cell.flagged{box-shadow:inset 0 0 0 2.5px var(--flagc)}
+.cflag,.sw.sw-flag{background:var(--flagc);color:var(--surface);font-weight:800;text-align:center}
+.cflag{position:absolute;top:0;left:0;width:12px;height:12px;font-size:.6rem;line-height:12px;border-radius:0 0 6px 0}
+.sw.sw-flag{border-color:var(--flagc);font-size:.62rem;line-height:11px;vertical-align:middle}
 .markbtn{
   margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
   background:var(--surface);border:1.5px solid var(--line);border-radius:999px;padding:.3em .9em .3em .7em;font-size:.9rem;
@@ -979,7 +991,7 @@ function loadBank(){
     const type = q.type === undefined ? "mcq" : q.type;
     if (!TYPES.includes(type)) return bad(`type「${q.type}」不認得，只能是 mcq、multi、cls、order、match（縮寫題放在 abbr）。`);
     if (type === "mcq") delete q.type;
-    if (!Number.isInteger(q.n) || q.n < 1 || q.n > 9998) return bad("n 要是 1 到 9998 的整數。");
+    if (!Number.isInteger(q.n) || q.n < 1 || q.n > 9998 || q.n === 1000) return bad("n 要是 1 到 999（題庫）或 1001 到 9998（頁面內建的補充題）的整數。");
     if (seen.has(q.n)) return bad("n 重複了，每題的 n 都要不一樣。");
     if (type === "mcq" || type === "multi" || type === "cls"){ if (!str(q.q)) return bad("缺少題目文字 q。"); }
     else if (q.q !== undefined && typeof q.q !== "string") return bad("q 要是文字。");
@@ -1107,11 +1119,21 @@ const QN = new Set(Q.map(q => q.n));
    {k: 編號, q: 題目, o: [2 到 6 個選項], a: 正確選項位置, e: 解析, flag: 是否爭議題, t: 最後修改時間}
    刪除的題目留下 {k, del: true, t} 作為標記，避免其他裝置同步時又把它加回來。
    補充題的內部編號是 10000 + k，進度紀錄和原題分開。 */
-const BANK_B = 9999;
+const BANK_B = 1000;
 const EXTRA_BASE = 10000;
 const LETTERS = ["A","B","C","D","E","F"];
 const byN = {};
 let EXTRA = [], ALLQ = Q.slice(), TOTAL = Q.length;
+const SEC_NAME = {c: "選擇題", v: "變化題", d: "拖拉題"};
+let SECNUM = {};
+function secKey(q){ return (q.type === "order" || q.type === "match" || q.type === "cls" || q.type === "imgdd") ? "d" : q.from ? "v" : "c"; }
+function rebuildSec(){
+  const rawK = n => isExtra(n) ? n - EXTRA_BASE : n - BANK_B;
+  const cnt = {c: 0, v: 0, d: 0};
+  SECNUM = {};
+  ALLQ.filter(q => (isExtra(q.n) || isBankB(q.n)) && q.type !== "abbr").sort((x, y) => rawK(x.n) - rawK(y.n))
+    .forEach(q => { const s = secKey(q); SECNUM[q.n] = {s, i: ++cnt[s]}; });
+}
 function rebuildQ(){
   const ex = (state && state.extras) || {};
   EXTRA = Object.keys(ex).map(key => ex[key])
@@ -1124,8 +1146,8 @@ function rebuildQ(){
     .sort((x, y) => x.k - y.k)
     .map(x => x.type === "abbr"
       ? {n: EXTRA_BASE + x.k, k: x.k, type: "abbr", cat: typeof x.cat === "string" && x.cat ? x.cat : "自訂", q: x.q, ans: x.ans, alts: Array.isArray(x.alts) ? x.alts.slice() : [], e: x.e || ""}
-      : x.type === "order" ? {n: EXTRA_BASE + x.k, k: x.k, type: "order", q: x.q, items: x.items.slice(), e: x.e || ""}
-      : x.type === "match" ? {n: EXTRA_BASE + x.k, k: x.k, type: "match", q: x.q, pairs: x.pairs.map(p => p.slice()), e: x.e || ""}
+      : x.type === "order" ? {n: EXTRA_BASE + x.k, k: x.k, type: "order", q: x.q, items: x.items.slice(), e: x.e || "", flag: !!x.flag}
+      : x.type === "match" ? {n: EXTRA_BASE + x.k, k: x.k, type: "match", q: x.q, pairs: x.pairs.map(p => p.slice()), e: x.e || "", flag: !!x.flag}
       : x.type === "multi" ? {n: EXTRA_BASE + x.k, k: x.k, type: "multi", q: x.q, o: x.o.slice(), a: Array.from(new Set(x.a)).sort((p, q2) => p - q2), e: x.e || "", flag: !!x.flag}
       : {n: EXTRA_BASE + x.k, k: x.k, type: "mcq", q: x.q, o: x.o.slice(), a: x.a, e: x.e || "", flag: !!x.flag,
          from: Number.isInteger(x.from) && QN.has(x.from) ? x.from : null});
@@ -1133,6 +1155,7 @@ function rebuildQ(){
   TOTAL = ALLQ.length;
   Object.keys(byN).forEach(key => { delete byN[key]; });
   ALLQ.forEach(q => { byN[q.n] = q; });
+  rebuildSec();
 }
 function sanitizeSession(){
   const s = state.session; if (!s) return;
@@ -1163,9 +1186,9 @@ function initArr(s, n){
 }
 function isExtra(n){ return n > EXTRA_BASE; }
 function isBankB(n){ return n > BANK_B && n < EXTRA_BASE; }
-function dispNum(n){ return isExtra(n) ? n - EXTRA_BASE : isBankB(n) ? n - BANK_B : n; }
-function srcName(n){ return isExtra(n) ? "補充題" : isBankB(n) ? "題庫" : "題庫"; }
-function qLabel(n){ const q = byN[n]; if (q && q.type === "abbr") return `縮寫題 ${q.q}`; return isExtra(n) ? `補充題第 ${n - EXTRA_BASE} 題` : `第 ${n} 題`; }
+function dispNum(n){ return SECNUM[n] ? SECNUM[n].i : isExtra(n) ? n - EXTRA_BASE : isBankB(n) ? n - BANK_B : n; }
+function srcName(n){ return SECNUM[n] ? "補充" + SEC_NAME[SECNUM[n].s] : isExtra(n) || isBankB(n) ? "補充題" : "題庫"; }
+function qLabel(n){ const q = byN[n]; if (q && q.type === "abbr") return `縮寫題 ${q.q}`; return SECNUM[n] ? `補充${SEC_NAME[SECNUM[n].s]}第 ${SECNUM[n].i} 題` : isExtra(n) ? `補充題第 ${n - EXTRA_BASE} 題` : isBankB(n) ? `補充題第 ${n - BANK_B} 題` : `第 ${n} 題`; }
 function qimgHTML(q, cls){
   if (!q || !q.img) return "";
   if (Array.isArray(q.img)) return imgsHTML(q.img, cls);
@@ -1200,9 +1223,9 @@ function isRight(n, ans){
 function qType(n){ const q = byN[n]; if (!q) return ""; return q.type === "abbr" ? "abbr" : (q.type === "order" || q.type === "match" || q.type === "imgdd" || q.type === "cls") ? "drag" : "mcq"; }
 let srcFilter = "all";
 function isVariant(n){ const q = byN[n]; return !!(q && q.from); }
-function srcOk(n){ return srcFilter === "all" || (srcFilter === "orig" ? !isExtra(n) : srcFilter === "bankA" ? n < BANK_B : srcFilter === "bankB" ? isBankB(n) : srcFilter === "variant" ? isVariant(n) : isExtra(n)); }
+function srcOk(n){ return srcFilter === "all" || (srcFilter === "orig" || srcFilter === "bankA" ? n < BANK_B : srcFilter === "bankB" ? isBankB(n) : srcFilter === "variant" ? isVariant(n) : (isExtra(n) || isBankB(n))); }
 let typeFilter = "mcq";
-function typeOk(n){ return typeFilter === "all" || qType(n) === typeFilter || (typeFilter === "mcq" && !isExtra(n) && byN[n] && byN[n].type === "cls"); }
+function typeOk(n){ return typeFilter === "all" || qType(n) === typeFilter || (typeFilter === "mcq" && n < BANK_B && byN[n] && byN[n].type === "cls"); }
 const KEY = SK.local;
 const STATUS_LABEL = {new:"未作答", red:"答錯待複習", amber:"複習中", green:"已掌握", master:"熟練"};
 
@@ -1227,7 +1250,10 @@ function loadLocal(){
 function saveLocal(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
 
 let state = loadLocal() || blankState();
-if (state.session && state.session.done) state.session = null;
+/* 這一回是否已經全部作答完（模擬考交卷前不算）。只有一題而且已經答完的練習視同結束。 */
+function sessAllAnswered(s){ return !!(s && !s.exam && Array.isArray(s.ids) && s.ids.length && s.answers && s.ids.every(n => s.answers[n] !== undefined)); }
+function sessOver(s){ return !!(s && (s.done || (Array.isArray(s.ids) && s.ids.length === 1 && sessAllAnswered(s)))); }
+if (sessOver(state.session)) state.session = null;
 if (state.session && state.session.timer){ state.session.timer.since = null; state.session.timer.sinceN = null; }
 rebuildQ();
 sanitizeSession();
@@ -1479,7 +1505,7 @@ function mergeRemote(r, adoptNewerSession){
   state.marks = clone(mergeMaps(state.marks, r.marks || {}, resetAt));
   let sessionChanged = false;
   if (adoptNewerSession && rTime > state.updatedAt){
-    const rs = r.session && !r.session.done ? clone(r.session) : null;
+    const rs = r.session && !sessOver(r.session) ? clone(r.session) : null;
     if (rs && rs.timer){ rs.timer.since = null; rs.timer.sinceN = null; }
     sessionChanged = JSON.stringify(rs) !== JSON.stringify(state.session);
     state.session = rs;
@@ -2062,7 +2088,7 @@ function dailyMark(n, ok){
 }
 function dailyGo(){
   const s = state.session;
-  if (s && !s.done && s.ids.length > 1) return;
+  if (s && !s.done && s.ids.length > 1 && !sessAllAnswered(s)) return;
   const d = dailyToday();
   if (!d || d.done){ render(); return; }
   const opts = {};
@@ -2079,7 +2105,7 @@ function dailyHomeHTML(){
   const today = cur && cur.d === dailyDayKey() && byN[cur.n] ? cur : null;
   const list = dailyAll().map(q => q.n).filter(dailyOk);
   const s = state.session;
-  const busy = !!(s && !s.done && s.ids.length > 1);
+  const busy = !!(s && !s.done && s.ids.length > 1 && !sessAllAnswered(s));
   const waiting = list.filter(dailyNeedsReview).length;
   let note;
   if (today && today.done) note = `今天這題做完了（${today.ok ? "答對" : "答錯，" + DAILY_REV[0] + " 天後會再考一次"}）。明天會換一題。`;
@@ -2472,7 +2498,7 @@ async function qaiRun(){
 /* ---------- 補充題的新增與編輯 ---------- */
 let form = null, formErrors = [], flashMsg = "", editReturn = "extras", delArmed = false, delTimer = null;
 let skipCollectOnce = false;  // set when the form model was just changed in code, so render() must not read stale inputs back
-function nextK(){ const ks = Object.keys(state.extras || {}).map(Number).filter(x => x > 0); return ks.length ? Math.max.apply(null, ks) + 1 : 1; }
+function nextK(){ const ks = Object.keys(state.extras || {}).map(Number).filter(x => x > 0).concat(Q.filter(q => isBankB(q.n)).map(q => q.n - BANK_B)); return ks.length ? Math.max.apply(null, ks) + 1 : 1; }
 function openForm(k, type, dtype){
   aiReset();
   const x = k ? state.extras[k] : null;
@@ -2544,7 +2570,7 @@ function saveForm(andNew){
   const prevFrom = state.extras[k] && state.extras[k].from;
   state.extras[k] = Object.assign({k, q, o: kept, a: form.multi ? am : a, e: form.e.trim(), flag: form.flag, t: Date.now()}, form.multi ? {type: "multi"} : {}, prevFrom ? {from: prevFrom} : {});
   commit(); rebuildQ(); sanitizeSession();
-  flashMsg = isNew ? `已新增補充題第 ${k} 題。` : `已更新補充題第 ${k} 題。`;
+  flashMsg = isNew ? `已新增${qLabel(EXTRA_BASE + k)}。` : `已更新${qLabel(EXTRA_BASE + k)}。`;
   if (andNew){ openForm(null); return; }
   form = null;
   view = editReturn === "quiz" && state.session ? "quiz" : "extras";
@@ -2578,7 +2604,7 @@ function saveDragForm(andNew){
   state.extras[k] = Object.assign({k, q, e: form.e.trim(), t: Date.now()}, rec);
   commit(); rebuildQ(); sanitizeSession();
   const kind = rec.type === "order" ? "拖拉排序" : "拖拉配對";
-  flashMsg = isNew ? `已新增補充題第 ${k} 題（${kind}）。` : `已更新補充題第 ${k} 題（${kind}）。`;
+  flashMsg = isNew ? `已新增${qLabel(EXTRA_BASE + k)}（${kind}）。` : `已更新${qLabel(EXTRA_BASE + k)}（${kind}）。`;
   if (andNew){ openForm(null, "drag", form.dtype); return; }
   form = null;
   view = editReturn === "quiz" && state.session ? "quiz" : "extras";
@@ -2673,7 +2699,7 @@ function renderExtras(){
   <p class="backlink"><button class="btn text" data-act="go-home">回到總覽</button></p>
   <header class="top">
     <h1>補充題</h1>
-    <p class="sub">自己新增的選擇題和縮寫題都在這裡，練習方式和原題一樣，進度分開記錄，並跟著帳號同步。</p>
+    <p class="sub">自己新增的選擇題和縮寫題都在這裡，練習方式和題庫的題目一樣，進度分開記錄，並跟著帳號同步。</p>
   </header>
   ${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ""}
   <div class="row"><button class="btn primary big" data-act="new-extra">新增選擇題</button><button class="btn ghost" data-act="new-abbr">新增縮寫題</button><button class="btn ghost" data-act="new-drag">新增拖拉題</button></div>
@@ -2697,7 +2723,7 @@ function renderEdit(){
     </div>`).join("");
   return `
   <p class="backlink"><button class="btn text" data-act="cancel-extra">${editReturn === "quiz" ? "返回練習" : "返回補充題列表"}</button></p>
-  <header class="top"><h1>${f.k ? (f.type === "abbr" ? `編輯縮寫題 ${esc(f.abbr)}` : `編輯補充題第 ${f.k} 題`) : (f.type === "abbr" ? "新增縮寫題" : f.type === "drag" ? "新增拖拉題" : "新增補充題")}</h1></header>
+  <header class="top"><h1>${f.k ? (f.type === "abbr" ? `編輯縮寫題 ${esc(f.abbr)}` : `編輯${esc(qLabel(EXTRA_BASE + f.k))}`) : (f.type === "abbr" ? "新增縮寫題" : f.type === "drag" ? "新增拖拉題" : "新增補充題")}</h1></header>
   ${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ""}
   ${formErrors.length ? `<div class="errs" id="f-errs" tabindex="-1" role="alert">${formErrors.map(x => `<p>${esc(x)}</p>`).join("")}</div>` : ""}
   ${!f.k ? `<div class="field">
@@ -2770,7 +2796,7 @@ function renderEdit(){
 const PRINT_CSS = ".printdoc{background:#fff;color:#111;border:1.5px solid var(--line);border-radius:8px;padding:28px 28px 32px;margin-top:22px;font-family:\"Source Serif 4\",Georgia,\"Noto Serif TC\",serif;line-height:1.6}\n.printdoc h1{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:1.4rem;margin:0 0 4px;color:#111}\n.phead p{margin:2px 0;color:#444;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.phead .pname{margin-top:12px;color:#111}\n.plist{list-style:none;padding:0;margin:22px 0 0}\n.pq{margin:0 0 18px;break-inside:avoid;page-break-inside:avoid}\n.pref{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-weight:700;font-size:.92rem;margin:0 0 4px}\n.pstem{white-space:pre-line;margin:0 0 6px}\n.pimg{margin:4px 0 8px}\n.pimg img{max-width:100%;height:auto;border:1px solid #ccc}\n.popts{margin:0 0 4px;padding-left:1.9em}\n.popts li{margin:2px 0}\n.pline{margin:8px 0 0;border-bottom:1px solid #999;min-height:1.7em;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pmatch{display:grid;grid-template-columns:1fr 1fr;gap:16px}\n.pmatch ol{margin:0;padding-left:1.9em}\n.pans{margin-top:8px;padding:8px 12px;border-left:3px solid #999;background:#f4f4f4;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pans p{margin:2px 0}\n.pkey{margin-top:28px;border-top:1.5px solid #999;padding-top:12px;break-before:page;page-break-before:always;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif}\n.pkey h2{font-size:1.1rem;margin:0 0 8px}\n.pkey ol{columns:2;column-gap:28px;padding-left:2.2em;margin:0;font-size:.9rem}\n.pkey li{break-inside:avoid;margin:2px 0}";
 const SCOPE_NAME = {all:"全部題目", review:"錯題複習", weak:"弱點題", due:"到期複習", fresh:"還沒做過", marked:"已標記"};
 const TYPE_NAME = {mcq:CONFIG.mainLabel, abbr:"縮寫題", drag:"拖拉題", all:"全部題型"};
-const SRC_NAME = {orig:"只有原題", extra:"只有補充題", variant:"只有變化題"};
+const SRC_NAME = {orig:"只有題庫", extra:"只有補充題", variant:"只有變化題"};
 const PLETTERS = "ABCDEFGHIJ".split("");
 let printCfg = null, printMsg = "", dlApi = null;
 function seededOrder(len, seed){
@@ -2784,11 +2810,10 @@ function printRef(n){
   const q = byN[n];
   if (q.type === "abbr") return "縮寫題";
   if (!isExtra(n)) return qLabel(n) + (q.type === "imgdd" || q.type === "cls" ? "（拖拉題）" : q.type === "order" ? "（排序題）" : q.type === "match" ? "（配對題）" : q.type === "multi" ? "（複選）" : "");
-  const k = n - EXTRA_BASE;
-  if (q.from) return `補充題第 ${k} 題（變化自${qLabel(q.from)}）`;
-  if (q.type === "order") return `補充題第 ${k} 題（拖拉排序）`;
-  if (q.type === "match") return `補充題第 ${k} 題（拖拉配對）`;
-  return `補充題第 ${k} 題`;
+  if (q.from) return `${qLabel(n)}（變化自${qLabel(q.from)}）`;
+  if (q.type === "order") return `${qLabel(n)}（排序）`;
+  if (q.type === "match") return `${qLabel(n)}（配對）`;
+  return qLabel(n) + (q.type === "multi" ? "（複選）" : "");
 }
 function openPrint(){
   const ids = pools()[scope].slice();
@@ -3004,7 +3029,7 @@ function renderHome(){
   const extraMcq = EXTRA.filter(q => q.type !== "abbr");
   const abbrQs = ALLQ.filter(q => q.type === "abbr");
   if (typeFilter === "abbr" && !pref("examMode") && srcFilter !== "all") srcFilter = "all";
-  if (!extraMcq.length && (srcFilter === "orig" || srcFilter === "extra" || srcFilter === "variant")) srcFilter = "all";
+  if (!extraMcq.length && !Q.some(q => isBankB(q.n)) && (srcFilter === "orig" || srcFilter === "extra" || srcFilter === "variant")) srcFilter = "all";
   const counts = {new:0, red:0, amber:0, green:0, master:0};
   ALLQ.forEach(q => { counts[status(q.n)]++; });
   const tally = list => {
@@ -3012,10 +3037,12 @@ function renderHome(){
     list.forEach(q => { const r = state.stats[q.n]; if (!r || !attempts(q.n)) return; done++; c += r.c || 0; w += r.w || 0; });
     return {done, total: list.length, acc: c + w ? Math.round(c * 100 / (c + w)) : null};
   };
-  const tOrig = tally(Q), tExtra = tally(ALLQ.filter(q => isExtra(q.n))), tAll = tally(ALLQ);
+  const tOrig = tally(Q.filter(q => q.n < BANK_B)), tExtra = tally(ALLQ.filter(q => isExtra(q.n) || isBankB(q.n))), tAll = tally(ALLQ);
   const sRows = Object.assign({}, PREF_DEFAULTS.statRows, pref("statRows") || {});
   const statRow = (label, t, cls) => `<div${cls ? ` class="${cls}"` : ""}><dt>${label}</dt><dd>已作答 ${t.done} / ${t.total} 題${t.acc !== null ? `，累計正確率 ${t.acc}%` : ""}</dd></div>`;
-  const sess = state.session && !state.session.done ? state.session : null;
+  const sess = state.session && !sessOver(state.session) ? state.session : null;
+  const sessFin = !!sess && sessAllAnswered(sess);
+  const sessCnt = sess ? sess.ids.filter(n => !(sess.excluded && sess.excluded[n])) : [];
   if (scope === "due" && !p.due.length) scope = "all";
   const isGroups = scope === "pairs";
   const exam0 = !!pref("examMode") && scope !== "pairs";
@@ -3035,11 +3062,11 @@ function renderHome(){
     const st = status(q.n);
     const mk = isMarked(q.n);
     const sub = q.type === "order" ? "排序" : q.type === "match" ? "配對" : q.type === "imgdd" ? "看圖" : q.type === "cls" ? "拖拉" : q.type === "multi" ? "複選" : q.from ? `原 ${dispNum(q.from)}` : "";
-    const label = `${qLabel(q.n)}${q.type === "order" || q.type === "match" ? `（拖拉${sub}）` : q.type === "imgdd" ? "（拖拉題，看圖自評）" : q.type === "cls" ? "（拖拉題）" : q.from ? `（變化自${qLabel(q.from)}）` : ""}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}`;
+    const label = `${qLabel(q.n)}${q.type === "order" || q.type === "match" ? `（拖拉${sub}）` : q.type === "imgdd" ? "（拖拉題，看圖自評）" : q.type === "cls" ? "（拖拉題）" : q.from ? `（變化自${qLabel(q.from)}）` : ""}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}${q.flag ? "，爭議題" : ""}`;
     const tn = totalNote(q.n);
     const tip = `${label}\n最近作答 ${boxesText(q.n)}${tn ? "\n" + tn : ""}`;
     const num = dispNum(q.n);
-    return `<button class="cell s-${st}${mk ? " marked" : ""}${sub ? " has-sub" : ""}" data-q="${q.n}" aria-label="${label}，${boxesLabel(q.n)}" title="${tip}">${sub ? `<span class="cnum">${num}</span><span class="csub" aria-hidden="true">${sub}</span>` : num}</button>`;
+    return `<button class="cell s-${st}${mk ? " marked" : ""}${q.flag ? " flagged" : ""}${sub ? " has-sub" : ""}" data-q="${q.n}" aria-label="${label}，${boxesLabel(q.n)}" title="${tip}">${q.flag ? `<span class="cflag" aria-hidden="true">!</span>` : ""}${sub ? `<span class="cnum">${num}</span><span class="csub" aria-hidden="true">${sub}</span>` : num}</button>`;
   };
   const bankA = Q.filter(q => q.n < BANK_B), bankB = Q.filter(q => isBankB(q.n));
   const bankBlock = (key, title, list) => {
@@ -3059,8 +3086,10 @@ function renderHome(){
   const extraVariant = extraMcq.filter(q => (q.type === "mcq" || q.type === "multi") && q.from);
   const variantCount = extraVariant.length;
   if (!variantCount && srcFilter === "variant") srcFilter = "all";
-  const extraChoice = extraMcq.filter(q => (q.type === "mcq" || q.type === "multi") && !q.from);
-  const extraDrag = extraMcq.filter(q => q.type === "order" || q.type === "match");
+  const extraChoice = extraMcq.filter(q => (q.type === "mcq" || q.type === "multi") && !q.from)
+    .concat(bankB.filter(q => !q.type || q.type === "mcq" || q.type === "multi")).sort((x, y) => dispNum(x.n) - dispNum(y.n));
+  const extraDrag = extraMcq.filter(q => q.type === "order" || q.type === "match")
+    .concat(bankB.filter(q => q.type === "order" || q.type === "match" || q.type === "cls" || q.type === "imgdd")).sort((x, y) => dispNum(x.n) - dispNum(y.n));
   const extraCells = extraChoice.map(cell).join("");
   const dragCells = extraDrag.map(cell).join("");
   const variantCells = extraVariant.map(cell).join("");
@@ -3070,7 +3099,7 @@ function renderHome(){
     const label = `${qLabel(q.n)}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}`;
     return `<button class="chip s-${st}${mk ? " marked" : ""}" data-q="${q.n}" aria-label="${esc(label)}，${boxesLabel(q.n)}" title="${esc(label)}&#10;最近作答 ${boxesText(q.n)}">${esc(q.q)}</button>`;
   }).join("");
-  const mcqCount = ALLQ.filter(q => qType(q.n) === "mcq" || (!isExtra(q.n) && q.type === "cls")).length;
+  const mcqCount = ALLQ.filter(q => qType(q.n) === "mcq" || (q.n < BANK_B && q.type === "cls")).length;
   const dragCount = ALLQ.filter(q => qType(q.n) === "drag").length;
   if (typeFilter === "drag" && !dragCount) typeFilter = "mcq";
   const exam = !!pref("examMode") && scope !== "pairs";
@@ -3087,16 +3116,16 @@ function renderHome(){
   return `
   <header class="top">
     <h1>${esc(CONFIG.title)}</h1>
-    <p class="sub">${CONFIG.subtitle ? esc(CONFIG.subtitle) + " " : ""}${esc(CONFIG.mainLabel)} ${bankA.length} 題${extraMcq.length ? `、補充題 ${extraMcq.length} 題` : ""}${abbrQs.length ? `、縮寫題 ${abbrQs.length} 題` : ""}</p>
+    <p class="sub">${CONFIG.subtitle ? esc(CONFIG.subtitle) + " " : ""}題庫 ${bankA.length} 題${extraMcq.length + bankB.length ? `、補充題 ${extraMcq.length + bankB.length} 題` : ""}${abbrQs.length ? `、縮寫題 ${abbrQs.length} 題` : ""}</p>
   </header>
   ${dailyHomeHTML()}
   ${(() => {
     const avail = ALLQ.some(q => srcOk(q.n) && typeOk(q.n));
     return `<div class="lucky"><button class="btn primary big" data-act="lucky" ${avail ? "" : "disabled"}>考我一題</button><p class="note">${luckyNote()}</p></div>`;
   })()}
-  ${sess ? `<section class="resume" aria-label="未完成的練習">
-    <p>${sess.exam ? `上次的模擬考還沒交卷，已作答 ${sess.ids.filter(x => examDone(sess, x)).length} / ${sess.ids.length} 題。` : `上次的練習做到第 ${sess.i + 1} / ${sess.ids.length} 題。`}</p>
-    <div class="row"><button class="btn primary" data-act="resume">繼續練習</button><button class="btn ghost" data-act="discard">放棄這回</button></div>
+  ${sess ? `<section class="resume" aria-label="${sessFin ? "還沒看結果的練習" : "未完成的練習"}">
+    <p>${sessFin ? `上次的練習已經做完，答對 ${sessCnt.filter(n => isRight(n, sess.answers[n])).length} / ${sessCnt.length} 題，還沒看這回的結果。作答紀錄都已經存好了。` : sess.exam ? `上次的模擬考還沒交卷，已作答 ${sess.ids.filter(x => examDone(sess, x)).length} / ${sess.ids.length} 題。` : `上次的練習做到第 ${sess.i + 1} / ${sess.ids.length} 題。`}</p>
+    <div class="row">${sessFin ? `<button class="btn primary" data-act="resume-summary">看這回結果</button><button class="btn ghost" data-act="discard">關閉</button>` : `<button class="btn primary" data-act="resume">繼續練習</button><button class="btn ghost" data-act="discard">放棄這回</button>`}</div>
   </section>` : ""}
   <section aria-labelledby="map-title">
     <div class="map-head">
@@ -3104,16 +3133,16 @@ function renderHome(){
     </div>
     ${tExtra.total ? `<div class="statpick" role="group" aria-label="要顯示哪些統計">
       <span>顯示統計</span>
-      <label class="chk"><input type="checkbox" data-statrow="orig" ${sRows.orig ? "checked" : ""}>原題</label>
+      <label class="chk"><input type="checkbox" data-statrow="orig" ${sRows.orig ? "checked" : ""}>題庫</label>
       <label class="chk"><input type="checkbox" data-statrow="extra" ${sRows.extra ? "checked" : ""}>補充題</label>
       <label class="chk"><input type="checkbox" data-statrow="sum" ${sRows.sum ? "checked" : ""}>合計</label>
     </div>` : ""}
     <dl class="stats stat">
-      ${sRows.orig || !tExtra.total ? statRow("原題", tOrig) : ""}
+      ${sRows.orig || !tExtra.total ? statRow("題庫", tOrig) : ""}
       ${tExtra.total && sRows.extra ? statRow("補充題", tExtra) : ""}
       ${tExtra.total && sRows.sum ? statRow("合計", tAll, "sum") : ""}
     </dl>
-    ${bankBlock("A", esc(CONFIG.mainLabel), bankA)}
+    ${bankBlock("A", "題庫", bankA)}
     ${extraChoice.length ? `<h3 class="subgrid-title">補充題：選擇題</h3><div class="grid">${extraCells}</div>` : ""}
     ${variantCount ? `<h3 class="subgrid-title">補充題：變化題</h3><div class="grid">${variantCells}</div>` : ""}
     ${extraDrag.length ? `<h3 class="subgrid-title">補充題：拖拉題</h3><div class="grid">${dragCells}</div>` : ""}
@@ -3125,8 +3154,9 @@ function renderHome(){
       <li><span class="sw s-green"></span>已掌握 ${counts.green}</li>
       <li><span class="sw s-master"></span>熟練 ${counts.master}</li>
       <li><span class="sw sw-mark"></span>已標記 ${p.marked.length}</li>
+      ${ALLQ.some(q => q.flag) ? `<li><span class="sw sw-flag" aria-hidden="true">!</span>爭議題 ${ALLQ.filter(q => q.flag).length}</li>` : ""}
     </ul>
-    <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
+    <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。補充題的選擇題、變化題、拖拉題各有自己的題號。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。${ALLQ.some(q => q.flag) ? "左上角有紫色驚嘆號、外圈加粗的是爭議題，爭議的地方寫在解析裡。" : ""}題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
     <div class="row extra-actions">
       <button class="btn ghost" data-act="new-extra">新增補充題</button>
       ${EXTRA.length ? `<button class="btn ghost" data-act="extras">管理補充題（${EXTRA.length} 題）</button>` : ""}
@@ -3175,11 +3205,12 @@ function renderHome(){
       ${srsLine ? `<p class="srs-line">${srsLine}</p>` : ""}
       ${masteredInScope ? `<label class="chk" style="font-size:.92rem"><input type="checkbox" data-skipm="1" ${skipM ? "checked" : ""}>略過已熟練的題目（${masteredInScope} 題）</label>` : ""}
     </div>
-    ${!isGroups && (exam || typeFilter !== "abbr") && (extraMcq.length || variantCount) ? `<div class="field">
+    ${!isGroups && (exam || typeFilter !== "abbr") && (extraMcq.length || variantCount || bankB.length) ? `<div class="field">
       <span class="flabel" id="lab-src">題目來源</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-src">
         <button role="radio" aria-checked="${srcFilter === "all"}" data-src="all">全部來源</button>
-        ${extraMcq.length ? `<button role="radio" aria-checked="${srcFilter === "extra"}" data-src="extra">只出補充題<span class="n">${EXTRA.length}</span></button>` : ""}
+        <button role="radio" aria-checked="${srcFilter === "orig"}" data-src="orig">只出題庫<span class="n">${bankA.length}</span></button>
+        ${extraMcq.length || bankB.length ? `<button role="radio" aria-checked="${srcFilter === "extra"}" data-src="extra">只出補充題<span class="n">${EXTRA.length + bankB.length}</span></button>` : ""}
         ${variantCount ? `<button role="radio" aria-checked="${srcFilter === "variant"}" data-src="variant">只出變化題<span class="n">${variantCount}</span></button>` : ""}
       </div>
     </div>` : ""}
@@ -3302,7 +3333,7 @@ function renderQuiz(){
         const extra = chosen.sel.filter(i => !q.a.includes(i)).map(i => LETTERS[order.indexOf(i)]).sort();
         return `<p class="nextrev" style="margin:0 0 .5em">${miss.length ? `漏選 ${miss.join("、")}` : ""}${miss.length && extra.length ? "；" : ""}${extra.length ? `多選了 ${extra.join("、")}` : ""}</p>`;
       })() : ""}
-      ${answered && !abbr && !drag ? markNoteHTML(s, n, q, order, chosen, ok) : ""}
+      ${answered && (!q.type || q.type === "mcq" || q.type === "multi") ? markNoteHTML(s, n, q, order, chosen, ok) : ""}
       ${abbr ? `<div class="abbr-result">
         <p>正確全名：<strong>${esc(q.ans)}</strong></p>
         ${q.alts && q.alts.length ? `<p>也接受：${esc(q.alts.join("、"))}</p>` : ""}
@@ -3311,7 +3342,7 @@ function renderQuiz(){
       </div>` : ""}
       ${idd ? imgsHTML(q.ans, "qimg", "拖拉題正確答案") : ""}
       ${cq ? (ok ? "" : clsKeyHTML(q)) + clsOrigHTML(q) : ""}
-      ${q.e ? (isExtra(n) ? `<p>${esc(q.e)}</p>` : `<p class="pre"><span class="srclbl">題庫解析</span>${esc(q.e)}</p>`) : ""}${imgsHTML(q.eimg, "qimg", "解析附圖")}
+      ${q.e ? (isExtra(n) ? `<p>${esc(q.e)}</p>` : `<p class="pre"><span class="srclbl">${isBankB(n) ? "解析" : "題庫解析"}</span>${esc(q.e)}</p>`) : ""}${imgsHTML(q.eimg, "qimg", "解析附圖")}
       ${qaiHTML(n, q)}
       ${grp ? `<div class="gkey"><h4>分辨關鍵</h4><p>${esc(grp.key)}</p></div>` : ""}
       ${answered && !excluded ? pastPicksHTML(n, q) : ""}
@@ -3655,8 +3686,9 @@ $app.addEventListener("click", e => {
     const list = picked;
     if (list.length) startSession(list, scope, asExam ? {exam: true} : undefined);
   } else if (act === "resume"){ view = "quiz"; render(true); timerStart(); }
+  else if (act === "resume-summary"){ if (state.session){ timerStop(); state.session.done = true; commit(); view = "summary"; render(true); } }
   else if (act === "discard"){ state.session = null; commit(); render(); }
-  else if (act === "quit"){ timerStop(); commit(); view = "home"; render(true); }
+  else if (act === "quit"){ timerStop(); if (sessOver(state.session)) state.session = null; commit(); view = "home"; render(true); }
   else if (act === "next"){ next(); }
   else if (act === "home"){ state.session = null; commit(); view = "home"; render(true); }
   else if (act === "retry-wrong"){
