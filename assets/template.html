@@ -11,15 +11,20 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-09b（修正「AI 解析」的提示詞：選擇題的選項不再標 A、B、C，改成照題庫順序、行尾帶題庫判定的清單，
+  引擎版本：2026-10-10（加入「不可作答」：題目或縮寫題加上 "void": true（可附 "voidNote" 說明原因）後，題庫地圖以灰色刪除線顯示，
+  點進去只看原本的答案和問題說明，不能作答、不記錄；所有出題方式都不會出到它，題數和統計也不計入。
+  拿掉 void 就恢復成一般題目，原本的作答紀錄都還在。）
+  上一版 2026-10-09b：修正「AI 解析」的提示詞：選擇題的選項不再標 A、B、C，改成照題庫順序、行尾帶題庫判定的清單，
   避免解析引用和畫面不同的代號；規則加上「自己加的內容要明講是補充」；有圖片選項時說明每張圖對應哪個選項。
-  只改提示詞，判分、選項打亂、畫面上的字母和已存的 AI 解析都沒有動。）
-  上一版 2026-10-09：加入選項的 ○「標為可能」與作答後的 ○× 提示、「考我一題」先抽沒做過的題目、題目來源「只出題庫」、
+  只改提示詞，判分、選項打亂、畫面上的字母和已存的 AI 解析都沒有動。
+  更早 2026-10-09：加入選項的 ○「標為可能」與作答後的 ○× 提示、「考我一題」先抽沒做過的題目、題目來源「只出題庫」、
   頁面內建的補充題區、題庫地圖標出爭議題、未完成練習的提示。
   題號規則：1 到 999 是題庫；1001 到 9998（1000 + k）是頁面內建的補充題，依題型排在補充題區。1000 不能用。
   補充題在畫面上的號碼是各區自己從 1 編（補充選擇題、補充變化題、補充拖拉題），依 k 的先後排；k 只是內部編號。
   新增內建補充題時，k 要接在「頁面裡的補充題」和「帳號裡的補充題（作答紀錄的 extras）」兩邊最大的號碼後面。
   未完成練習的提示：只有一題而且已經答完的練習視同結束、不再提示；多題全部答完但還沒看結果時，提示改成「看這回結果／關閉」。
+  不可作答：只有題庫的題目（1 到 9998）和縮寫題能標，頁面上新增的補充題不能。引擎只是不顯示、不計算、不抽到這些題目，
+  作答紀錄（state）裡這題的資料完全不動。和爭議題（flag）可以同時存在，畫面以不可作答為準。
 ================================================================= -->
 <script type="application/json" id="bank">
 {
@@ -931,6 +936,14 @@ header.top{margin-bottom:26px}
 .bank-issues li{margin:2px 0;overflow-wrap:anywhere}
 .bank-issues .warn{color:var(--muted)}
 @media (max-width:800px){.bank-issues{margin:16px 12px 0}}
+/* 不可作答的題目：灰色、虛線框、刪除線。只用現有的顏色變數，深色模式會跟著變。 */
+.cell.s-void,.chip.s-void,.sw.s-void{background:var(--line);border-color:var(--muted);border-style:dashed;color:var(--muted);opacity:.7}
+.cell.s-void,.chip.s-void{text-decoration:line-through;text-decoration-thickness:1.5px}
+.cell.s-void:hover,.chip.s-void:hover{opacity:1;border-color:var(--ink);color:var(--muted)}
+.src-void{border-style:dashed}
+.fb.void{margin-top:0;border-left-color:var(--muted);background:var(--surface)}
+.fb.void p + p{margin-top:.5em}
+.voidcard{margin-top:18px}
 </style>
 </head>
 <body>
@@ -1007,6 +1020,10 @@ function loadBank(){
       if (miss.length) notes.push(`${where}：${f} 用到的圖片 ${miss.join("、")} 不在圖片區塊裡，這張圖不會顯示。`);
     }
     if (q.flag !== undefined) q.flag = !!q.flag;
+    /* 不可作答：只是多一個狀態，題目原本的欄位照常檢查。 */
+    if (q.void !== undefined && typeof q.void !== "boolean") return bad("void 要是 true 或 false（不加引號）。");
+    if (q.voidNote !== undefined && typeof q.voidNote !== "string") return bad("voidNote 要是文字。");
+    if (q.void === true && !str(q.voidNote)) notes.push(`${where}：標成不可作答（void），但沒有用 voidNote 說明這題哪裡有問題。`);
     if (type === "mcq" || type === "multi"){
       if (!strArr(q.o) || q.o.length < 2 || q.o.length > 6) return bad("選項 o 要是 2 到 6 個非空白的文字。");
       const d = dupOf(q.o); if (d !== null) return bad(`選項「${d}」重複了。`);
@@ -1045,7 +1062,7 @@ function loadBank(){
   });
   questions.sort((x, y) => x.n - y.n);
 
-  /* 縮寫題：[{cat, abbr, full, alts, e}]；也接受舊格式 [分類, 縮寫, 全名, [其他寫法], 說明]。
+  /* 縮寫題：[{cat, abbr, full, alts, e, void, voidNote}]；也接受舊格式 [分類, 縮寫, 全名, [其他寫法], 說明]。
      作答紀錄依排列位置記錄，新增請加在最後，不要插入或刪除中間的項目。 */
   const abbr = [], seenAb = new Set();
   (Array.isArray(bank.abbr) ? bank.abbr : (bank.abbr === undefined ? [] : (errors.push("abbr 要是陣列。"), []))).forEach((r0, idx) => {
@@ -1055,8 +1072,12 @@ function loadBank(){
     const k = r.abbr.trim().toLowerCase();
     if (seenAb.has(k)) return errors.push(`${where}：縮寫重複了。`);
     if (r.alts !== undefined && !(Array.isArray(r.alts) && r.alts.every(x => typeof x === "string"))) return errors.push(`${where}：alts 要是文字陣列。`);
+    if (r.void !== undefined && typeof r.void !== "boolean") return errors.push(`${where}：void 要是 true 或 false（不加引號）。`);
+    if (r.voidNote !== undefined && typeof r.voidNote !== "string") return errors.push(`${where}：voidNote 要是文字。`);
+    if (r.void === true && !str(r.voidNote)) notes.push(`${where}：標成不可作答（void），但沒有用 voidNote 說明這題哪裡有問題。`);
     seenAb.add(k);
-    abbr.push({cat: str(r.cat) ? r.cat.trim() : "縮寫", abbr: r.abbr.trim(), full: r.full.trim(), alts: (r.alts || []).map(x => x.trim()).filter(Boolean).slice(0, 10), e: typeof r.e === "string" ? r.e : ""});
+    abbr.push({cat: str(r.cat) ? r.cat.trim() : "縮寫", abbr: r.abbr.trim(), full: r.full.trim(), alts: (r.alts || []).map(x => x.trim()).filter(Boolean).slice(0, 10), e: typeof r.e === "string" ? r.e : "",
+      void: r.void === true, voidNote: typeof r.voidNote === "string" ? r.voidNote : ""});
   });
 
   /* 易混淆組：[{name, qs: [題號…], key: 分辨關鍵}] */
@@ -1155,7 +1176,7 @@ function rebuildQ(){
       : {n: EXTRA_BASE + x.k, k: x.k, type: "mcq", q: x.q, o: x.o.slice(), a: x.a, e: x.e || "", flag: !!x.flag,
          from: Number.isInteger(x.from) && QN.has(x.from) ? x.from : null});
   ALLQ = Q.concat(EXTRA, typeof ABBR !== "undefined" ? ABBR : []);
-  TOTAL = ALLQ.length;
+  TOTAL = ALLQ.filter(q => !q.void).length;   // 可以作答的題數，不含不可作答的題目
   Object.keys(byN).forEach(key => { delete byN[key]; });
   ALLQ.forEach(q => { byN[q.n] = q; });
   rebuildSec();
@@ -1163,7 +1184,9 @@ function rebuildQ(){
 function sanitizeSession(){
   const s = state.session; if (!s) return;
   const cur = s.ids[s.i];
-  const ids = s.ids.filter(n => byN[n]);
+  /* 多題的練習裡混進不可作答的題目時（例如練習存檔後題庫才更新）把那些題號去掉；
+     只有一題的練習保留，那是從題庫地圖點進去看答案的那一回。 */
+  const ids = s.ids.filter(n => byN[n] && (s.ids.length === 1 || !isVoid(n)));
   if (!ids.length){ state.session = null; return; }
   if (ids.length !== s.ids.length){
     let i = ids.indexOf(cur); if (i < 0) i = Math.min(s.i, ids.length - 1);
@@ -1203,7 +1226,12 @@ function optIdx(n){ const q = byN[n]; return q && q.o ? q.o.map((_, i) => i) : [
    內建的縮寫題編號是 20000 + j；自己新增的縮寫題和補充選擇題一樣存在 state.extras（type: "abbr"）。
    判定全名時會忽略大小寫、標點、連字號、多餘空白、and/of/the 這類虛詞和字尾的複數 s，也接受 alts 裡的其他寫法。 */
 const ABBR_BASE = 20000;
-const ABBR = BANK_LOAD.abbr.map((r, j) => ({n: ABBR_BASE + j + 1, type: "abbr", cat: r.cat, q: r.abbr, ans: r.full, alts: r.alts, e: r.e}));
+const ABBR = BANK_LOAD.abbr.map((r, j) => ({n: ABBR_BASE + j + 1, type: "abbr", cat: r.cat, q: r.abbr, ans: r.full, alts: r.alts, e: r.e, void: r.void, voidNote: r.voidNote}));
+/* ---------- 不可作答的題目 ----------
+   題庫裡的題目或縮寫題標了 "void": true：題目留在題庫，題庫地圖以灰色刪除線顯示，點進去只看答案和問題說明。
+   所有出題來源、題數和統計都用 isVoid 排除；state 裡這題的作答紀錄、複習排程和標記一律不動，拿掉 void 就全部回來。
+   頁面上新增的補充題（state.extras）不會有這個欄位。 */
+function isVoid(n){ const q = byN[n]; return !!(q && q.void === true); }
 function isAbbr(n){ const q = byN[n]; return !!(q && q.type === "abbr"); }
 function isUserExtra(n){ return n > EXTRA_BASE && n < ABBR_BASE; }
 const STOPW = new Set(["and","of","the","a","an","for","to","in","on"]);
@@ -1253,12 +1281,13 @@ function loadLocal(){
 function saveLocal(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
 
 let state = loadLocal() || blankState();
-/* 這一回是否已經全部作答完（模擬考交卷前不算）。只有一題而且已經答完的練習視同結束。 */
-function sessAllAnswered(s){ return !!(s && !s.exam && Array.isArray(s.ids) && s.ids.length && s.answers && s.ids.every(n => s.answers[n] !== undefined)); }
+/* 這一回是否已經全部作答完（模擬考交卷前不算）。只有一題而且已經答完的練習視同結束。
+   不可作答的題目不會有作答，當成已作答：只看一題不可作答的題目那一回，離開後就算結束，主頁不提示「未完成的練習」。 */
+function sessAllAnswered(s){ return !!(s && !s.exam && Array.isArray(s.ids) && s.ids.length && s.answers && s.ids.every(n => s.answers[n] !== undefined || isVoid(n))); }
 function sessOver(s){ return !!(s && (s.done || (Array.isArray(s.ids) && s.ids.length === 1 && sessAllAnswered(s)))); }
-if (sessOver(state.session)) state.session = null;
 if (state.session && state.session.timer){ state.session.timer.since = null; state.session.timer.sinceN = null; }
 rebuildQ();
+if (sessOver(state.session)) state.session = null;
 sanitizeSession();
 let view = "home";
 let mapOpen = {A: true, B: false};
@@ -1379,7 +1408,7 @@ function allGroups(){
     .map(g => g.del || !Array.isArray(g.qs) ? {name: "", qs: [], key: "", hidden: true} : {name: String(g.name || "自訂題組"), qs: g.qs.filter(n => Number.isInteger(n)), key: String(g.key || ""), user: true});
   return GROUPS.concat(extra);
 }
-function groupQs(g){ return g.qs.filter(n => byN[n]); }
+function groupQs(g){ return g.qs.filter(n => byN[n] && !isVoid(n)); }
 function usableGroups(){ return allGroups().map((g, i) => ({g, i})).filter(x => !x.g.hidden && groupQs(x.g).length >= 2); }
 
 /* Spaced repetition: a wrong answer comes back after 10 minutes; each correct answer in a row
@@ -1396,7 +1425,7 @@ function srs(n){
 }
 function dueList(){
   const now = Date.now();
-  return ALLQ.map(q => q.n)
+  return ALLQ.map(q => q.n).filter(n => !isVoid(n))
     .map(n => ({n, r: srs(n)}))
     .filter(x => x.r && x.r.due <= now)
     .sort((a, b) => a.r.due - b.r.due || a.n - b.n)
@@ -1404,7 +1433,7 @@ function dueList(){
 }
 function nextDueIn(){
   const now = Date.now(); let best = Infinity;
-  ALLQ.forEach(q => { const r = srs(q.n); if (r && r.due > now && r.due < best) best = r.due; });
+  ALLQ.forEach(q => { if (isVoid(q.n)) return; const r = srs(q.n); if (r && r.due > now && r.due < best) best = r.due; });
   return best === Infinity ? null : best - now;
 }
 function fmtDur(ms){
@@ -1422,7 +1451,7 @@ function weakScore(n){
   return sc;
 }
 function weakList(){
-  return ALLQ.map(q => q.n)
+  return ALLQ.map(q => q.n).filter(n => !isVoid(n))
     .map(n => ({n, sc: weakScore(n), w: (hist(n).match(/w/g) || []).length, t: (state.stats[n] && state.stats[n].t) || 0}))
     .filter(x => x.sc > 0)
     .sort((a, b) => b.sc - a.sc || b.w - a.w || b.t - a.t || a.n - b.n)
@@ -1431,7 +1460,7 @@ function weakList(){
 function pools(){
   const examOnly = !!pref("examMode");
   const exT = Object.assign({}, PREF_DEFAULTS.examTypes, pref("examTypes") || {});
-  const ok = n => srcOk(n) && (examOnly ? !!exT[examKind(n)] : typeOk(n));
+  const ok = n => !isVoid(n) && srcOk(n) && (examOnly ? !!exT[examKind(n)] : typeOk(n));
   const all = ALLQ.map(q => q.n).filter(ok);
   return {
     weak: weakList().filter(ok),
@@ -1594,7 +1623,7 @@ function timerStart(){
   const s = state.session, t = tmr();
   if (!t || t.since || s.done || timerHalted() || view !== "quiz") return;
   const n = currentN();
-  if (n === null || s.answers[n] !== undefined) return;
+  if (n === null || s.answers[n] !== undefined || isVoid(n)) return;
   t.since = Date.now(); t.sinceN = n;
   updateTimerEl();
 }
@@ -1995,7 +2024,7 @@ function skipNext(){
 /* 考我一題：先廣度再深度。目前的題型與題目來源範圍裡還有沒做過的題目時，一律先抽沒做過的；
    全部做過一輪後，才依序從到期複習、弱點與答錯待複習、尚未熟練的題目中抽一題，並避開剛做完的那一題。 */
 function luckyPick(exclude){
-  const ok = n => byN[n] && n !== exclude && srcOk(n) && typeOk(n);
+  const ok = n => byN[n] && !isVoid(n) && n !== exclude && srcOk(n) && typeOk(n);
   const rnd = a => a[Math.floor(Math.random() * a.length)];
   const all = ALLQ.map(q => q.n).filter(ok);
   const tiers = [
@@ -2009,7 +2038,7 @@ function luckyPick(exclude){
   return t ? rnd(t) : null;
 }
 function luckyNote(){
-  const list = ALLQ.map(q => q.n).filter(n => byN[n] && srcOk(n) && typeOk(n));
+  const list = ALLQ.map(q => q.n).filter(n => byN[n] && !isVoid(n) && srcOk(n) && typeOk(n));
   const fresh = list.filter(n => status(n) === "new").length;
   const tail = "沿用下方的題型和題目來源設定。";
   if (!list.length) return "目前的篩選設定下沒有題目。";
@@ -2033,7 +2062,9 @@ function luckyGo(exclude){
 const DAILY_COOL = 3, DAILY_REV = [3, 7, 14, 30], DAILY_OLD = 30, DAILY_SWAP = 0.5;
 const DAILY_KIND = {new: "新題", rev: "複習答錯過的題目", old: "複習很久沒做的題目"};
 function dailyAll(){ return typeof ALLQ !== "undefined" ? ALLQ : LABS; }
-function dailyOk(n){ return !!byN[n] && srcOk(n) && typeOk(n); }
+function dailyOk(n){ return !!byN[n] && !isVoid(n) && srcOk(n) && typeOk(n); }
+/* 今天抽好的題目還能不能用：題目還在，而且沒有在抽好之後被標成不可作答（已經做完的就照舊算完成）。 */
+function dailyUsable(cur){ return !!(cur && byN[cur.n] && (cur.done || !isVoid(cur.n))); }
 function dailyDayNum(t){ const d = new Date(t); return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); }
 function dailyDayKey(){ const d = new Date(Date.now()); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function dailyDaysSince(n){ const s = state.stats[n]; return s && s.t ? dailyDayNum(Date.now()) - dailyDayNum(s.t) : Infinity; }
@@ -2075,7 +2106,7 @@ function dailyPick(lastKind){
 }
 function dailyToday(){
   const cur = pref("daily"), today = dailyDayKey();
-  if (cur && cur.d === today && byN[cur.n]) return cur;
+  if (cur && cur.d === today && dailyUsable(cur)) return cur;
   const lk = cur ? (cur.done ? cur.kind : cur.lk) : "";
   const p = dailyPick(lk);
   if (!p) return null;
@@ -2105,7 +2136,7 @@ function dailyTag(){
 }
 function dailyHomeHTML(){
   const cur = pref("daily");
-  const today = cur && cur.d === dailyDayKey() && byN[cur.n] ? cur : null;
+  const today = cur && cur.d === dailyDayKey() && dailyUsable(cur) ? cur : null;
   const list = dailyAll().map(q => q.n).filter(dailyOk);
   const s = state.session;
   const busy = !!(s && !s.done && s.ids.length > 1 && !sessAllAnswered(s));
@@ -2120,6 +2151,7 @@ function dailyHomeHTML(){
 }
 function next(){
   const s = state.session; if (!s) return;
+  if (s.ids.length === 1 && isVoid(s.ids[0])){ state.session = null; commit(); view = "home"; render(true); return; }
   if (s.mode === "lucky" && s.ids.length === 1){ luckyGo(s.ids[0]); return; }
   if (s.ids.length === 1){ state.session = null; commit(); view = "home"; render(true); return; }
   if (s.i < s.ids.length - 1){ s.i++; commit(); render(true); timerStart(); return; }
@@ -2960,6 +2992,7 @@ let cfCache = [];
 function confusionList(){
   const map = new Map();
   ALLQ.forEach(q => {
+    if (q.void) return;
     if (q.type && q.type !== "mcq" && q.type !== "multi") return;
     const add = oi => {
       const t = q.o[oi]; if (!t) return;
@@ -3054,16 +3087,24 @@ function renderHome(){
   if (scope === "weak" && !p.weak.length) scope = "all";
   const extraMcq = EXTRA.filter(q => q.type !== "abbr");
   const abbrQs = ALLQ.filter(q => q.type === "abbr");
+  /* 不可作答的題目照樣畫在題庫地圖上（灰色刪除線），但所有題數和統計都只算可以作答的題目（live）。 */
+  const live = q => !q.void;
+  const liveQ = ALLQ.filter(live), abbrLive = abbrQs.filter(live);
+  const bankA = Q.filter(q => q.n < BANK_B), bankB = Q.filter(q => isBankB(q.n));
+  const bankALive = bankA.filter(live), bankBLive = bankB.filter(live);
+  const voidCount = ALLQ.length - liveQ.length;
+  const flagCount = liveQ.filter(q => q.flag).length;
+  if (typeFilter === "abbr" && abbrQs.length && !abbrLive.length) typeFilter = "mcq";   // 縮寫題全部不可作答時，題型按鈕不會出現
   if (typeFilter === "abbr" && !pref("examMode") && srcFilter !== "all") srcFilter = "all";
-  if (!extraMcq.length && !Q.some(q => isBankB(q.n)) && (srcFilter === "orig" || srcFilter === "extra" || srcFilter === "variant")) srcFilter = "all";
+  if (!extraMcq.length && !bankBLive.length && (srcFilter === "orig" || srcFilter === "extra" || srcFilter === "variant")) srcFilter = "all";
   const counts = {new:0, red:0, amber:0, green:0, master:0};
-  ALLQ.forEach(q => { counts[status(q.n)]++; });
+  liveQ.forEach(q => { counts[status(q.n)]++; });
   const tally = list => {
     let done = 0, c = 0, w = 0;
     list.forEach(q => { const r = state.stats[q.n]; if (!r || !attempts(q.n)) return; done++; c += r.c || 0; w += r.w || 0; });
     return {done, total: list.length, acc: c + w ? Math.round(c * 100 / (c + w)) : null};
   };
-  const tOrig = tally(Q.filter(q => q.n < BANK_B)), tExtra = tally(ALLQ.filter(q => isExtra(q.n) || isBankB(q.n))), tAll = tally(ALLQ);
+  const tOrig = tally(bankALive), tExtra = tally(liveQ.filter(q => isExtra(q.n) || isBankB(q.n))), tAll = tally(liveQ);
   const sRows = Object.assign({}, PREF_DEFAULTS.statRows, pref("statRows") || {});
   const statRow = (label, t, cls) => `<div${cls ? ` class="${cls}"` : ""}><dt>${label}</dt><dd>已作答 ${t.done} / ${t.total} 題${t.acc !== null ? `，累計正確率 ${t.acc}%` : ""}</dd></div>`;
   const sess = state.session && !sessOver(state.session) ? state.session : null;
@@ -3085,6 +3126,10 @@ function renderHome(){
     : `到期複習：目前沒有到期的題目${nd !== null ? `，下一題 ${fmtDur(nd)}後到期` : ""}。`;
 
   const cell = q => {
+    if (q.void){
+      const vl = `${qLabel(q.n)}，題目有問題，不可作答，點一下看答案`;
+      return `<button class="cell s-void" data-q="${q.n}" aria-label="${vl}" title="${vl}">${dispNum(q.n)}</button>`;
+    }
     const st = status(q.n);
     const mk = isMarked(q.n);
     const sub = q.type === "order" ? "排序" : q.type === "match" ? "配對" : q.type === "imgdd" ? "看圖" : q.type === "cls" ? "拖拉" : q.type === "multi" ? "複選" : q.from ? `原 ${dispNum(q.from)}` : "";
@@ -3094,13 +3139,13 @@ function renderHome(){
     const num = dispNum(q.n);
     return `<button class="cell s-${st}${mk ? " marked" : ""}${q.flag ? " flagged" : ""}${sub ? " has-sub" : ""}" data-q="${q.n}" aria-label="${label}，${boxesLabel(q.n)}" title="${tip}">${q.flag ? `<span class="cflag" aria-hidden="true">!</span>` : ""}${sub ? `<span class="cnum">${num}</span><span class="csub" aria-hidden="true">${sub}</span>` : num}</button>`;
   };
-  const bankA = Q.filter(q => q.n < BANK_B), bankB = Q.filter(q => isBankB(q.n));
   const bankBlock = (key, title, list) => {
-    const t = tally(list);
+    const lv = list.filter(live);
+    const t = tally(lv);
     const c = {red: 0, amber: 0, green: 0, master: 0};
-    list.forEach(q => { const st = status(q.n); if (c[st] !== undefined) c[st]++; });
+    lv.forEach(q => { const st = status(q.n); if (c[st] !== undefined) c[st]++; });
     c.green += c.master;
-    const w = k => list.length ? (c[k] * 100 / list.length).toFixed(2) : 0;
+    const w = k => lv.length ? (c[k] * 100 / lv.length).toFixed(2) : 0;
     const open = !!mapOpen[key];
     return `<div class="bank">
       <div class="bank-head"><h3 class="subgrid-title">${title}</h3><span class="stat">已作答 ${t.done} / ${t.total} 題${t.acc !== null ? `，累計正確率 ${t.acc}%` : ""}</span>
@@ -3120,17 +3165,21 @@ function renderHome(){
   const dragCells = extraDrag.map(cell).join("");
   const variantCells = extraVariant.map(cell).join("");
   const chips = abbrQs.map(q => {
+    if (q.void){
+      const vl = esc(`${qLabel(q.n)}，題目有問題，不可作答，點一下看答案`);
+      return `<button class="chip s-void" data-q="${q.n}" aria-label="${vl}" title="${vl}">${esc(q.q)}</button>`;
+    }
     const st = status(q.n);
     const mk = isMarked(q.n);
     const label = `${qLabel(q.n)}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}`;
     return `<button class="chip s-${st}${mk ? " marked" : ""}" data-q="${q.n}" aria-label="${esc(label)}，${boxesLabel(q.n)}" title="${esc(label)}&#10;最近作答 ${boxesText(q.n)}">${esc(q.q)}</button>`;
   }).join("");
-  const mcqCount = ALLQ.filter(q => qType(q.n) === "mcq" || (q.n < BANK_B && q.type === "cls")).length;
-  const dragCount = ALLQ.filter(q => qType(q.n) === "drag").length;
+  const mcqCount = liveQ.filter(q => qType(q.n) === "mcq" || (q.n < BANK_B && q.type === "cls")).length;
+  const dragCount = liveQ.filter(q => qType(q.n) === "drag").length;
   if (typeFilter === "drag" && !dragCount) typeFilter = "mcq";
   const exam = !!pref("examMode") && scope !== "pairs";
   const exTypes = Object.assign({}, PREF_DEFAULTS.examTypes, pref("examTypes") || {});
-  const kindCount = k => ALLQ.filter(q => examKind(q.n) === k).length;
+  const kindCount = k => liveQ.filter(q => examKind(q.n) === k).length;
 
   const scopeBtn = (key, label, num) =>
     `<button role="radio" aria-checked="${scope === key}" data-scope="${key}" ${num ? "" : "disabled"}>${label}<span class="n">${num}</span></button>`;
@@ -3142,11 +3191,11 @@ function renderHome(){
   return `
   <header class="top">
     <h1>${esc(CONFIG.title)}</h1>
-    <p class="sub">${CONFIG.subtitle ? esc(CONFIG.subtitle) + " " : ""}題庫 ${bankA.length} 題${extraMcq.length + bankB.length ? `、補充題 ${extraMcq.length + bankB.length} 題` : ""}${abbrQs.length ? `、縮寫題 ${abbrQs.length} 題` : ""}</p>
+    <p class="sub">${CONFIG.subtitle ? esc(CONFIG.subtitle) + " " : ""}題庫 ${bankALive.length} 題${extraMcq.length + bankBLive.length ? `、補充題 ${extraMcq.length + bankBLive.length} 題` : ""}${abbrLive.length ? `、縮寫題 ${abbrLive.length} 題` : ""}</p>
   </header>
   ${dailyHomeHTML()}
   ${(() => {
-    const avail = ALLQ.some(q => srcOk(q.n) && typeOk(q.n));
+    const avail = liveQ.some(q => srcOk(q.n) && typeOk(q.n));
     return `<div class="lucky"><button class="btn primary big" data-act="lucky" ${avail ? "" : "disabled"}>考我一題</button><p class="note">${luckyNote()}</p></div>`;
   })()}
   ${sess ? `<section class="resume" aria-label="${sessFin ? "還沒看結果的練習" : "未完成的練習"}">
@@ -3180,9 +3229,9 @@ function renderHome(){
       <li><span class="sw s-green"></span>已掌握 ${counts.green}</li>
       <li><span class="sw s-master"></span>熟練 ${counts.master}</li>
       <li><span class="sw sw-mark"></span>已標記 ${p.marked.length}</li>
-      ${ALLQ.some(q => q.flag) ? `<li><span class="sw sw-flag" aria-hidden="true">!</span>爭議題 ${ALLQ.filter(q => q.flag).length}</li>` : ""}
+      ${flagCount ? `<li><span class="sw sw-flag" aria-hidden="true">!</span>爭議題 ${flagCount}</li>` : ""}${voidCount ? `<li><span class="sw s-void"></span>不可作答 ${voidCount}</li>` : ""}
     </ul>
-    <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。補充題的選擇題、變化題、拖拉題各有自己的題號。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。${ALLQ.some(q => q.flag) ? "左上角有紫色驚嘆號、外圈加粗的是爭議題，爭議的地方寫在解析裡。" : ""}題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
+    <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。補充題的選擇題、變化題、拖拉題各有自己的題號。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。${flagCount ? "左上角有紫色驚嘆號、外圈加粗的是爭議題，爭議的地方寫在解析裡。" : ""}${voidCount ? "灰色、畫刪除線的是題目有問題、不可作答的題目，不計入題數和統計，點進去可以看原本的答案和問題說明。" : ""}題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
     <div class="row extra-actions">
       <button class="btn ghost" data-act="new-extra">新增補充題</button>
       ${EXTRA.length ? `<button class="btn ghost" data-act="extras">管理補充題（${EXTRA.length} 題）</button>` : ""}
@@ -3207,11 +3256,11 @@ function renderHome(){
       </div>
       ${Object.keys(exTypes).some(k => exTypes[k] && kindCount(k)) ? (exTypes.abbr || exTypes.drag ? `<p class="note">縮寫題、排序與配對題是輔助練習；加入後，這回比較像綜合測驗。</p>` : "") : `<p class="note">至少勾選一種題型才能開始。</p>`}
     </div>` : ""}` : ""}
-    ${!isGroups && !exam && (abbrQs.length || dragCount) ? `<div class="field">
+    ${!isGroups && !exam && (abbrLive.length || dragCount) ? `<div class="field">
       <span class="flabel" id="lab-type">題型</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-type">
         <button role="radio" aria-checked="${typeFilter === "mcq"}" data-qtype="mcq">${esc(CONFIG.mainLabel)}<span class="n">${mcqCount}</span></button>
-        ${abbrQs.length ? `<button role="radio" aria-checked="${typeFilter === "abbr"}" data-qtype="abbr">縮寫題<span class="n">${abbrQs.length}</span></button>` : ""}
+        ${abbrLive.length ? `<button role="radio" aria-checked="${typeFilter === "abbr"}" data-qtype="abbr">縮寫題<span class="n">${abbrLive.length}</span></button>` : ""}
         ${dragCount ? `<button role="radio" aria-checked="${typeFilter === "drag"}" data-qtype="drag">拖拉題<span class="n">${dragCount}</span></button>` : ""}
         <button role="radio" aria-checked="${typeFilter === "all"}" data-qtype="all">全部題型<span class="n">${TOTAL}</span></button>
       </div>
@@ -3231,12 +3280,12 @@ function renderHome(){
       ${srsLine ? `<p class="srs-line">${srsLine}</p>` : ""}
       ${masteredInScope ? `<label class="chk" style="font-size:.92rem"><input type="checkbox" data-skipm="1" ${skipM ? "checked" : ""}>略過已熟練的題目（${masteredInScope} 題）</label>` : ""}
     </div>
-    ${!isGroups && (exam || typeFilter !== "abbr") && (extraMcq.length || variantCount || bankB.length) ? `<div class="field">
+    ${!isGroups && (exam || typeFilter !== "abbr") && (extraMcq.length || variantCount || bankBLive.length) ? `<div class="field">
       <span class="flabel" id="lab-src">題目來源</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-src">
         <button role="radio" aria-checked="${srcFilter === "all"}" data-src="all">全部來源</button>
-        <button role="radio" aria-checked="${srcFilter === "orig"}" data-src="orig">只出題庫<span class="n">${bankA.length}</span></button>
-        ${extraMcq.length || bankB.length ? `<button role="radio" aria-checked="${srcFilter === "extra"}" data-src="extra">只出補充題<span class="n">${EXTRA.length + bankB.length}</span></button>` : ""}
+        <button role="radio" aria-checked="${srcFilter === "orig"}" data-src="orig">只出題庫<span class="n">${bankALive.length}</span></button>
+        ${extraMcq.length || bankBLive.length ? `<button role="radio" aria-checked="${srcFilter === "extra"}" data-src="extra">只出補充題<span class="n">${EXTRA.length + bankBLive.length}</span></button>` : ""}
         ${variantCount ? `<button role="radio" aria-checked="${srcFilter === "variant"}" data-src="variant">只出變化題<span class="n">${variantCount}</span></button>` : ""}
       </div>
     </div>` : ""}
@@ -3293,10 +3342,23 @@ function renderHome(){
   </footer>`;
 }
 
+/* 不可作答的題目：不能作答，直接顯示原本的答案、解析和問題說明。沒有作答元件、標記和 AI 解析，不計時，也不寫入任何紀錄。 */
+function voidQuizHTML(s, n, q){
+  const nextLabel = s.ids.length === 1 ? "回到總覽" : (s.i === s.ids.length - 1 ? "看這回結果" : "下一題");
+  const hasExp = q.e || (q.eimg && q.eimg.length);
+  return `
+  <div class="qbar"><button class="btn text" data-act="quit">結束練習</button><div class="qright"><span class="prog">${s.i + 1} / ${s.ids.length}</span></div></div>
+  <div class="pbar" aria-hidden="true"><span style="width:${Math.round((s.i + 1) / s.ids.length * 100)}%"></span></div>
+  <div class="qhead"><h2 id="qh" tabindex="-1">${q.type === "abbr" ? "縮寫題" : `第 ${dispNum(n)} 題`}</h2><span class="src src-void">不可作答</span></div>
+  <div class="fb void" role="note"><h3>這題題目有問題，不列入作答</h3>${q.voidNote && q.voidNote.trim() ? `<p class="pre">${esc(q.voidNote.trim())}</p>` : ""}<p>下面直接顯示原本的答案，僅供參考。這題不會記錄作答，練習、模擬考、考我一題、每日一題和複習都不會出到它。</p></div>
+  <div class="bcard voidcard">${browseBody(n)}${hasExp ? `<div class="bexp">${q.e ? `<p>${esc(q.e)}</p>` : ""}${imgsHTML(q.eimg, "qimg", "解析附圖")}</div>` : ""}</div>
+  <div class="nextrow"><span class="keys">按 Enter 繼續</span><button class="btn primary big" data-act="next">${nextLabel}</button></div>`;
+}
 function renderQuiz(){
   const s = state.session;
   const n = currentN();
   const q = byN[n];
+  if (q && q.void) return voidQuizHTML(s, n, q);
   const abbr = q.type === "abbr";
   const drag = q.type === "order" || q.type === "match";
   const idd = q.type === "imgdd";
@@ -3575,7 +3637,7 @@ $app.addEventListener("click", e => {
   if (b.dataset.q){ startSession([Number(b.dataset.q)], "single"); return; }
   if (b.dataset.scope){ scope = b.dataset.scope; render(); return; }
   if (b.dataset.src){ srcFilter = b.dataset.src; render(); return; }
-  if (b.dataset.cf !== undefined){ const c = cfCache[Number(b.dataset.cf)]; if (c && c.qs.length) startSession(c.qs.filter(x => byN[x]), "confuse"); return; }
+  if (b.dataset.cf !== undefined){ const c = cfCache[Number(b.dataset.cf)]; if (c && c.qs.length) startSession(c.qs.filter(x => byN[x] && !isVoid(x)), "confuse"); return; }
   if (b.dataset.qtype){ typeFilter = b.dataset.qtype; render(); return; }
   if (b.dataset.mmode){
     collectForm();
@@ -3719,7 +3781,7 @@ $app.addEventListener("click", e => {
   else if (act === "home"){ state.session = null; commit(); view = "home"; render(true); }
   else if (act === "retry-wrong"){
     const s = state.session;
-    const again = s.ids.filter(n => !(s.excluded && s.excluded[n]) && (s.answers[n] === undefined || !isRight(n, s.answers[n])));
+    const again = s.ids.filter(n => !isVoid(n) && !(s.excluded && s.excluded[n]) && (s.answers[n] === undefined || !isRight(n, s.answers[n])));
     startSession(again, "retry");
   } else if (act === "reset"){
     if (!resetArmed){
@@ -3755,6 +3817,11 @@ document.addEventListener("keydown", e => {
   if (e.isComposing || e.keyCode === 229) return;
   if (timerHalted()) return;
   const s = state.session, n = currentN();
+  if (isVoid(n)){
+    /* 不可作答的畫面：Enter 和 → 等於按下方的主要按鈕，其他按鍵（數字、字母、M、Shift 組合）都不作用。 */
+    if ((e.key === "Enter" || e.key === "ArrowRight") && !e.shiftKey && !(e.target && e.target.closest && e.target.closest("button"))){ e.preventDefault(); next(); }
+    return;
+  }
   const answered = s.answers[n] !== undefined || !!(s.exam && s.submitted);
   const k = e.key.toLowerCase();
   const inInput = !!(e.target && e.target.closest && e.target.closest("input, textarea"));
