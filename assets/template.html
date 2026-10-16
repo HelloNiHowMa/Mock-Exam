@@ -11,10 +11,14 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-10（加入「不可作答」：題目或縮寫題加上 "void": true（可附 "voidNote" 說明原因）後，題庫地圖以灰色刪除線顯示，
+  引擎版本：2026-10-16（縮寫題加入「遮住再打」：練習時答錯或按「想不起來」後，答案下方出現 3 格，把英文全名打 3 次。
+  第 1 次看著答案打；第 2、3 次打的時候正確全名、解析、以前的錯誤寫法和前面打對的內容都先遮住，要憑記憶打。每打完一格就判定（規則和縮寫題相同），
+  打錯時露出答案並標出打錯、漏掉的字，對照後按「遮住再打一次」重打。答對的縮寫題可以按「再練一次」打開。
+  只是練習：不寫進作答紀錄、不影響熟練度和到期複習、不同步到帳號，重新整理頁面或開始新的練習就清空。模擬考（含交卷後檢討）不出現。）
+  上一版 2026-10-10：加入「不可作答」：題目或縮寫題加上 "void": true（可附 "voidNote" 說明原因）後，題庫地圖以灰色刪除線顯示，
   點進去只看原本的答案和問題說明，不能作答、不記錄；所有出題方式都不會出到它，題數和統計也不計入。
-  拿掉 void 就恢復成一般題目，原本的作答紀錄都還在。）
-  上一版 2026-10-09b：修正「AI 解析」的提示詞：選擇題的選項不再標 A、B、C，改成照題庫順序、行尾帶題庫判定的清單，
+  拿掉 void 就恢復成一般題目，原本的作答紀錄都還在。
+  更早 2026-10-09b：修正「AI 解析」的提示詞：選擇題的選項不再標 A、B、C，改成照題庫順序、行尾帶題庫判定的清單，
   避免解析引用和畫面不同的代號；規則加上「自己加的內容要明講是補充」；有圖片選項時說明每張圖對應哪個選項。
   只改提示詞，判分、選項打亂、畫面上的字母和已存的 AI 解析都沒有動。
   更早 2026-10-09：加入選項的 ○「標為可能」與作答後的 ○× 提示、「考我一題」先抽沒做過的題目、題目來源「只出題庫」、
@@ -656,6 +660,27 @@ header.top{margin-bottom:26px}
 .dsubmit{margin-top:16px}
 .pairrow input[type=text]{flex:1;min-width:0}
 .abbr-result strong{font-family:"Source Serif 4",Georgia,"Noto Serif TC",serif;font-size:1.1rem}
+.covered{display:inline-block;padding:.05em .7em;border-radius:6px;border:1.5px dashed var(--line);color:var(--muted);font-size:.9rem;
+  background:repeating-linear-gradient(135deg,transparent 0 6px,var(--line) 6px 7px)}
+.drill{margin:14px 0 10px;padding:14px 16px;border:1.5px dashed var(--line);border-radius:10px;background:var(--surface);max-width:640px}
+.drill h4{margin:0 0 2px;font-size:1rem}
+.drill .fhint{margin:0}
+.drill-rows{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:12px}
+.drow{display:grid;gap:4px}
+.dlabel{font-size:.88rem;color:var(--muted)}
+.dline{display:flex;gap:8px;align-items:center}
+.dline input{flex:1;min-width:0}
+.dline .btn{flex:none}
+.drow.wait input{opacity:.55}
+.drow.bad input{border-color:var(--red)}
+.dtyped{flex:1;min-width:0;font-family:"Source Serif 4",Georgia,"Noto Serif TC",serif;overflow-wrap:anywhere;padding:.35em 0}
+.dok{flex:none;color:var(--ok);font-weight:700;font-size:.92rem}
+.ddiff{margin:2px 0 0;font-size:.95rem;overflow-wrap:anywhere}
+.ddiff span[lang]{font-family:"Source Serif 4",Georgia,"Noto Serif TC",serif}
+.ddiff del{color:var(--red);font-weight:700;text-decoration-thickness:2px}
+.ddiff mark{background:var(--amber-2);color:var(--amber-ink);border-radius:3px;padding:0 .15em;font-weight:700}
+.drill-done{margin:12px 0 0;font-weight:700;color:var(--ok);outline:none}
+@media (max-width:560px){.dline{flex-wrap:wrap}.dline input{min-width:9em}}
 .backlink{margin:0 0 14px}
 .flash{background:var(--ok-bg);border-left:5px solid var(--ok);border-radius:8px;padding:10px 14px;margin:0 0 18px}
 .xlist{list-style:none;padding:0;margin:20px 0;display:grid;gap:8px}
@@ -1672,6 +1697,7 @@ function startSession(ids, mode, opts){
   const arr0 = {};
   list.forEach(n => { const q = byN[n]; if (q && (q.type === "order" || q.type === "match")) arr0[n] = derange(dragLen(q)); });
   state.session = {mode, ids:list, i:0, orders, arr: arr0, answers:{}, done:false};
+  Object.keys(drills).forEach(k => { delete drills[k]; });
   list.forEach(n => initPlace(state.session, n));
   clsSel = null;
   if (opts.gmap) state.session.gmap = opts.gmap;
@@ -1835,6 +1861,112 @@ function overrideAbbr(){
   a.ok = true; a.override = true;
   commit();
   render();
+}
+/* ---------- 縮寫題「遮住再打」：作答後在答案下方把英文全名打 3 次 ----------
+   練習時答錯或看答案後自動出現；答對的題目要按「再練一次」才出現。模擬考（含交卷後檢討）不出現。
+   第 1 次看著答案打；第 2、3 次打的時候，正確全名、也接受的寫法、解析、以前的錯誤寫法和前面幾格打對的內容都先遮住。
+   每打完一格就用 abbrMatch 判定。打錯時露出答案並標出不對的字：第 1 次直接改了再確認；第 2、3 次要按「遮住再打一次」，清空後重新遮住。
+   只是練習：狀態只放在記憶體（drills），不寫進 state、不呼叫 record、不同步到帳號；重新整理頁面或 startSession 開始新的練習就清空。 */
+const DRILL_N = 3;
+const drills = {};
+function drillOf(n, ok){
+  if (!drills[n]) drills[n] = {open: !ok, rows: Array.from({length: DRILL_N}, () => ({text: "", st: ""}))};
+  return drills[n];
+}
+function drillAt(d){ return d.rows.findIndex(r => r.st !== "ok"); }
+function drillCovered(d){
+  if (!d || !d.open) return false;
+  const a = drillAt(d);
+  return a >= 1 && d.rows[a].st !== "bad";
+}
+function drillFocus(sel){ const el = document.querySelector(sel); if (el) el.focus({preventScroll:false}); }
+function drillCheck(i){
+  const s = state.session; if (!s || s.exam) return;
+  const n = currentN(); const d = drills[n];
+  if (!d || !d.open || drillAt(d) !== i || (d.rows[i].st === "bad" && i > 0)) return;
+  const inp = document.getElementById("drill-" + i);
+  const text = (inp ? inp.value : d.rows[i].text).trim().slice(0, 300);
+  if (!text){ if (inp) inp.focus(); return; }
+  d.rows[i] = {text, st: abbrMatch(byN[n], text) ? "ok" : "bad"};
+  render();
+  if (d.rows[i].st === "ok") drillFocus(i + 1 < DRILL_N ? "#drill-" + (i + 1) : "#drill-done");
+  else if (i === 0) drillFocus("#drill-0");
+  else drillFocus(`[data-act="drill-again"]`);
+}
+function drillAgain(i){
+  const n = currentN(); const d = drills[n];
+  if (!d || drillAt(d) !== i || d.rows[i].st !== "bad") return;
+  d.rows[i] = {text: "", st: ""};
+  render();
+  drillFocus("#drill-" + i);
+}
+function drillOpen(){
+  const s = state.session; if (!s || s.exam) return;
+  const n = currentN(); if (!isAbbr(n) || s.answers[n] === undefined) return;
+  drillOf(n, true).open = true;
+  render();
+  drillFocus("#drill-" + Math.max(drillAt(drills[n]), 0));
+}
+/* 把打錯的地方標出來：逐字比對（大小寫、標點、連字號、單複數、and／of／the 這類虛詞和縮寫本身不算差異，跟 normAns 一致）。
+   在正確全名和其他寫法裡挑差最少的一個對照；你打的字裡對不上的畫刪除線，正確寫法裡沒打到的加底色。 */
+const DRILL_TOK = /&|[A-Za-z0-9'’`]+/g;
+function drillToks(s, ab){
+  return (String(s || "").match(DRILL_TOK) || []).map(w => {
+    let k = w.toLowerCase().replace(/&/g, "and").replace(/['’`]/g, "");
+    if (!k || STOPW.has(k) || k === ab) return null;
+    return (k.length > 3 && /[^s]s$/.test(k)) ? k.slice(0, -1) : k;
+  });
+}
+function drillLcs(A, B){
+  const a = A.map((k, i) => [k, i]).filter(x => x[0] !== null), b = B.map((k, i) => [k, i]).filter(x => x[0] !== null);
+  const T = Array.from({length: a.length + 1}, () => new Array(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--)
+    T[i][j] = a[i][0] === b[j][0] ? T[i + 1][j + 1] + 1 : Math.max(T[i + 1][j], T[i][j + 1]);
+  const inA = new Set(), inB = new Set();
+  for (let i = 0, j = 0; i < a.length && j < b.length;){
+    if (a[i][0] === b[j][0]){ inA.add(a[i][1]); inB.add(b[j][1]); i++; j++; }
+    else if (T[i + 1][j] >= T[i][j + 1]) i++; else j++;
+  }
+  return {len: T[0][0], badA: A.map((k, i) => k !== null && !inA.has(i)), badB: B.map((k, i) => k !== null && !inB.has(i))};
+}
+function drillMark(s, flags, tag){
+  let out = "", last = 0, i = 0, m;
+  const re = new RegExp(DRILL_TOK.source, "g");
+  while ((m = re.exec(s))){ out += esc(s.slice(last, m.index)); out += flags[i++] ? `<${tag}>${esc(m[0])}</${tag}>` : esc(m[0]); last = re.lastIndex; }
+  return out + esc(s.slice(last));
+}
+function drillDiffHTML(q, text){
+  const ab = String(q.q || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const mine = drillToks(text, ab);
+  let best = null;
+  [q.ans].concat(q.alts || []).forEach(t => {
+    const toks = drillToks(t, ab), r = drillLcs(mine, toks);
+    const miss = r.badA.filter(Boolean).length + r.badB.filter(Boolean).length;
+    if (!best || miss < best.miss) best = {t, r, miss};
+  });
+  return `<p class="ddiff">你打的：<span lang="en">${drillMark(text, best.r.badA, "del")}</span></p>
+    <p class="ddiff">正確寫法：<span lang="en">${drillMark(best.t, best.r.badB, "mark")}</span></p>`;
+}
+function drillHTML(n, q, d){
+  if (!d.open) return `<p class="nextrev"><button class="btn text" data-act="drill-open">再練一次：遮住打 ${DRILL_N} 次全名</button></p>`;
+  const a = drillAt(d), hide = drillCovered(d);
+  const rows = d.rows.map((r, i) => {
+    const lbl = i === 0 ? "第 1 次：看著答案打" : `第 ${i + 1} 次：答案先遮住，憑記憶打`;
+    if (r.st === "ok") return `<li class="drow ok"><span class="dlabel">${lbl}</span><div class="dline">${hide ? `<span class="dtyped"><span class="covered">已遮住</span></span>` : `<span class="dtyped" lang="en">${esc(r.text)}</span>`}<span class="dok">✓ 打對了</span></div></li>`;
+    if (i !== a) return `<li class="drow wait"><label class="dlabel" for="drill-${i}">${lbl}</label><div class="dline"><input id="drill-${i}" class="recall-input" type="text" disabled placeholder="先打完上一格"></div></li>`;
+    const lock = r.st === "bad" && i > 0;
+    return `<li class="drow cur${r.st === "bad" ? " bad" : ""}"><label class="dlabel" for="drill-${i}">${lbl}</label>
+      <div class="dline"><input id="drill-${i}" data-drill="${i}" class="recall-input" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" enterkeyhint="${lock ? "go" : "done"}" value="${esc(r.text)}"${lock ? " readonly" : ""}>${lock
+        ? `<button class="btn ghost" data-act="drill-again" data-i="${i}">遮住再打一次</button>`
+        : `<button class="btn primary" data-act="drill-check" data-i="${i}">確認</button>`}</div>
+      ${r.st === "bad" ? `${drillDiffHTML(q, r.text)}<p class="fhint">${lock ? "對照好了，按「遮住再打一次」，答案會再遮起來。" : "改好後再按「確認」。"}</p>` : ""}</li>`;
+  }).join("");
+  return `<div class="drill" role="group" aria-labelledby="drill-h">
+    <h4 id="drill-h">遮住再打：把全名打 ${DRILL_N} 次</h4>
+    <p class="fhint">第 1 次可以看著答案打，第 2、3 次打的時候答案會先遮住。這只是練習，不會記進作答紀錄。</p>
+    <ol class="drill-rows">${rows}</ol>
+    ${a < 0 ? `<p class="drill-done" id="drill-done" tabindex="-1">${DRILL_N} 次都打對了。</p>` : ""}
+  </div>`;
 }
 /* ---------- 模擬考：作答時不顯示對錯，交卷時才一次記錄 ---------- */
 let submitArmed = false, submitTimer = null;
@@ -3410,6 +3542,8 @@ function renderQuiz(){
   const hidden = isHidden(n);
   const note = s.notes && s.notes[n] ? s.notes[n] : "";
   const guessVal = drafts[n] !== undefined ? drafts[n] : note;
+  const drill = abbr && answered && !s.exam ? drillOf(n, ok) : null;
+  const cover = drillCovered(drill);
 
   const fb = answered || reviewMiss ? `
     <div class="fb ${ok ? "ok" : "bad"}" aria-live="polite">
@@ -3423,17 +3557,18 @@ function renderQuiz(){
       })() : ""}
       ${answered && (!q.type || q.type === "mcq" || q.type === "multi") ? markNoteHTML(s, n, q, order, chosen, ok) : ""}
       ${abbr ? `<div class="abbr-result">
-        <p>正確全名：<strong>${esc(q.ans)}</strong></p>
-        ${q.alts && q.alts.length ? `<p>也接受：${esc(q.alts.join("、"))}</p>` : ""}
+        <p>正確全名：${cover ? `<span class="covered">已遮住，打完這一次就會顯示</span>` : `<strong>${esc(q.ans)}</strong>`}</p>
+        ${q.alts && q.alts.length && !cover ? `<p>也接受：${esc(q.alts.join("、"))}</p>` : ""}
         <p>你的答案：${chosen.text ? esc(chosen.text) : "（沒有作答）"}</p>
         ${!ok && !excluded && chosen.text ? `<p><button class="btn text" data-act="abbr-override">我其實答對了</button></p>` : ""}
       </div>` : ""}
+      ${drill ? drillHTML(n, q, drill) : ""}
       ${idd ? imgsHTML(q.ans, "qimg", "拖拉題正確答案") : ""}
       ${cq ? (ok ? "" : clsKeyHTML(q)) + clsOrigHTML(q) : ""}
-      ${q.e ? (isExtra(n) ? `<p>${esc(q.e)}</p>` : `<p class="pre"><span class="srclbl">${isBankB(n) ? "解析" : "題庫解析"}</span>${esc(q.e)}</p>`) : ""}${imgsHTML(q.eimg, "qimg", "解析附圖")}
+      ${cover ? (q.e || (q.eimg && q.eimg.length) ? `<p class="nextrev">解析先遮住，打完這一次就會顯示。</p>` : "") : `${q.e ? (isExtra(n) ? `<p>${esc(q.e)}</p>` : `<p class="pre"><span class="srclbl">${isBankB(n) ? "解析" : "題庫解析"}</span>${esc(q.e)}</p>`) : ""}${imgsHTML(q.eimg, "qimg", "解析附圖")}`}
       ${qaiHTML(n, q)}
       ${grp ? `<div class="gkey"><h4>分辨關鍵</h4><p>${esc(grp.key)}</p></div>` : ""}
-      ${answered && !excluded ? pastPicksHTML(n, q) : ""}
+      ${answered && !excluded && !cover ? pastPicksHTML(n, q) : ""}
       ${sr ? `<p class="nextrev">下次複習：${fmtDur(Math.max(sr.due - Date.now(), 60e3))}後</p>` : ""}
       ${canExclude(n) ? (excluded
         ? `<p class="nextrev">這次作答不列入紀錄。<button class="btn text" data-act="exclude">改回列入紀錄</button></p>`
@@ -3541,6 +3676,10 @@ function render(scrollTop){
   const g = document.getElementById("guess");
   const ai0 = document.getElementById("abbr-in");
   if ((g || ai0) && state.session){ const cn = currentN(); if (cn !== null) drafts[cn] = (g || ai0).value; }
+  if (state.session){
+    const dn = document.querySelectorAll("input[data-drill]"), dd = dn.length ? drills[currentN()] : null;
+    if (dd) dn.forEach(el => { const r = dd.rows[Number(el.dataset.drill)]; if (r && r.st !== "ok" && !el.readOnly) r.text = el.value; });
+  }
   if (view === "edit" && !skipCollectOnce) collectForm();
   skipCollectOnce = false;
   if ((view === "quiz" || view === "summary") && !state.session) view = "home";
@@ -3749,6 +3888,9 @@ $app.addEventListener("click", e => {
     return;
   }
   if (act === "abbr-override"){ overrideAbbr(); return; }
+  if (act === "drill-check"){ drillCheck(Number(b.dataset.i)); return; }
+  if (act === "drill-again"){ drillAgain(Number(b.dataset.i)); return; }
+  if (act === "drill-open"){ drillOpen(); return; }
   if (act === "pause"){ const t = tmr(); if (t){ timerStop(); t.paused = true; commit(); render(); } return; }
   if (act === "unpause"){ const t = tmr(); if (t){ t.paused = false; commit(); render(true); timerStart(); } return; }
   if (act === "overtime"){ const t = tmr(); if (t){ t.cont = true; commit(); render(true); timerStart(); } return; }
@@ -3856,6 +3998,12 @@ document.addEventListener("keydown", e => {
   if (isAbbr(n) && !answered){
     if (k === "enter" && inInput){ e.preventDefault(); submitAbbr(); return; }
     if (k === "m" && !inInput){ e.preventDefault(); toggleMark(n); render(); }
+    return;
+  }
+  if (isAbbr(n) && k === "enter" && e.target && e.target.dataset && e.target.dataset.drill !== undefined){
+    e.preventDefault();
+    const di = Number(e.target.dataset.drill);
+    if (e.target.readOnly) drillAgain(di); else drillCheck(di);
     return;
   }
   if (isHidden(n)){
