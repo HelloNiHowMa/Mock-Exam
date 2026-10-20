@@ -11,7 +11,14 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-20b（主頁加入「備份作答紀錄」：
+  引擎版本：2026-10-20c（主頁最下方顯示引擎版本，旁邊有「檢查新版」：
+  1. 按下才連 GitHub，讀 HelloNiHowMa/Mock-Exam 的 main 分支 repo 根目錄的 VERSION；main 還沒有 VERSION 時改讀 main 範本最上方的引擎版本。
+  不會自動連線，頁面載入時不送出任何請求。
+  2. 結果分成：已是最新版、GitHub 上有新版（附更新紀錄的連結，說明要用新範本重新產生）、這裡比 GitHub 新（開發中的版本）、
+  連不到（10 秒逾時、離線，或 Claude artifact 不能連外），連不到時給 GitHub 的連結讓使用者自己看。
+  3. 引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。repo 根目錄的 VERSION 要和這裡一致，scripts/package_skill.py 會檢查。
+  只加了主頁最下方一行，作答紀錄（state）的結構和其他功能都沒有變。）
+  上一版 2026-10-20b：主頁加入「備份作答紀錄」：
   1. 匯出：把作答紀錄（記憶體裡的整份 state：stats、marks、prefs、extras、groups、resetAt、session、updatedAt）包一層中繼資料，
   下載成 <config.id>-progress-YYYYMMDD.json，或複製到剪貼簿。不管紀錄來自這台裝置的瀏覽器還是帳號同步，內容都一樣。
   在 Claude artifact 裡要宣告 downloads 能力才能下載；不能下載、也不能寫入剪貼簿時，直接顯示整份內容讓使用者自己複製。
@@ -20,7 +27,7 @@
   這台裝置正在做的練習不會被換掉；這裡沒有未完成的練習、而且是同一份練習簿的備份時，才接手備份裡還沒做完的那一回。
   匯入後存回這台裝置，帳號同步開著時立刻上傳。作答紀錄（state）的結構沒有變。
   改版時程式裡的 ENGINE_VERSION 要跟著改成同一個版本，scripts/package_skill.py 會檢查。）
-  上一版 2026-10-20：題型篩選和打亂：
+  更早 2026-10-20：題型篩選和打亂：
   1. 主要題型（config.mainLabel，例如「觀念題」）改成包含所有非縮寫題：單選、複選、分類、排序、配對，不分題庫或補充題。「拖拉題」仍然只有分類、排序、配對。
   之前排序和配對題（以及補充題裡的分類題）只算拖拉題，預設題型下每日一題、考我一題、開始練習都抽不到。
   2. 題型的選擇會記住：存在 prefs.qtype，跟著帳號同步，每份練習簿各自記住。記住的題型目前沒有題目時，畫面先用主要題型，存下來的選擇不變。
@@ -768,6 +775,12 @@ header.top{margin-bottom:26px}
 .bk-preview p{margin:0}
 .bk-preview ul{margin:0;padding-left:1.2em;display:grid;gap:4px}
 @media (max-width:560px){.backup{padding:16px 14px}}
+.ver{margin:20px 0 0;color:var(--muted);font-size:.85rem;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px}
+.ver .btn.text{font-size:inherit}
+.ver-msg{flex:1 1 100%;overflow-wrap:anywhere}
+.ver-msg:empty{display:none}
+.ver a{color:inherit;text-underline-offset:3px}
+.ver a:hover{color:var(--ink)}
 
 .qbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px 12px}
 .qright{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -1328,7 +1341,13 @@ function syncTypeFilter(){
 }
 const KEY = SK.local;
 /* 和最上方說明的「引擎版本」一致，寫進匯出的備份檔。scripts/package_skill.py 會檢查兩邊有沒有對上。 */
-const ENGINE_VERSION = "2026-10-20b";
+const ENGINE_VERSION = "2026-10-20c";
+/* 主頁最下方的「檢查新版」：按下才連 GitHub，讀 main 分支 repo 根目錄的 VERSION（還沒有時改讀範本最上方的引擎版本）。
+   連不到（離線、逾時，或 Claude artifact 不能連外）就給連結讓使用者自己看。引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。 */
+const ENGINE_REPO = "https://github.com/HelloNiHowMa/Mock-Exam";
+const ENGINE_RAW = "https://raw.githubusercontent.com/HelloNiHowMa/Mock-Exam/main/";
+const ENGINE_VER_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/;
+const engineVer = {st: "idle", latest: ""};   // st：idle、checking、same、newer（GitHub 上較新）、ahead（這裡較新）、fail
 const STATUS_LABEL = {new:"未作答", red:"答錯待複習", amber:"複習中", green:"已掌握", master:"熟練"};
 
 const PREF_DEFAULTS = {recall:true, timerMode:"off", pace:CONFIG.pace, examMode:false, skipMastered:true, examTypes:{mcq:true, multi:true, cls:true, abbr:false, drag:true}, statRows:{orig:true, extra:false, sum:false}};
@@ -3801,7 +3820,48 @@ function renderHome(){
       <button class="btn text danger" data-act="reset">${resetArmed ? "再按一次確認清除" : "清除所有進度"}</button>
     </div>
   </footer>
-  ${bk.open ? bkHTML() : ""}`;
+  ${bk.open ? bkHTML() : ""}
+  ${verHTML()}`;
+}
+
+function verBtnText(){ return engineVer.st === "idle" ? "檢查新版" : engineVer.st === "checking" ? "檢查中…" : "再檢查一次"; }
+function verMsgHTML(){
+  const st = engineVer.st, v = esc(engineVer.latest);
+  const log = text => `<a href="${ENGINE_REPO}/commits/main" target="_blank" rel="noopener">${text}</a>`;
+  if (st === "same") return "已是最新版。";
+  if (st === "ahead") return `比 GitHub 上的正式版（${v}）還新，是開發中的版本。`;
+  if (st === "newer") return `GitHub 上已有新版 ${v}（${log("看改了什麼")}）。練習簿要用新範本重新產生才會更新，題號和 id 沒變的話作答紀錄會接續。`;
+  if (st === "fail") return `連不到 GitHub，沒辦法自動檢查（發佈在 Claude 的練習簿可能不能連外）。可以${log("到 GitHub 看最新的版本")}。`;
+  return "";
+}
+function verHTML(){
+  return `<p class="ver"><span>引擎版本 ${esc(ENGINE_VERSION)}</span><button class="btn text" data-act="ver-check" ${engineVer.st === "checking" ? "disabled" : ""}>${verBtnText()}</button><span class="ver-msg" id="ver-msg" role="status">${verMsgHTML()}</span></p>`;
+}
+/* 只更新這一行，不重畫整頁，焦點留在按鈕上，結果由 role="status" 念出來。 */
+function verPaint(){
+  const m = document.getElementById("ver-msg"); if (m) m.innerHTML = verMsgHTML();
+  const b = document.querySelector(`[data-act="ver-check"]`); if (b){ b.disabled = engineVer.st === "checking"; b.textContent = verBtnText(); }
+}
+async function verCheck(){
+  if (engineVer.st === "checking") return;
+  engineVer.st = "checking"; verPaint();
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
+  const get = path => fetch(ENGINE_RAW + path, {cache: "no-store", signal: ctl.signal});
+  let latest = "";
+  try {
+    const r = await get("VERSION");
+    if (r.ok){ const t = (await r.text()).trim(); if (ENGINE_VER_RE.test(t)) latest = t; }
+    else if (r.status === 404){
+      const r2 = await get("assets/template.html");
+      const m = r2.ok ? (await r2.text()).slice(0, 20000).match(/引擎版本：(\d{4}-\d{2}-\d{2}[a-z]?)/) : null;
+      if (m) latest = m[1];
+    }
+  } catch (e) { /* 離線、逾時或被擋，都當成連不到 */ }
+  clearTimeout(timer);
+  engineVer.latest = latest;
+  engineVer.st = !latest ? "fail" : latest === ENGINE_VERSION ? "same" : latest > ENGINE_VERSION ? "newer" : "ahead";
+  verPaint();
+  const b = document.querySelector(`[data-act="ver-check"]`); if (b && document.activeElement === document.body) b.focus();
 }
 
 /* 不可作答的題目：不能作答，直接顯示原本的答案、解析和問題說明。沒有作答元件、標記和 AI 解析，不計時，也不寫入任何紀錄。 */
@@ -4193,6 +4253,7 @@ $app.addEventListener("click", e => {
     return;
   }
   if (act === "bk-dl"){ bkDownload(); return; }
+  if (act === "ver-check"){ verCheck(); return; }
   if (act === "bk-copy"){ bkCopy(); return; }
   if (act === "bk-read"){ const ta = document.getElementById("bk-paste"); bkLoad(ta ? ta.value : bk.paste, ""); return; }
   if (act === "bk-confirm"){ bkConfirm(); return; }
