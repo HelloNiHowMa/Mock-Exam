@@ -10,7 +10,7 @@
   python3 scripts/package_skill.py --check       # 只檢查根目錄的 .skill 是否和目前的檔案一致
   python3 scripts/package_skill.py --out 路徑.skill
 
-只放 skill 需要的檔案：SKILL.md、assets/、references/、scripts/build.py。
+只放 skill 需要的檔案：SKILL.md、assets/、references/、scripts/build.py、scripts/check_update.py。
 README、操作說明、PROMPT.md 這些給人看的文件不會打包進去。
 .skill 其實就是 zip，裡面最上層是 mock-exam-workbook/ 資料夾。
 檔案的時間戳記固定，內容沒變時重新打包會得到一模一樣的檔案。
@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "mock-exam-workbook"
 DEFAULT_OUT = ROOT / f"{NAME}.skill"
-INCLUDE = ["SKILL.md", "assets", "references", "scripts/build.py"]
+INCLUDE = ["SKILL.md", "assets", "references", "scripts/build.py", "scripts/check_update.py"]
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)
 
 
@@ -66,6 +66,18 @@ def main():
     if not m or m.group(1) != NAME:
         sys.exit(f"SKILL.md 開頭的 name 要是 {NAME}。")
 
+    # 範本最上方說明的引擎版本，和程式裡寫進備份檔的 ENGINE_VERSION 要一致
+    tpl = (ROOT / "assets" / "template.html").read_text(encoding="utf-8")
+    ver = re.search(r"引擎版本：(\d{4}-\d{2}-\d{2}[a-z]?)", tpl)
+    code_ver = re.search(r'const ENGINE_VERSION = "([^"]*)"', tpl)
+    if ver and code_ver and ver.group(1) != code_ver.group(1):
+        sys.exit(f"assets/template.html 最上方說明的引擎版本是 {ver.group(1)}，程式裡的 ENGINE_VERSION 卻是 {code_ver.group(1)}，請改成一樣再打包。")
+    # repo 根目錄的 VERSION 給 scripts/check_update.py 和練習簿主頁的「檢查新版」讀，也要和範本一致
+    vf = ROOT / "VERSION"
+    file_ver = vf.read_text(encoding="utf-8").strip() if vf.exists() else None
+    if ver and file_ver != ver.group(1):
+        sys.exit(f"repo 根目錄的 VERSION 是 {file_ver or '（沒有這個檔案）'}，assets/template.html 的引擎版本卻是 {ver.group(1)}，請改成一樣再打包。")
+
     fs = files()
     blob = build(fs)
     out = Path(args.out)
@@ -84,7 +96,6 @@ def main():
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(blob)
-    ver = re.search(r"引擎版本：(\d{4}-\d{2}-\d{2}[a-z]?)",(ROOT / "assets" / "template.html").read_text(encoding="utf-8"))
     print(f"已產生 {out}（{len(fs)} 個檔案，引擎版本 {ver.group(1) if ver else '未知'}）")
     for f in fs:
         print(f"  {NAME}/{f.relative_to(ROOT).as_posix()}")

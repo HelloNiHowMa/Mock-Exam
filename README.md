@@ -155,9 +155,26 @@ python3 scripts/build.py --bank old/bank.json --images-json old/images.json --ou
 
 練習簿發佈成 Claude artifact 時，紀錄會改成跟著帳號同步，題目解析旁也會多一個「AI 解析」按鈕。放在其他地方時這兩項自動隱藏，不影響作答。
 
+### 備份和搬移作答紀錄
+
+主頁最下方的「備份作答紀錄」可以把紀錄匯出成一個 JSON 檔（`<config.id>-progress-YYYYMMDD.json`），或複製到剪貼簿。到另一台裝置或另一個瀏覽器打開同一份練習簿，在同一個地方選檔案或貼上內容就能匯入。
+
+- 匯入是合併，不是覆蓋：同一題保留時間較新的那筆，舊的備份不會蓋掉之後的作答。按下確認前，畫面會先列出會新增、更新哪些紀錄。
+- 按過「清除所有進度」之後，清除前的紀錄不會再匯入，清除前存的備份也一樣。
+- 備份來自另一份練習簿（`id` 不同）時會先警告：紀錄是照題號存的，匯入後會掛到這裡同號的題目上。
+- 發佈在 Claude 的練習簿要宣告 `downloads` 能力才能下載檔案；不能下載時改用「複製到剪貼簿」，再貼到記事本存成 `.json`。
+
+備份檔的欄位、題號的編法和合併規則見 [`references/progress-format.md`](references/progress-format.md)，要自己分析作答情形時可以參考。
+
+### 看版本、檢查新版
+
+主頁最下方寫著這份練習簿的引擎版本，按旁邊的「檢查新版」會讀 GitHub 上 `main` 分支的 [`VERSION`](VERSION) 來比對，只有按下才連線。發佈在 Claude 的練習簿可能不能連外，連不到時會給 GitHub 的連結。有新版時，練習簿要用新範本重新產生才會更新。
+
 ## Claude skill
 
 repo 根目錄的 `mock-exam-workbook.skill` 是打包好的 Claude skill，[直接下載](https://github.com/HelloNiHowMa/Mock-Exam/raw/main/mock-exam-workbook.skill)就能安裝，安裝方式見 [`操作說明.md`](操作說明.md)「方法一」。
+
+Claude 每次用 skill 出題或改練習簿前，會先執行 `scripts/check_update.py`，比對安裝的範本和 `main` 的 `VERSION`；安裝的版本較舊時，會在回覆裡提醒使用者重新下載安裝。
 
 ### 給維護的人：更新 skill 檔
 
@@ -168,6 +185,8 @@ python3 scripts/package_skill.py          # 重新產生根目錄的 mock-exam-w
 python3 scripts/package_skill.py --check  # 檢查 skill 檔有沒有跟上目前的檔案
 ```
 
+改了範本就要升引擎版本：`assets/template.html` 最上方說明的「引擎版本」、程式裡的 `ENGINE_VERSION` 和根目錄的 `VERSION` 三個地方要一樣，`package_skill.py` 會檢查，對不上就不打包。合併到 `main` 時，`VERSION` 跟著過去，大家的「檢查新版」就會看到。
+
 打包時檔案的時間戳記是固定的，內容沒變就會產生一模一樣的檔案，所以只有真的改了東西，skill 檔才會出現在 diff 裡。合併到 `main` 之後，大家用同一個下載連結就會拿到新版。
 
 ## 檔案說明
@@ -177,8 +196,11 @@ python3 scripts/package_skill.py --check  # 檢查 skill 檔有沒有跟上目�
 | `assets/template.html` | 範本引擎，內含範例題庫。不需要修改，題庫由 `build.py` 放進去。 |
 | `assets/example-bank.json`、`assets/example-images/` | 範例題庫的原始檔和圖片，和範本裡的內容相同。 |
 | `scripts/build.py` | 檢查題庫、產生練習簿、從現有練習簿取出題庫。 |
+| `scripts/check_update.py` | 比對範本和 GitHub `main` 的引擎版本；Claude skill 開工前會先執行。 |
+| `VERSION` | `main` 上的引擎版本，練習簿的「檢查新版」和 `check_update.py` 都讀這個檔。 |
 | `references/schema.md` | 題庫格式的完整說明。 |
 | `references/writing-guide.md` | 出題指引：干擾選項、解析寫法、題型選擇。 |
+| `references/progress-format.md` | 作答紀錄備份檔（匯出的 JSON）的格式和匯入時的合併規則。 |
 | `PROMPT.md` | 給 ChatGPT、Copilot 等其他 AI 用的出題提示詞。 |
 | `操作說明.md` | 給各單位的完整操作說明：用 Claude、用其他 AI、放到內部網站。 |
 | `mock-exam-workbook.skill` | 打包好的 Claude skill，下載後直接安裝。 |
