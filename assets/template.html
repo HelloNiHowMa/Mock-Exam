@@ -11,11 +11,19 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-16（縮寫題加入「遮住再打」：練習時答錯或按「想不起來」後，答案下方出現 3 格，把英文全名打 3 次。
+  引擎版本：2026-10-20（題型篩選和打亂：
+  1. 主要題型（config.mainLabel，例如「觀念題」）改成包含所有非縮寫題：單選、複選、分類、排序、配對，不分題庫或補充題。「拖拉題」仍然只有分類、排序、配對。
+  之前排序和配對題（以及補充題裡的分類題）只算拖拉題，預設題型下每日一題、考我一題、開始練習都抽不到。
+  2. 題型的選擇會記住：存在 prefs.qtype，跟著帳號同步，每份練習簿各自記住。記住的題型目前沒有題目時，畫面先用主要題型，存下來的選擇不變。
+  3. 模擬考題型的「排序與配對題」改成預設勾選，只剩縮寫題標成輔助練習。已經改過模擬考題型勾選的人，沿用自己存的設定。
+  4. 分類題的項目在練習和模擬考時打亂顯示：每回練習固定一種順序，而且一定和資料順序不同；判分照舊用 items 的原始編號。
+  5. 列印時單選、複選、分類題的選項也固定打亂（同一題每次印出來的順序相同），答案表跟著換成印出來的字母。
+  作答紀錄（stats）的結構沒有變；練習存檔（session）多一個 iord 欄位，舊的存檔打開時會自動補上。）
+  上一版 2026-10-16：縮寫題加入「遮住再打」：練習時答錯或按「想不起來」後，答案下方出現 3 格，把英文全名打 3 次。
   第 1 次看著答案打；第 2、3 次打的時候正確全名、解析、以前的錯誤寫法和前面打對的內容都先遮住，要憑記憶打。每打完一格就判定（規則和縮寫題相同），
   打錯時露出答案並標出打錯、漏掉的字，對照後按「遮住再打一次」重打。答對的縮寫題可以按「再練一次」打開。
   只是練習：不寫進作答紀錄、不影響熟練度和到期複習、不同步到帳號，重新整理頁面或開始新的練習就清空。模擬考（含交卷後檢討）不出現。）
-  上一版 2026-10-10：加入「不可作答」：題目或縮寫題加上 "void": true（可附 "voidNote" 說明原因）後，題庫地圖以灰色刪除線顯示，
+  更早 2026-10-10：加入「不可作答」：題目或縮寫題加上 "void": true（可附 "voidNote" 說明原因）後，題庫地圖以灰色刪除線顯示，
   點進去只看原本的答案和問題說明，不能作答、不記錄；所有出題方式都不會出到它，題數和統計也不計入。
   拿掉 void 就恢復成一般題目，原本的作答紀錄都還在。
   更早 2026-10-09b：修正「AI 解析」的提示詞：選擇題的選項不再標 A、B、C，改成照題庫順序、行尾帶題庫判定的清單，
@@ -1280,12 +1288,21 @@ function qType(n){ const q = byN[n]; if (!q) return ""; return q.type === "abbr"
 let srcFilter = "all";
 function isVariant(n){ const q = byN[n]; return !!(q && q.from); }
 function srcOk(n){ return srcFilter === "all" || (srcFilter === "orig" || srcFilter === "bankA" ? n < BANK_B : srcFilter === "bankB" ? isBankB(n) : srcFilter === "variant" ? isVariant(n) : (isExtra(n) || isBankB(n))); }
+/* 題型篩選：mcq（config.mainLabel，所有非縮寫題，不分題庫或補充題）、abbr（縮寫題）、drag（分類、排序、配對，是 mcq 的子集合）、all。
+   選擇存在 prefs.qtype，跟著帳號同步，開頁面時讀回來。讀回的題型目前沒有題目時，畫面先用 mcq，但不改存下來的選擇。 */
 let typeFilter = "mcq";
-function typeOk(n){ return typeFilter === "all" || qType(n) === typeFilter || (typeFilter === "mcq" && n < BANK_B && byN[n] && byN[n].type === "cls"); }
+function typeOk(n){ if (typeFilter === "all") return true; const t = qType(n); return t === typeFilter || (typeFilter === "mcq" && t === "drag"); }
+function syncTypeFilter(){
+  const v = pref("qtype");
+  let t = v === "abbr" || v === "drag" || v === "all" ? v : "mcq";
+  if (t === "abbr" && !ALLQ.some(q => q.type === "abbr" && !q.void)) t = "mcq";
+  if (t === "drag" && !ALLQ.some(q => qType(q.n) === "drag" && !q.void)) t = "mcq";
+  typeFilter = t;
+}
 const KEY = SK.local;
 const STATUS_LABEL = {new:"未作答", red:"答錯待複習", amber:"複習中", green:"已掌握", master:"熟練"};
 
-const PREF_DEFAULTS = {recall:true, timerMode:"off", pace:CONFIG.pace, examMode:false, skipMastered:true, examTypes:{mcq:true, multi:true, cls:true, abbr:false, drag:false}, statRows:{orig:true, extra:false, sum:false}};
+const PREF_DEFAULTS = {recall:true, timerMode:"off", pace:CONFIG.pace, examMode:false, skipMastered:true, examTypes:{mcq:true, multi:true, cls:true, abbr:false, drag:true}, statRows:{orig:true, extra:false, sum:false}};
 function blankState(){ return {v:1, stats:{}, marks:{}, extras:{}, groups:{}, resetAt:0, prefs:{recall:true, t:0}, session:null, updatedAt:0}; }
 function pref(k){ return state.prefs && state.prefs[k] !== undefined ? state.prefs[k] : PREF_DEFAULTS[k]; }
 function setPref(k, v){ state.prefs = Object.assign({}, state.prefs, {[k]: v, t: Date.now()}); commit(); }
@@ -2336,6 +2353,11 @@ function initPlace(s, n){
   if (!s.place) s.place = {};
   const p = s.place[n];
   if (!Array.isArray(p) || p.length !== len || p.some(x => typeof x !== "number" || x < -1 || x >= q.items.length)) s.place[n] = Array(len).fill(-1);
+  /* 項目區的顯示順序存在 session.iord[n]（項目原始編號的排列），整回練習固定不變；一定和資料順序不同，
+     所以出題者照分組順序寫 items 也不會洩漏答案。判分和 place 都用原始編號，跟顯示順序無關。 */
+  if (!s.iord) s.iord = {};
+  const o = s.iord[n], m = q.items.length;
+  if (!Array.isArray(o) || o.length !== m || o.some(x => typeof x !== "number" || x < 0 || x >= m) || new Set(o).size !== m) s.iord[n] = derange(m);
 }
 /* 回傳每一格對不對；同一類裡沒有標籤的格子只看有沒有放到這一類的項目，不看順序。 */
 function clsGrade(q, place){
@@ -2437,7 +2459,7 @@ function clsBodyHTML(s, n, q, answered, noSubmit){
   const sel = !answered && clsSel && clsSel.n === n ? clsSel : null;
   const g = answered ? clsGrade(q, place) : null;
   const used = new Set(place.filter(x => x >= 0));
-  const bankIdx = q.items.map((_, i) => i).filter(i => !used.has(i));
+  const bankIdx = ((s.iord && s.iord[n]) || q.items.map((_, i) => i)).filter(i => !used.has(i));
   const filled = place.filter(x => x >= 0).length;
   const bank = answered ? "" : `<div class="cls-bank" role="group" aria-labelledby="cls-bank-h" tabindex="-1">
       <h3 id="cls-bank-h">項目（${bankIdx.length ? `還有 ${bankIdx.length} 個沒放` : "都放好了"}）</h3>
@@ -2987,13 +3009,16 @@ const PRINT_CSS = ".printdoc{background:#fff;color:#111;border:1.5px solid var(-
 const SCOPE_NAME = {all:"全部題目", review:"錯題複習", weak:"弱點題", due:"到期複習", fresh:"還沒做過", marked:"已標記"};
 const TYPE_NAME = {mcq:CONFIG.mainLabel, abbr:"縮寫題", drag:"拖拉題", all:"全部題型"};
 const SRC_NAME = {orig:"只有題庫", extra:"只有補充題", variant:"只有變化題"};
-const PLETTERS = "ABCDEFGHIJ".split("");
+const PLETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 let printCfg = null, printMsg = "", dlApi = null;
-function seededOrder(len, seed){
+/* 列印用的固定打亂：同一題每次印出來的順序都一樣，答案表才對得上。
+   排序、配對、分類題（keepSame 省略）保證和資料順序不同；單選、複選（keepSame = true）允許剛好和資料順序相同，
+   否則只有 2 個選項時答案位置永遠會被換到另一邊。 */
+function seededOrder(len, seed, keepSame){
   const a = Array.from({length: len}, (_, i) => i);
   let x = (seed * 7919) % 233280;
   for (let i = len - 1; i > 0; i--){ x = (x * 9301 + 49297) % 233280; const j = Math.floor(x / 233280 * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
-  if (len > 1 && a.every((v, i) => v === i)) a.push(a.shift());
+  if (!keepSame && len > 1 && a.every((v, i) => v === i)) a.push(a.shift());
   return a;
 }
 function printRef(n){
@@ -3036,14 +3061,17 @@ function printDocHTML(c){
       body = `<p class="pstem">${esc(q.q)}</p>${imgsHTML(q.img, "pimg", "拖拉題題目")}`;
       ans = `<span class="pdd">${imgsHTML(q.ans, "pimg", "拖拉題正確答案")}</span>`;
     } else if (q.type === "cls"){
-      body = `<p class="pstem">${esc(q.q)}</p>${imgsHTML(q.img, "pimg", "題目附圖")}<ol class="popts" type="A">${q.items.map(x => `<li>${esc(x)}</li>`).join("")}</ol><div class="pcls">${q.groups.map(g => `${g.t ? `<h4>${esc(g.t)}</h4>` : ""}${g.s.map(x => `<p class="pslot">${x.l ? esc(x.l) + "：" : ""}＿＿＿＿＿</p>`).join("")}`).join("")}</div>`;
-      ans = q.groups.map(g => (g.t ? esc(g.t) + "：" : "") + g.s.map(x => (x.l ? esc(x.l) + " → " : "") + PLETTERS[x.a]).join("、")).join("；");
+      const ord = seededOrder(q.items.length, n);
+      body = `<p class="pstem">${esc(q.q)}</p>${imgsHTML(q.img, "pimg", "題目附圖")}<ol class="popts" type="A">${ord.map(i => `<li>${esc(q.items[i])}</li>`).join("")}</ol><div class="pcls">${q.groups.map(g => `${g.t ? `<h4>${esc(g.t)}</h4>` : ""}${g.s.map(x => `<p class="pslot">${x.l ? esc(x.l) + "：" : ""}＿＿＿＿＿</p>`).join("")}`).join("")}</div>`;
+      ans = q.groups.map(g => (g.t ? esc(g.t) + "：" : "") + g.s.map(x => (x.l ? esc(x.l) + " → " : "") + PLETTERS[ord.indexOf(x.a)]).join("、")).join("；");
     } else if (q.type === "multi"){
-      body = `<p class="pstem">${esc(q.q)}</p>${qimgHTML(q, "pimg")}<p class="pref" style="font-weight:500">（複選：選出所有正確答案）</p><ol class="popts" type="A">${q.o.map((o, i) => `<li>${esc(o)}${optImgHTML(q, i)}</li>`).join("")}</ol>`;
-      ans = q.a.map(i => `${LETTERS[i]}. ${esc(q.o[i])}`).join("；");
+      const ord = seededOrder(q.o.length, n, true);
+      body = `<p class="pstem">${esc(q.q)}</p>${qimgHTML(q, "pimg")}<p class="pref" style="font-weight:500">（複選：選出所有正確答案）</p><ol class="popts" type="A">${ord.map(i => `<li>${esc(q.o[i])}${optImgHTML(q, i)}</li>`).join("")}</ol>`;
+      ans = q.a.map(i => ord.indexOf(i)).sort((x, y) => x - y).map(j => `${PLETTERS[j]}. ${esc(q.o[ord[j]])}`).join("；");
     } else {
-      body = `<p class="pstem">${esc(q.q)}</p>${qimgHTML(q, "pimg")}<ol class="popts" type="A">${q.o.map((o, i) => `<li>${esc(o)}${optImgHTML(q, i)}</li>`).join("")}</ol>`;
-      ans = `${LETTERS[q.a]}. ${esc(q.o[q.a])}`;
+      const ord = seededOrder(q.o.length, n, true);
+      body = `<p class="pstem">${esc(q.q)}</p>${qimgHTML(q, "pimg")}<ol class="popts" type="A">${ord.map(i => `<li>${esc(q.o[i])}${optImgHTML(q, i)}</li>`).join("")}</ol>`;
+      ans = `${PLETTERS[ord.indexOf(q.a)]}. ${esc(q.o[q.a])}`;
     }
     keys.push(ans);
     return `<li class="pq"><p class="pref">${no}. ${esc(printRef(n))}${q.flag ? "（爭議題）" : ""}</p>${body}${notes ? `<div class="pans"><p><strong>答案：</strong>${ans}</p>${q.e ? `<p><strong>解析：</strong>${esc(q.e)}</p>` : ""}${imgsHTML(q.eimg, "pimg", "解析附圖")}${aiNotes[n] ? `<p><strong>AI 解析：</strong>${esc(aiNotes[n].text)}</p>` : ""}</div>` : ""}</li>`;
@@ -3226,7 +3254,7 @@ function renderHome(){
   const bankALive = bankA.filter(live), bankBLive = bankB.filter(live);
   const voidCount = ALLQ.length - liveQ.length;
   const flagCount = liveQ.filter(q => q.flag).length;
-  if (typeFilter === "abbr" && abbrQs.length && !abbrLive.length) typeFilter = "mcq";   // 縮寫題全部不可作答時，題型按鈕不會出現
+  /* 題型在 render() 開頭由 syncTypeFilter() 讀回；縮寫題或拖拉題沒有可以作答的題目時（按鈕不會出現）已經退回 mcq。 */
   if (typeFilter === "abbr" && !pref("examMode") && srcFilter !== "all") srcFilter = "all";
   if (!extraMcq.length && !bankBLive.length && (srcFilter === "orig" || srcFilter === "extra" || srcFilter === "variant")) srcFilter = "all";
   const counts = {new:0, red:0, amber:0, green:0, master:0};
@@ -3306,9 +3334,8 @@ function renderHome(){
     const label = `${qLabel(q.n)}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}`;
     return `<button class="chip s-${st}${mk ? " marked" : ""}" data-q="${q.n}" aria-label="${esc(label)}，${boxesLabel(q.n)}" title="${esc(label)}&#10;最近作答 ${boxesText(q.n)}">${esc(q.q)}</button>`;
   }).join("");
-  const mcqCount = liveQ.filter(q => qType(q.n) === "mcq" || (q.n < BANK_B && q.type === "cls")).length;
+  const mcqCount = liveQ.filter(q => qType(q.n) === "mcq" || qType(q.n) === "drag").length;   // 和 typeOk 一致：所有非縮寫題
   const dragCount = liveQ.filter(q => qType(q.n) === "drag").length;
-  if (typeFilter === "drag" && !dragCount) typeFilter = "mcq";
   const exam = !!pref("examMode") && scope !== "pairs";
   const exTypes = Object.assign({}, PREF_DEFAULTS.examTypes, pref("examTypes") || {});
   const kindCount = k => liveQ.filter(q => examKind(q.n) === k).length;
@@ -3386,7 +3413,7 @@ function renderHome(){
         ${[["mcq", "單選題"], ["multi", "複選題"], ["cls", "分類題"], ["abbr", "縮寫題"], ["drag", "排序與配對題"]].filter(([k]) => kindCount(k)).map(([k, label]) =>
           `<label class="chk"><input type="checkbox" data-extype="${k}" ${exTypes[k] ? "checked" : ""}>${label}<span class="n" style="opacity:.7;margin-left:.2em">${kindCount(k)}</span></label>`).join("")}
       </div>
-      ${Object.keys(exTypes).some(k => exTypes[k] && kindCount(k)) ? (exTypes.abbr || exTypes.drag ? `<p class="note">縮寫題、排序與配對題是輔助練習；加入後，這回比較像綜合測驗。</p>` : "") : `<p class="note">至少勾選一種題型才能開始。</p>`}
+      ${Object.keys(exTypes).some(k => exTypes[k] && kindCount(k)) ? (exTypes.abbr ? `<p class="note">縮寫題是輔助練習；加入後，這回比較像綜合測驗。</p>` : "") : `<p class="note">至少勾選一種題型才能開始。</p>`}
     </div>` : ""}` : ""}
     ${!isGroups && !exam && (abbrLive.length || dragCount) ? `<div class="field">
       <span class="flabel" id="lab-type">題型</span>
@@ -3684,6 +3711,7 @@ function render(scrollTop){
   skipCollectOnce = false;
   if ((view === "quiz" || view === "summary") && !state.session) view = "home";
   if (view === "edit" && !form) view = "extras";
+  syncTypeFilter();
   $app.innerHTML = view === "quiz" ? renderQuiz() : view === "summary" ? renderSummary()
     : view === "extras" ? renderExtras() : view === "edit" ? renderEdit() : view === "print" && printCfg ? renderPrint() : view === "browse" && browse ? renderBrowse() : renderHome();
   if (scrollTop){
@@ -3777,7 +3805,7 @@ $app.addEventListener("click", e => {
   if (b.dataset.scope){ scope = b.dataset.scope; render(); return; }
   if (b.dataset.src){ srcFilter = b.dataset.src; render(); return; }
   if (b.dataset.cf !== undefined){ const c = cfCache[Number(b.dataset.cf)]; if (c && c.qs.length) startSession(c.qs.filter(x => byN[x] && !isVoid(x)), "confuse"); return; }
-  if (b.dataset.qtype){ typeFilter = b.dataset.qtype; render(); return; }
+  if (b.dataset.qtype){ setPref("qtype", b.dataset.qtype); render(); return; }
   if (b.dataset.mmode){
     collectForm();
     const toMulti = b.dataset.mmode === "multi";
