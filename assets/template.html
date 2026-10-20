@@ -11,7 +11,16 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-20（題型篩選和打亂：
+  引擎版本：2026-10-20b（主頁加入「備份作答紀錄」：
+  1. 匯出：把作答紀錄（記憶體裡的整份 state：stats、marks、prefs、extras、groups、resetAt、session、updatedAt）包一層中繼資料，
+  下載成 <config.id>-progress-YYYYMMDD.json，或複製到剪貼簿。不管紀錄來自這台裝置的瀏覽器還是帳號同步，內容都一樣。
+  在 Claude artifact 裡要宣告 downloads 能力才能下載；不能下載、也不能寫入剪貼簿時，直接顯示整份內容讓使用者自己複製。
+  2. 匯入：選檔案或貼上 JSON，先檢查格式並列出會改到什麼，按確認後才用 mergeRemote 合併：同一題保留時間較新的那筆，
+  早於任一邊「清除所有進度」（resetAt）的紀錄都不留，設定（prefs）整包取較新的。config.id 不同、或資料沒有標示來源時，明確警告，由使用者決定。
+  這台裝置正在做的練習不會被換掉；這裡沒有未完成的練習、而且是同一份練習簿的備份時，才接手備份裡還沒做完的那一回。
+  匯入後存回這台裝置，帳號同步開著時立刻上傳。作答紀錄（state）的結構沒有變。
+  改版時程式裡的 ENGINE_VERSION 要跟著改成同一個版本，scripts/package_skill.py 會檢查。）
+  上一版 2026-10-20：題型篩選和打亂：
   1. 主要題型（config.mainLabel，例如「觀念題」）改成包含所有非縮寫題：單選、複選、分類、排序、配對，不分題庫或補充題。「拖拉題」仍然只有分類、排序、配對。
   之前排序和配對題（以及補充題裡的分類題）只算拖拉題，預設題型下每日一題、考我一題、開始練習都抽不到。
   2. 題型的選擇會記住：存在 prefs.qtype，跟著帳號同步，每份練習簿各自記住。記住的題型目前沒有題目時，畫面先用主要題型，存下來的選擇不變。
@@ -19,7 +28,7 @@
   4. 分類題的項目在練習和模擬考時打亂顯示：每回練習固定一種順序，而且一定和資料順序不同；判分照舊用 items 的原始編號。
   5. 列印時單選、複選、分類題的選項也固定打亂（同一題每次印出來的順序相同），答案表跟著換成印出來的字母。
   作答紀錄（stats）的結構沒有變；練習存檔（session）多一個 iord 欄位，舊的存檔打開時會自動補上。）
-  上一版 2026-10-16：縮寫題加入「遮住再打」：練習時答錯或按「想不起來」後，答案下方出現 3 格，把英文全名打 3 次。
+  更早 2026-10-16：縮寫題加入「遮住再打」：練習時答錯或按「想不起來」後，答案下方出現 3 格，把英文全名打 3 次。
   第 1 次看著答案打；第 2、3 次打的時候正確全名、解析、以前的錯誤寫法和前面打對的內容都先遮住，要憑記憶打。每打完一格就判定（規則和縮寫題相同），
   打錯時露出答案並標出打錯、漏掉的字，對照後按「遮住再打一次」重打。答對的縮寫題可以按「再練一次」打開。
   只是練習：不寫進作答紀錄、不影響熟練度和到期複習、不同步到帳號，重新整理頁面或開始新的練習就清空。模擬考（含交卷後檢討）不出現。）
@@ -741,6 +750,24 @@ header.top{margin-bottom:26px}
 
 .foot{margin-top:44px;padding-top:16px;border-top:1.5px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px}
 .sync{color:var(--muted);font-size:.88rem}
+.foot-act{display:flex;flex-wrap:wrap;align-items:center;gap:4px 20px}
+.backup{margin-top:16px;padding:18px 20px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);display:grid;gap:22px}
+.backup h3{margin:0 0 6px;font-size:1.1rem;outline:none}
+.bk-part{display:grid;gap:10px;min-width:0}
+.bk-part h4{margin:0;font-size:1rem;outline:none}
+.bk-part .note,.bk-part .flabel{margin:0}
+.bk-part .flash,.bk-part .errs{margin:0;overflow-wrap:anywhere}
+.bk-part .errs p{margin:0}
+.bk-text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace;font-size:.85rem;line-height:1.5;width:100%;min-width:0;padding:.6em .8em;
+  border:1.5px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);resize:vertical}
+.bk-text:focus-visible{outline:2.5px solid var(--focus);outline-offset:1px}
+.bk-file{display:inline-block;cursor:pointer}
+.bk-file:hover{border-color:var(--ink)}
+.bk-file:focus-within{outline:2.5px solid var(--focus);outline-offset:2px}
+.bk-preview{display:grid;gap:10px;padding:14px 16px;border:1.5px solid var(--ink);border-radius:10px;background:var(--bg)}
+.bk-preview p{margin:0}
+.bk-preview ul{margin:0;padding-left:1.2em;display:grid;gap:4px}
+@media (max-width:560px){.backup{padding:16px 14px}}
 
 .qbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px 12px}
 .qright{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -1300,6 +1327,8 @@ function syncTypeFilter(){
   typeFilter = t;
 }
 const KEY = SK.local;
+/* 和最上方說明的「引擎版本」一致，寫進匯出的備份檔。scripts/package_skill.py 會檢查兩邊有沒有對上。 */
+const ENGINE_VERSION = "2026-10-20b";
 const STATUS_LABEL = {new:"未作答", red:"答錯待複習", amber:"複習中", green:"已掌握", master:"熟練"};
 
 const PREF_DEFAULTS = {recall:true, timerMode:"off", pace:CONFIG.pace, examMode:false, skipMastered:true, examTypes:{mcq:true, multi:true, cls:true, abbr:false, drag:true}, statRows:{orig:true, extra:false, sum:false}};
@@ -1523,7 +1552,11 @@ const SYNC_TEXT = {
   local:"進度存在這台裝置的瀏覽器裡。",
   error:"暫時無法同步到帳號，進度先存在這台裝置，稍後會再試。"
 };
-function setSync(m){ remote.mode = m; const el = document.getElementById("sync"); if (el) el.textContent = SYNC_TEXT[m]; }
+function setSync(m){
+  remote.mode = m;
+  const el = document.getElementById("sync"); if (el) el.textContent = SYNC_TEXT[m];
+  const w = document.getElementById("bk-wait"); if (w && m !== "connecting") w.hidden = true;   // 備份區「還在讀取帳號」的提醒
+}
 function clone(x){ return JSON.parse(JSON.stringify(x)); }
 
 async function initRemote(){
@@ -3239,6 +3272,272 @@ function renderBrowse(){
 }
 
 /* ---------- views ---------- */
+/* ---------- 備份作答紀錄：匯出／匯入 ----------
+   匯出：把記憶體裡的整份 state 包一層中繼資料存成 JSON，不管紀錄來自這台裝置的瀏覽器還是帳號同步。
+     {format: "mock-exam-progress", formatVersion: 1, engine: 引擎版本, id: config.id, title: config.title, exportedAt: ISO 時間, state: {...}}
+   匯入：檔案或貼上的文字先經過 bkParse 檢查（沿用 validState、normalize），bkPlan 依 mergeMaps 同一套規則先算出會改到什麼，
+     使用者按確認後 bkConfirm 才用 mergeRemote 合併：每題保留時間較新的那筆，早於任一邊 resetAt 的紀錄都不留，prefs 整包取較新的。
+     也接受沒有包裝的 state（例如從開發者工具或帳號資料直接複製出來的），但會當成來源不明，和 config.id 不同一樣要使用者確認。
+     這台裝置正在做的練習不換掉；這裡沒有未完成的練習、而且確定是同一份練習簿的備份時，才接手備份裡還沒做完的那一回。
+     合併出錯時整份還原成匯入前的樣子。 */
+const BK_FORMAT = "mock-exam-progress", BK_VERSION = 1, BK_MAX = 20 * 1024 * 1024;
+const bk = {open: false, paste: "", msg: null, pending: null, out: ""};   // msg: {ok, text, at: "out" 或 "in"}
+function isPlainObj(x){ return !!x && typeof x === "object" && !Array.isArray(x); }
+function inClaude(){ return !!(window.claude && typeof window.claude.use === "function"); }
+function bkCanDownload(){ return !!dlApi || !inClaude(); }
+function bkStamp(ms){ const d = new Date(ms); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
+function bkFileName(){ const d = new Date(); return `${CONFIG.id}-progress-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}.json`; }
+function bkText(){
+  return JSON.stringify({format: BK_FORMAT, formatVersion: BK_VERSION, engine: ENGINE_VERSION, id: CONFIG.id, title: CONFIG.title,
+    exportedAt: new Date().toISOString(), state: clone(state)}, null, 1);
+}
+function bkSize(text){ const b = new Blob([text]).size; return b < 1024 ? `${b} B` : b < 1048576 ? `${Math.round(b / 102.4) / 10} KB` : `${Math.round(b / 104857.6) / 10} MB`; }
+function bkFocus(id){ const el = document.getElementById(id); if (el){ el.focus({preventScroll: true}); if (el.scrollIntoView) el.scrollIntoView({block: "nearest"}); } }
+function bkDone(msg){ bk.msg = msg; render(); bkFocus(msg ? "bk-msg" : "bk-h"); }
+
+async function bkDownload(){
+  const name = bkFileName(), text = bkText();
+  bk.out = "";
+  if (dlApi){
+    try {
+      await dlApi.save({filename: name, data: text});
+      return bkDone({ok: true, at: "out", text: `已下載 ${name}（${bkSize(text)}）。`});
+    } catch(e){
+      const code = e && e.code;
+      if (code === "unavailable" || code === "not_granted" || code === "capability_disabled" || code === "capability_removed") dlApi = null;
+      if (code === "declined") return bkDone(null);
+      return bkDone({ok: false, at: "out", text: dlApi ? "下載沒有完成，請再試一次，或改用「複製到剪貼簿」。" : "這裡不能下載檔案，請改用「複製到剪貼簿」。"});
+    }
+  }
+  if (inClaude()) return bkDone({ok: false, at: "out", text: "這裡不能下載檔案，請改用「複製到剪貼簿」。"});
+  try {
+    const url = URL.createObjectURL(new Blob([text], {type: "application/json"}));
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.style.display = "none";
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+    bkDone({ok: true, at: "out", text: `已開始下載 ${name}（${bkSize(text)}）。沒有看到檔案的話，請改用「複製到剪貼簿」。`});
+  } catch(e){
+    bkDone({ok: false, at: "out", text: "下載沒有完成，請改用「複製到剪貼簿」。"});
+  }
+}
+/* 先用 Clipboard API，不行再用 execCommand("copy")；兩個都不能用時，把整份內容放在唯讀的文字框裡選好，讓使用者自己複製。 */
+async function bkCopy(){
+  const text = bkText();
+  let ok = false;
+  try { if (navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); ok = true; } } catch(e){}
+  if (!ok){
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      ok = document.execCommand("copy");
+      ta.remove();
+    } catch(e){ ok = false; }
+  }
+  bk.out = ok ? "" : text;
+  bk.msg = ok ? {ok: true, at: "out", text: `已複製（${bkSize(text)}）。可以貼到記事本存成 .json 檔，或直接貼到另一台裝置的「匯入」欄位。`}
+    : {ok: false, at: "out", text: "這裡不能直接寫入剪貼簿。下面的文字框已經選好整份內容，請按 Ctrl+C（Mac 按 ⌘C；手機長按後選「拷貝」）複製。"};
+  render();
+  if (ok) bkFocus("bk-msg");
+  else { const o = document.getElementById("bk-out"); if (o){ o.focus({preventScroll: true}); o.select(); if (o.scrollIntoView) o.scrollIntoView({block: "nearest"}); } }
+}
+
+function bkSessionOk(s){
+  return isPlainObj(s) && Array.isArray(s.ids) && s.ids.length > 0 && s.ids.every(Number.isInteger)
+    && Number.isInteger(s.i) && s.i >= 0 && s.i < s.ids.length && isPlainObj(s.answers);
+}
+/* 檢查並整理匯入的內容。回傳 {err: 說明} 或 {r: 整理過的 state, meta: 來源資訊}。 */
+function bkParse(text){
+  let o;
+  try { o = JSON.parse(String(text).replace(/^﻿/, "").trim()); }
+  catch(e){ return {err: "內容不是有效的 JSON。請確認是完整的備份內容：從第一個 { 到最後一個 } 都要在。"}; }
+  let s = o, meta = {wrapped: false, id: "", title: "", exportedAt: null, engine: ""};
+  if (isPlainObj(o) && o.format === BK_FORMAT){
+    if (typeof o.formatVersion !== "number" || o.formatVersion > BK_VERSION) return {err: "這份備份是比較新版的練習簿匯出的，這份練習簿讀不懂。請先把練習簿更新到新版引擎再匯入。"};
+    s = o.state;
+    meta = {wrapped: true, id: typeof o.id === "string" ? o.id : "", title: typeof o.title === "string" ? o.title : "",
+      exportedAt: typeof o.exportedAt === "string" && !isNaN(Date.parse(o.exportedAt)) ? Date.parse(o.exportedAt) : null,
+      engine: typeof o.engine === "string" ? o.engine : ""};
+  }
+  if (!isPlainObj(s) || !validState(s) || !isPlainObj(s.stats)) return {err: "找不到作答紀錄。請選「匯出」產生的備份檔，或貼上它的完整內容。"};
+  if (typeof s.v === "number" && s.v > 1) return {err: "這份紀錄是比較新版的練習簿存的，這份練習簿讀不懂。請先把練習簿更新到新版引擎再匯入。"};
+  const r = normalize(clone(s));
+  const objs = (m, ok) => { const out = {}; if (isPlainObj(m)) Object.keys(m).forEach(k => { if (isPlainObj(m[k]) && (!ok || ok(m[k]))) out[k] = m[k]; }); return out; };
+  r.stats = objs(r.stats);
+  r.marks = objs(r.marks);
+  r.extras = objs(r.extras, x => Number.isInteger(x.k) && x.k > 0);
+  r.groups = objs(r.groups, g => typeof g.id === "number");
+  if (!isPlainObj(r.prefs)) r.prefs = {recall: true, t: 0};
+  if (typeof r.resetAt !== "number" || !isFinite(r.resetAt)) r.resetAt = 0;
+  if (!bkSessionOk(r.session)) r.session = null;
+  return {r, meta};
+}
+/* 和 mergeMaps 同一套規則：同一個 key 取 t 較新的那筆，結果早於 resetAt 的不留。a 是這裡的，b 是備份的。 */
+function bkDiff(a, b, resetAt){
+  const d = {add: 0, upd: 0, keep: 0, old: 0, lost: 0, unknown: 0};
+  Object.keys(b).forEach(k => {
+    const x = a[k], yt = b[k].t || 0;
+    if (yt <= resetAt){ d.old++; return; }
+    if (!x){ d.add++; if (!byN[k]) d.unknown++; return; }
+    if (yt > (x.t || 0)){ d.upd++; if (!byN[k]) d.unknown++; } else d.keep++;
+  });
+  Object.keys(a).forEach(k => { const x = a[k], y = b[k]; if (Math.max(x && x.t || 0, y && y.t || 0) <= resetAt) d.lost++; });
+  return d;
+}
+function bkPlan(r, meta){
+  const resetAt = Math.max(state.resetAt || 0, r.resetAt || 0);
+  const st = bkDiff(state.stats, r.stats, resetAt), mk = bkDiff(state.marks, r.marks, resetAt);
+  const ex = bkDiff(state.extras || {}, r.extras, 0), gr = bkDiff(state.groups || {}, r.groups, 0);
+  const sameBook = meta.wrapped && meta.id === CONFIG.id;
+  const prefs = (r.prefs.t || 0) > ((state.prefs && state.prefs.t) || 0);
+  const sess = sameBook && !state.session && !!r.session && !sessOver(r.session);
+  const newReset = (r.resetAt || 0) > (state.resetAt || 0);
+  const changes = st.add + st.upd + st.lost + mk.add + mk.upd + mk.lost + ex.add + ex.upd + gr.add + gr.upd + (prefs ? 1 : 0) + (sess ? 1 : 0) + (newReset ? 1 : 0);
+  return {resetAt, st, mk, ex, gr, sameBook, prefs, sess, newReset, changes};
+}
+function bkLoad(text, src){
+  bk.msg = null; bk.pending = null; bk.out = "";
+  const where = src ? `「${src}」：` : "";
+  if (!String(text || "").trim()) return bkDone({ok: false, at: "in", text: src ? where + "這個檔案是空的。" : "還沒有貼上內容。"});
+  if (String(text).length > BK_MAX) return bkDone({ok: false, at: "in", text: where + "內容太大，不像是作答紀錄的備份。"});
+  const res = bkParse(text);
+  if (res.err) return bkDone({ok: false, at: "in", text: where + res.err});
+  bk.pending = {r: res.r, meta: res.meta, src: src || "", plan: bkPlan(res.r, res.meta)};
+  render();
+  bkFocus("bk-ph");
+}
+function bkReadFile(f){
+  if (f.size > BK_MAX) return bkDone({ok: false, at: "in", text: `「${f.name}」太大了（${Math.round(f.size / 104857.6) / 10} MB），不像是作答紀錄的備份。`});
+  const rd = new FileReader();
+  rd.onload = () => bkLoad(String(rd.result || ""), f.name);
+  rd.onerror = () => bkDone({ok: false, at: "in", text: `讀不到「${f.name}」。請再選一次，或把檔案內容貼到下面的欄位。`});
+  rd.readAsText(f);
+}
+function bkConfirm(){
+  const p = bk.pending; if (!p) return;
+  const before = clone(state);
+  let msg;
+  try {
+    const r = clone(p.r);
+    mergeRemote(r, false);   // false：不拿備份的練習存檔換掉這裡的
+    if (p.plan.sess && !state.session && r.session && !sessOver(r.session)){
+      const rs = r.session;
+      if (rs.timer){ rs.timer.since = null; rs.timer.sinceN = null; }
+      state.session = rs;
+      Object.keys(drills).forEach(k => { delete drills[k]; });
+      clsSel = null;
+    }
+    rebuildQ(); sanitizeSession();
+    const cnt = (a, b) => {
+      const c = {add: 0, upd: 0, del: 0};
+      Object.keys(b).forEach(k => { if (!a[k]) c.add++; else if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) c.upd++; });
+      Object.keys(a).forEach(k => { if (!b[k]) c.del++; });
+      return c;
+    };
+    const st = cnt(before.stats, state.stats), mk = cnt(before.marks, state.marks);
+    const ex = cnt(before.extras || {}, state.extras || {}), gr = cnt(before.groups || {}, state.groups || {});
+    const parts = [];
+    if (st.add || st.upd) parts.push(`作答紀錄新增 ${st.add} 題、更新 ${st.upd} 題`);
+    if (mk.add + mk.upd) parts.push(`標記 ${mk.add + mk.upd} 筆`);
+    if (ex.add + ex.upd) parts.push(`補充題 ${ex.add + ex.upd} 筆`);
+    if (gr.add + gr.upd) parts.push(`自訂題組 ${gr.add + gr.upd} 筆`);
+    if (JSON.stringify(before.prefs) !== JSON.stringify(state.prefs)) parts.push("設定改用備份裡較新的");
+    if (!before.session && state.session) parts.push("接手備份裡還沒做完的練習");
+    const gone = [st.del ? `${st.del} 題作答紀錄` : "", mk.del ? `${mk.del} 筆標記` : ""].filter(Boolean);
+    msg = (parts.length ? `已匯入：${parts.join("；")}。` : "已匯入。")
+      + (gone.length ? `早於 ${bkStamp(state.resetAt)} 清除進度的 ${gone.join("和 ")}已清除。` : "")
+      + (remote.ref ? "也會同步到你的 Claude 帳號。" : "");
+    state.updatedAt = Date.now();
+    saveLocal();
+    scheduleRemote(0);
+  } catch(e){
+    state = before;
+    rebuildQ(); sanitizeSession();
+    bk.pending = null;
+    return bkDone({ok: false, at: "in", text: "匯入時發生錯誤，這裡的紀錄沒有變動。"});
+  }
+  bk.pending = null; bk.paste = "";
+  const ta = document.getElementById("bk-paste"); if (ta) ta.value = "";   // render() 會先從畫面讀回貼上的內容
+  bkDone({ok: true, at: "in", text: msg});
+}
+function bkPreviewHTML(p){
+  const P = p.plan, m = p.meta;
+  const nm = (t, id) => `「${esc(t || "（沒有標題）")}」（${esc(id || "沒有代號")}）`;
+  const warn = [];
+  if (!m.wrapped || !m.id) warn.push(`這份資料沒有標示來自哪一份練習簿（不是用「匯出」產生的）。請先確認它是這份${nm(CONFIG.title, CONFIG.id)}的紀錄：作答紀錄是照題號存的，別份練習簿的紀錄會掛到這裡同號的題目上，匯入後就分不開了。`);
+  else if (!P.sameBook) warn.push(`這份備份來自另一份練習簿${nm(m.title, m.id)}，不是這份${nm(CONFIG.title, CONFIG.id)}。作答紀錄是照題號存的，兩份練習簿的題號對不起來，匯入後紀錄會掛到這裡同號的題目上，而且分不開。`);
+  if (warn.length && P.st.unknown) warn.push(`其中 ${P.st.unknown} 題的題號在這份練習簿裡找不到。`);
+  const lost = [P.st.lost ? `${P.st.lost} 題作答紀錄` : "", P.mk.lost ? `${P.mk.lost} 筆標記` : ""].filter(Boolean).join("和 ");
+  if (lost) warn.push(P.newReset
+    ? `這份備份記錄你在 ${bkStamp(P.resetAt)} 清除過所有進度：這裡在那之前的 ${lost}會一併清除。`
+    : `這裡有 ${lost}早於 ${bkStamp(P.resetAt)} 的清除進度，合併時會被清掉。`);
+  const items = [];
+  if (P.st.add || P.st.upd) items.push(`作答紀錄：新增 ${P.st.add} 題、更新 ${P.st.upd} 題（備份裡的比較新）。`);
+  if (P.st.keep) items.push(`${P.st.keep} 題這裡的紀錄比較新或相同，保留這裡的。`);
+  if (P.st.old) items.push(`${P.st.old} 題的作答早於 ${bkStamp(P.resetAt)} 的清除進度，不匯入。`);
+  const other = [];
+  if (P.mk.add + P.mk.upd) other.push(`標記 ${P.mk.add + P.mk.upd} 筆`);
+  if (P.ex.add + P.ex.upd) other.push(`補充題 ${P.ex.add + P.ex.upd} 筆`);
+  if (P.gr.add + P.gr.upd) other.push(`自訂題組 ${P.gr.add + P.gr.upd} 筆`);
+  if (other.length) items.push(`另外會加入或更新：${other.join("、")}。`);
+  if (P.prefs) items.push("設定（題型、作答方式、計時等）改用備份裡的，因為備份的比較新。");
+  if (P.sess) items.push(`備份裡有一回還沒做完的練習（${p.r.session.ids.length} 題），匯入後可以接著做。`);
+  if (P.newReset && !P.st.lost && !P.mk.lost) items.push(`備份記錄你在 ${bkStamp(P.resetAt)} 清除過所有進度；匯入後這裡也以這個時間為準，比它早的紀錄之後都不會再收下。`);
+  const src = m.wrapped
+    ? `${nm(m.title, m.id)}${m.exportedAt ? `，${bkStamp(m.exportedAt)} 匯出` : ""}${m.engine ? `，引擎版本 ${esc(m.engine)}` : ""}`
+    : "沒有標示來源";
+  const none = !P.changes;
+  return `<div class="bk-preview">
+    <h4 id="bk-ph" tabindex="-1">${none ? "沒有需要匯入的紀錄" : warn.length ? "請先確認再匯入" : "確認匯入"}</h4>
+    <p class="note">${p.src ? `檔案「${esc(p.src)}」：` : "貼上的內容："}${src}</p>
+    ${warn.length ? `<div class="errs" role="alert">${warn.map(w => `<p>${w}</p>`).join("")}</div>` : ""}
+    ${none ? `<p>匯入不會改變這裡的紀錄${items.length ? "：" : "。"}</p>` : ""}
+    ${items.length ? `<ul>${items.map(t => `<li>${t}</li>`).join("")}</ul>` : ""}
+    <div class="row">
+      ${none ? `<button class="btn ghost" data-act="bk-cancel">關閉</button>`
+        : `<button class="btn primary" data-act="bk-confirm">${warn.length ? "仍要匯入" : "確認匯入"}</button><button class="btn ghost" data-act="bk-cancel">取消</button>`}
+    </div>
+  </div>`;
+}
+function bkHTML(){
+  const nStats = Object.keys(state.stats).filter(k => attempts(k) > 0).length;
+  const nMarks = Object.keys(state.marks).filter(k => state.marks[k] && state.marks[k].on).length;
+  const nEx = Object.keys(state.extras || {}).filter(k => state.extras[k] && !state.extras[k].del).length;
+  const have = [nStats ? `${nStats} 題的作答紀錄` : "", nMarks ? `${nMarks} 題標記` : "", nEx ? `${nEx} 題補充題` : ""].filter(Boolean);
+  const msg = at => bk.msg && bk.msg.at === at
+    ? `<p class="${bk.msg.ok ? "flash" : "errs"}" id="bk-msg" role="${bk.msg.ok ? "status" : "alert"}" tabindex="-1">${esc(bk.msg.text)}</p>` : "";
+  const canDl = bkCanDownload();
+  return `<section class="backup" id="backup" aria-labelledby="bk-h">
+    <div>
+      <h3 id="bk-h" tabindex="-1">備份作答紀錄</h3>
+      <p class="note">把這份練習簿的作答紀錄、標記、補充題和設定存成一個 JSON 檔，可以留作備份、搬到另一台裝置，或交給別人分析。${remote.ref ? "目前也會同步到你的 Claude 帳號，備份檔是另外多存一份。" : ""}</p>
+    </div>
+    <div class="bk-part">
+      <h4>匯出</h4>
+      <p class="note">${have.length ? `目前有 ${have.join("、")}。` : "目前還沒有作答紀錄。"}</p>
+      ${remote.mode === "connecting" ? `<p class="note" id="bk-wait">還在讀取帳號裡的紀錄，稍等這行消失再匯出，備份才會包含其他裝置的作答。</p>` : ""}
+      <div class="row">
+        ${canDl ? `<button class="btn ghost" data-act="bk-dl">下載備份檔（JSON）</button>` : ""}
+        <button class="btn ghost" data-act="bk-copy">複製到剪貼簿</button>
+      </div>
+      ${canDl ? "" : `<p class="note">這裡不能直接下載檔案。請按「複製到剪貼簿」，再貼到記事本存成 .json 檔。</p>`}
+      ${msg("out")}
+      ${bk.out ? `<textarea id="bk-out" class="bk-text" rows="6" readonly aria-label="備份內容（JSON），請全選後複製">${esc(bk.out)}</textarea>` : ""}
+    </div>
+    <div class="bk-part">
+      <h4 id="bk-in" tabindex="-1">匯入</h4>
+      <p class="note">匯入的紀錄會和這裡的合併：同一題保留時間較新的那筆，不會用舊紀錄蓋掉較新的作答。按下確認前會先列出會改到什麼。</p>
+      <div class="row"><label class="btn ghost bk-file">選擇備份檔…<input type="file" class="sr-only" accept=".json,application/json,text/plain" data-bkfile></label></div>
+      <label class="flabel" for="bk-paste">或把備份內容（JSON）貼在這裡</label>
+      <textarea id="bk-paste" class="bk-text" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off">${esc(bk.paste)}</textarea>
+      <div class="row"><button class="btn ghost" data-act="bk-read">讀取貼上的內容</button></div>
+      ${msg("in")}
+      ${bk.pending ? bkPreviewHTML(bk.pending) : ""}
+    </div>
+  </section>`;
+}
+
 function renderHome(){
   const p = pools();
   if (scope === "review" && !p.review.length) scope = "all";
@@ -3497,8 +3796,12 @@ function renderHome(){
   </section>
   <footer class="foot">
     <p class="sync" id="sync">${SYNC_TEXT[remote.mode]}</p>
-    <button class="btn text danger" data-act="reset">${resetArmed ? "再按一次確認清除" : "清除所有進度"}</button>
-  </footer>`;
+    <div class="foot-act">
+      <button class="btn text" data-act="bk-toggle" aria-expanded="${bk.open}">${bk.open ? "收起備份作答紀錄" : "備份作答紀錄"}</button>
+      <button class="btn text danger" data-act="reset">${resetArmed ? "再按一次確認清除" : "清除所有進度"}</button>
+    </div>
+  </footer>
+  ${bk.open ? bkHTML() : ""}`;
 }
 
 /* 不可作答的題目：不能作答，直接顯示原本的答案、解析和問題說明。沒有作答元件、標記和 AI 解析，不計時，也不寫入任何紀錄。 */
@@ -3709,11 +4012,16 @@ function render(scrollTop){
   }
   if (view === "edit" && !skipCollectOnce) collectForm();
   skipCollectOnce = false;
+  /* 備份區貼上的內容：重畫前先收起來，重畫後放回去；正在輸入時連游標位置一起保留（例如同步在背景更新了主頁）。 */
+  const bkp = document.getElementById("bk-paste");
+  let bkSel = null;
+  if (bkp){ bk.paste = bkp.value; if (document.activeElement === bkp) bkSel = [bkp.selectionStart, bkp.selectionEnd]; }
   if ((view === "quiz" || view === "summary") && !state.session) view = "home";
   if (view === "edit" && !form) view = "extras";
   syncTypeFilter();
   $app.innerHTML = view === "quiz" ? renderQuiz() : view === "summary" ? renderSummary()
     : view === "extras" ? renderExtras() : view === "edit" ? renderEdit() : view === "print" && printCfg ? renderPrint() : view === "browse" && browse ? renderBrowse() : renderHome();
+  if (bkSel){ const el = document.getElementById("bk-paste"); if (el){ el.focus({preventScroll: true}); try { el.setSelectionRange(bkSel[0], bkSel[1]); } catch(e){} } }
   if (scrollTop){
     window.scrollTo(0, 0);
     if (view === "quiz"){
@@ -3779,6 +4087,7 @@ $app.addEventListener("input", e => {
 });
 $app.addEventListener("change", e => {
   const t = e.target;
+  if (t && t.dataset && t.dataset.bkfile !== undefined){ const f = t.files && t.files[0]; if (f) bkReadFile(f); return; }
   if (t && t.dataset && t.dataset.bexp){ if (browse){ browse.showE = t.checked; render(); const el = document.querySelector("[data-bexp]"); if (el) el.focus(); } return; }
   if (t && t.dataset && t.dataset.skipm){ setPref("skipMastered", t.checked); render(); const el = document.querySelector("[data-skipm]"); if (el) el.focus(); return; }
   if (t && t.dataset && t.dataset.extype){
@@ -3875,6 +4184,19 @@ $app.addEventListener("click", e => {
     const t = document.querySelector(`[data-act="map-toggle"][data-bank="${k}"]`); if (t) t.focus();
     return;
   }
+  if (act === "bk-toggle"){
+    bk.open = !bk.open;
+    if (!bk.open){ bk.msg = null; bk.pending = null; bk.out = ""; }
+    render();
+    const t = document.querySelector(`[data-act="bk-toggle"]`); if (t) t.focus();
+    const sec = document.getElementById("backup"); if (sec && sec.scrollIntoView) sec.scrollIntoView({block: "nearest"});
+    return;
+  }
+  if (act === "bk-dl"){ bkDownload(); return; }
+  if (act === "bk-copy"){ bkCopy(); return; }
+  if (act === "bk-read"){ const ta = document.getElementById("bk-paste"); bkLoad(ta ? ta.value : bk.paste, ""); return; }
+  if (act === "bk-confirm"){ bkConfirm(); return; }
+  if (act === "bk-cancel"){ bk.pending = null; bk.msg = null; render(); bkFocus("bk-in"); return; }
   if (act === "abbr-submit"){ submitAbbr(); return; }
   if (act === "abbr-giveup"){ submitAbbr(true); return; }
   if (act === "drag-submit"){ submitDrag(); return; }
@@ -4066,7 +4388,7 @@ showBankIssues();
 render();
 initRemote();
 if (window.claude && typeof window.claude.use === "function"){
-  window.claude.use("downloads").then(x => { dlApi = x || null; if (view === "print") render(); }).catch(() => {});
+  window.claude.use("downloads").then(x => { dlApi = x || null; if (view === "print" || (view === "home" && bk.open)) render(); }).catch(() => {});
   window.claude.use("sample").then(x => { sampleApi = x || null; if (view === "edit") render(); }).catch(() => {});
 }
 

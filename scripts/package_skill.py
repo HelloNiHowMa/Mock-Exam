@@ -66,6 +66,13 @@ def main():
     if not m or m.group(1) != NAME:
         sys.exit(f"SKILL.md 開頭的 name 要是 {NAME}。")
 
+    # 範本最上方說明的引擎版本，和程式裡寫進備份檔的 ENGINE_VERSION 要一致
+    tpl = (ROOT / "assets" / "template.html").read_text(encoding="utf-8")
+    ver = re.search(r"引擎版本：(\d{4}-\d{2}-\d{2}[a-z]?)", tpl)
+    code_ver = re.search(r'const ENGINE_VERSION = "([^"]*)"', tpl)
+    if ver and code_ver and ver.group(1) != code_ver.group(1):
+        sys.exit(f"assets/template.html 最上方說明的引擎版本是 {ver.group(1)}，程式裡的 ENGINE_VERSION 卻是 {code_ver.group(1)}，請改成一樣再打包。")
+
     fs = files()
     blob = build(fs)
     out = Path(args.out)
@@ -84,7 +91,6 @@ def main():
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(blob)
-    ver = re.search(r"引擎版本：(\d{4}-\d{2}-\d{2}[a-z]?)",(ROOT / "assets" / "template.html").read_text(encoding="utf-8"))
     print(f"已產生 {out}（{len(fs)} 個檔案，引擎版本 {ver.group(1) if ver else '未知'}）")
     for f in fs:
         print(f"  {NAME}/{f.relative_to(ROOT).as_posix()}")

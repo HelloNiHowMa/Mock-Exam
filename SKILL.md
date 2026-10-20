@@ -88,7 +88,11 @@ python <skill>/scripts/build.py --bank /home/claude/<id>/bank.json \
 
 5. 發佈時傳入原本的 artifact 連結（`url`）更新同一份，並省略 `capabilities`，沿用原本的宣告。
 
-同樣的步驟也能把舊練習簿升級到新版引擎：取出題庫，用新範本重新產生即可。
+同樣的步驟也能把舊練習簿升級到新版引擎：取出題庫，用新範本重新產生即可。主頁的「備份作答紀錄」要有 `downloads` 能力才能下載檔案（沒有時只能複製到剪貼簿）；舊練習簿當初沒宣告 `downloads` 的話，升級時改傳完整的 `{"db": {}, "user": {}, "sample": {}, "downloads": true}`。
+
+## 使用者要分析自己的作答紀錄
+
+請他在練習簿主頁最下方按「備份作答紀錄」，匯出 JSON 檔上傳，或複製內容貼過來。欄位、題號的編法和狀態的判斷方式見 `references/progress-format.md`；要對照題目內容時，再用 `build.py --extract` 從練習簿取出 `bank.json`。不要叫使用者用開發者工具讀 localStorage。
 
 ## 不要做的事
 
