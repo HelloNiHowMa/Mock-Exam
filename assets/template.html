@@ -11,14 +11,21 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-20c（主頁最下方顯示引擎版本，旁邊有「檢查新版」：
+  引擎版本：2026-10-23（每日一題加入「換一題」：
+  1. 每日一題的題目頁，作答前在「每日一題・…」標籤旁有「換一題」按鈕，一天一次；作答後、或今天已經換過，就不顯示。
+  2. 換成沒做過的新題；沒有新題時抽很久沒做、沒答錯過的題目。不抽排隊複習的錯題，也不抽和原題同一個易混淆題組的題目。
+  3. 換掉的題目 7 天內每日一題不抽（抽到的是同組另一題時，連同原本答錯的那題），作答紀錄不動，延後期滿照原本的規則回來。
+  考我一題、一般練習和到期複習不受影響。主頁的每日一題說明會寫今天換掉哪一題、幾月幾日起才會再出現。
+  4. prefs.daily 多 sw（換掉的題號）、swk（換掉時的類型）、swsub；prefs 多 dailyHold：{題號: 可以再抽的那天}。
+  兩者都跟著帳號同步；prefs 整包取較新的，所以 known-issues.md 的 KI-001 也適用於換題。作答紀錄（stats）的結構沒有變。）
+  上一版 2026-10-20c：主頁最下方顯示引擎版本，旁邊有「檢查新版」：
   1. 按下才連 GitHub，讀 HelloNiHowMa/Mock-Exam 的 main 分支 repo 根目錄的 VERSION；main 還沒有 VERSION 時改讀 main 範本最上方的引擎版本。
   不會自動連線，頁面載入時不送出任何請求。
   2. 結果分成：已是最新版、GitHub 上有新版（附更新紀錄的連結，說明要用新範本重新產生）、這裡比 GitHub 新（開發中的版本）、
   連不到（10 秒逾時、離線，或 Claude artifact 不能連外），連不到時給 GitHub 的連結讓使用者自己看。
   3. 引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。repo 根目錄的 VERSION 要和這裡一致，scripts/package_skill.py 會檢查。
   只加了主頁最下方一行，作答紀錄（state）的結構和其他功能都沒有變。）
-  上一版 2026-10-20b：主頁加入「備份作答紀錄」：
+  更早 2026-10-20b：主頁加入「備份作答紀錄」：
   1. 匯出：把作答紀錄（記憶體裡的整份 state：stats、marks、prefs、extras、groups、resetAt、session、updatedAt）包一層中繼資料，
   下載成 <config.id>-progress-YYYYMMDD.json，或複製到剪貼簿。不管紀錄來自這台裝置的瀏覽器還是帳號同步，內容都一樣。
   在 Claude artifact 裡要宣告 downloads 能力才能下載；不能下載、也不能寫入剪貼簿時，直接顯示整份內容讓使用者自己複製。
@@ -743,6 +750,10 @@ header.top{margin-bottom:26px}
 .note{color:var(--muted);font-size:.9rem}
 .daily{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0 0 14px}
 .daily .note{flex:1 1 220px}
+.dswap{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0 0 12px}
+.dswap .gtag{margin:0}
+.dswap .btn{padding:.3em .9em;font-size:.88rem}
+.dswap .note{font-size:.82rem;color:var(--muted);margin:0}
 
 .start{margin-top:34px;display:grid;gap:18px}
 .field{display:grid;gap:8px}
@@ -1341,7 +1352,7 @@ function syncTypeFilter(){
 }
 const KEY = SK.local;
 /* 和最上方說明的「引擎版本」一致，寫進匯出的備份檔。scripts/package_skill.py 會檢查兩邊有沒有對上。 */
-const ENGINE_VERSION = "2026-10-20c";
+const ENGINE_VERSION = "2026-10-23";
 /* 主頁最下方的「檢查新版」：按下才連 GitHub，讀 main 分支 repo 根目錄的 VERSION（還沒有時改讀範本最上方的引擎版本）。
    連不到（離線、逾時，或 Claude artifact 不能連外）就給連結讓使用者自己看。引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。 */
 const ENGINE_REPO = "https://github.com/HelloNiHowMa/Mock-Exam";
@@ -2259,8 +2270,12 @@ function luckyGo(exclude){
    3. 沒答錯過的題目 DAILY_OLD 天內不再出現，而且排在新題後面。
    4. 新題和錯題複習輪流：上一題是新題，這次先抽到期的錯題；沒有到期的錯題就繼續抽新題。
    5. 抽到錯題時，有 DAILY_SWAP 的機率改抽同一個易混淆題組的另一題。
-   今天抽到的題目記在 prefs.daily（跟著帳號同步），同一天重開頁面還是同一題。 */
-const DAILY_COOL = 3, DAILY_REV = [3, 7, 14, 30], DAILY_OLD = 30, DAILY_SWAP = 0.5;
+   6. 換一題：作答前可以在題目頁按「換一題」，一天一次。換成沒做過的新題；沒有新題時抽很久沒做、沒答錯過的題目，
+      不抽排隊複習的錯題，也不抽和原題同一個易混淆題組的題目。換掉的題目（抽到的是同組另一題時，連同原本答錯的那題）
+      DAILY_HOLD 天內每日一題不抽，作答紀錄不動，延後期滿照原本的規則回來。考我一題和一般練習不受影響。
+   今天抽到的題目記在 prefs.daily（跟著帳號同步），同一天重開頁面還是同一題；換過一題時 daily.sw 是換掉的題號。
+   延後中的題目記在 prefs.dailyHold：{題號: 可以再抽的那天（dailyDayNum）}，過期的項目在下次換題時清掉。 */
+const DAILY_COOL = 3, DAILY_REV = [3, 7, 14, 30], DAILY_OLD = 30, DAILY_SWAP = 0.5, DAILY_HOLD = 7;
 const DAILY_KIND = {new: "新題", rev: "複習答錯過的題目", old: "複習很久沒做的題目"};
 function dailyAll(){ return typeof ALLQ !== "undefined" ? ALLQ : LABS; }
 function dailyOk(n){ return !!byN[n] && !isVoid(n) && srcOk(n) && typeOk(n); }
@@ -2272,14 +2287,19 @@ function dailyDaysSince(n){ const s = state.stats[n]; return s && s.t ? dailyDay
 function dailyNeedsReview(n){ const s = state.stats[n]; return !!s && attempts(n) > 0 && (s.w || 0) > 0 && (s.s || 0) < DAILY_REV.length; }
 function dailyRevDue(n){ return dailyNeedsReview(n) && dailyDaysSince(n) >= DAILY_REV[Math.min(state.stats[n].s || 0, DAILY_REV.length - 1)]; }
 function dailyRnd(a){ return a[Math.floor(Math.random() * a.length)]; }
+function dailyHoldMap(){ const h = pref("dailyHold"); return h && typeof h === "object" && !Array.isArray(h) ? h : {}; }
+function dailyHeld(n){ const v = dailyHoldMap()[n]; return typeof v === "number" && dailyDayNum(Date.now()) < v; }
+function dailyDayLabel(dn){ const d = new Date(dn * 864e5); return (d.getUTCMonth() + 1) + "/" + d.getUTCDate(); }
 function dailyTop(list, score){
   let best = -Infinity, out = [];
   list.forEach(n => { const v = score(n); if (v > best){ best = v; out = [n]; } else if (v === best) out.push(n); });
   return dailyRnd(out);
 }
 function dailyPick(lastKind){
-  const all = dailyAll().map(q => q.n).filter(dailyOk);
-  if (!all.length) return null;
+  const ok = dailyAll().map(q => q.n).filter(dailyOk);
+  if (!ok.length) return null;
+  const free = ok.filter(n => !dailyHeld(n));
+  const all = free.length ? free : ok;   // 題目全部延後中（題庫很小時）就不管延後
   const age = n => Math.min(dailyDaysSince(n), 9999);
   const cool = all.filter(n => dailyDaysSince(n) >= DAILY_COOL);
   const rev = cool.filter(dailyRevDue);
@@ -2294,7 +2314,7 @@ function dailyPick(lastKind){
       if (gs.length){
         const x = dailyRnd(gs);
         p.gi = x.i;
-        const sib = groupQs(x.g).filter(m => m !== n && dailyOk(m) && dailyDaysSince(m) >= DAILY_COOL);
+        const sib = groupQs(x.g).filter(m => m !== n && all.indexOf(m) >= 0 && dailyDaysSince(m) >= DAILY_COOL);
         if (sib.length && Math.random() < DAILY_SWAP){ p.sub = n; p.n = dailyRnd(sib); }
       }
     }
@@ -2330,10 +2350,54 @@ function dailyGo(){
   if (typeof d.gi === "number" && typeof allGroups === "function" && allGroups()[d.gi]) opts.gmap = {[d.n]: d.gi};
   startSession([d.n], "daily", opts);
 }
-function dailyTag(){
+/* 換一題的候選。不抽：排隊複習的錯題（答錯過、還沒連續答對 4 次）、延後中的題目、DAILY_COOL 天內做過的題目、
+   今天這題（含 sub）和它們所在易混淆題組的題目。cand 是全部候選，fresh 是沒做過的，old 是 DAILY_OLD 天以上沒做的。 */
+function dailySwapPool(cur){
+  const base = [cur.n, cur.sub].filter(x => x !== undefined && x !== null).map(String);
+  const skip = new Set(base);
+  if (typeof usableGroups === "function") usableGroups().forEach(x => {
+    const qs = groupQs(x.g);
+    if (qs.some(m => base.indexOf(String(m)) >= 0)) qs.forEach(m => skip.add(String(m)));
+  });
+  const cand = dailyAll().map(q => q.n).filter(n => dailyOk(n) && !skip.has(String(n)) && !dailyHeld(n) && dailyDaysSince(n) >= DAILY_COOL && !dailyNeedsReview(n));
+  return {cand, fresh: cand.filter(n => !attempts(n)), old: cand.filter(n => attempts(n) > 0 && dailyDaysSince(n) >= DAILY_OLD)};
+}
+function dailySwapPick(cur){
+  const P = dailySwapPool(cur);
+  const age = n => Math.min(dailyDaysSince(n), 9999);
+  if (P.fresh.length) return {n: dailyRnd(P.fresh), kind: "new"};
+  if (P.cand.length) return {n: dailyTop(P.old.length ? P.old : P.cand, age), kind: "old"};
+  return null;
+}
+/* 題目頁要不要顯示「換一題」：今天的每日一題、還沒作答、今天還沒換過，而且有題目可以換 */
+function dailyCanSwap(n){
+  const s = state.session, cur = pref("daily");
+  if (!s || s.mode !== "daily" || s.exam || s.answers[n] !== undefined) return false;
+  if (!cur || cur.done || cur.sw !== undefined || cur.d !== dailyDayKey() || String(cur.n) !== String(n)) return false;
+  return dailySwapPool(cur).cand.length > 0;
+}
+function dailySwap(){
+  const s = state.session; if (!s) return;
+  const n = currentN(), cur = pref("daily");
+  if (!dailyCanSwap(n)) return;
+  const p = dailySwapPick(cur);
+  if (!p) return;
+  const today = dailyDayNum(Date.now()), back = today + DAILY_HOLD;
+  const old = dailyHoldMap(), hold = {};
+  Object.keys(old).forEach(k => { if (typeof old[k] === "number" && old[k] > today) hold[k] = old[k]; });
+  [cur.n, cur.sub].forEach(m => { if (m !== undefined && m !== null) hold[m] = back; });
+  const d = {d: cur.d, done: false, lk: cur.lk || "", n: p.n, kind: p.kind, sw: cur.n, swk: cur.kind};
+  if (cur.sub !== undefined && cur.sub !== null) d.swsub = cur.sub;
+  state.prefs = Object.assign({}, state.prefs, {daily: d, dailyHold: hold, t: Date.now()});
+  startSession([p.n], "daily");
+}
+function dailyTag(n){
   const cur = pref("daily");
   const k = !cur ? "" : cur.sub ? "和你答錯過的題目同一個易混淆題組" : (DAILY_KIND[cur.kind] || "");
-  return `<p class="gtag">每日一題${k ? "・" + k : ""}</p>`;
+  const sw = cur && cur.sw !== undefined && String(cur.n) === String(n) ? "（今天換過一題）" : "";
+  const tag = `<p class="gtag">每日一題${k ? "・" + k : ""}${sw}</p>`;
+  if (!dailyCanSwap(n)) return tag;
+  return `<div class="dswap">${tag}<button class="btn ghost" data-act="daily-swap">換一題</button><span class="note">換掉的題目延後 ${DAILY_HOLD} 天，一天限換一次</span></div>`;
 }
 function dailyHomeHTML(){
   const cur = pref("daily");
@@ -2346,7 +2410,12 @@ function dailyHomeHTML(){
   if (today && today.done) note = `今天這題做完了（${today.ok ? "答對" : "答錯，" + DAILY_REV[0] + " 天後會再考一次"}）。明天會換一題。`;
   else if (busy) note = "有一回練習還沒做完，先繼續或放棄那一回，再做每日一題。";
   else if (today) note = `今天的題目已經抽好，還沒作答。`;
-  else note = `一天一題，每天不重複：${DAILY_COOL} 天內做過的題目不抽；答錯的題目 ${DAILY_REV[0]} 天後回來，連續答對再拉長到 ${DAILY_REV.slice(1).join("、")} 天；新題和錯題複習輪流。沿用下方的題型和題目來源設定。`;
+  else note = `一天一題，每天不重複：${DAILY_COOL} 天內做過的題目不抽；答錯的題目 ${DAILY_REV[0]} 天後回來，連續答對再拉長到 ${DAILY_REV.slice(1).join("、")} 天；新題和錯題複習輪流。作答前可以換一題（一天一次），換掉的題目延後 ${DAILY_HOLD} 天。沿用下方的題型和題目來源設定。`;
+  if (today && today.sw !== undefined){
+    const h = dailyHoldMap()[today.sw];
+    const also = today.swsub !== undefined ? `（連同同一個易混淆題組裡答錯過的${esc(qLabel(today.swsub))}）` : "";
+    note += `今天換掉的${esc(qLabel(today.sw))}${also}${typeof h === "number" ? "，" + dailyDayLabel(h) + " 起" : ""}才會再出現在每日一題。`;
+  }
   if (waiting && !(today && today.done && !today.ok && waiting === 1)) note += `目前有 ${waiting} 題答錯過的題目在排隊複習。`;
   return `<div class="daily"><button class="btn primary big" data-act="daily" ${!list.length || busy || (today && today.done) ? "disabled" : ""}>每日一題</button><p class="note">${note}</p></div>`;
 }
@@ -3922,7 +3991,7 @@ function renderQuiz(){
   const nextLabel = s.mode === "lucky" ? "再來一題" : s.ids.length === 1 ? "回到總覽" : (s.i === s.ids.length - 1 ? "看這回結果" : "下一題");
   const gi = s.gmap ? s.gmap[n] : undefined;
   const grp = gi !== undefined ? (allGroups()[gi] || null) : null;
-  let gtag = s.mode === "daily" ? dailyTag() : "";
+  let gtag = s.mode === "daily" ? dailyTag(n) : "";
   if (grp && !(s.mode === "daily" && !answered)){
     const members = s.ids.filter(x => s.gmap[x] === gi);
     gtag += `<p class="gtag">題組：${esc(grp.name)}${members.length > 1 ? `（${members.indexOf(n) + 1} / ${members.length}）` : ""}</p>`;
@@ -4234,6 +4303,7 @@ $app.addEventListener("click", e => {
     return;
   }
   if (act === "daily"){ dailyGo(); return; }
+  if (act === "daily-swap"){ dailySwap(); return; }
   if (act === "reveal"){ reveal(); return; }
   if (act === "dd-reveal"){ ddReveal(); return; }
   if (act === "dd-self"){ ddSelf(b.dataset.ok === "1"); return; }
