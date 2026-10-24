@@ -6,19 +6,30 @@
 <title>5G SA 協定架構練習簿（範例）</title>
 <!-- ================================================================
   題庫資料區：要換成自己的題目，只需要改下面兩個 <script> 區塊。
-  1. id="bank"：設定（config）、題目（questions）、縮寫題（abbr）、易混淆組（groups）。
+  1. id="bank"：設定（config）、題目（questions）、縮寫題（abbr）、易混淆組（groups）、章節（chapters，可省略）。
      格式說明見 schema.md；格式有錯時，打開頁面最上方會列出錯在哪一題。
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-23（每日一題加入「換一題」：
+  引擎版本：2026-10-24（依章節出題：
+  1. 題庫可以加 chapters：[{id, name, sub, exam}]，題目和縮寫題用 ch 對到章節的 id。沒有 chapters 的練習簿畫面和行為完全不變。
+  ch 對不到任何一章時不擋題目，只在頁面最上方提醒，那題算「未標章節」。頁面上新增的補充題沒有章節，也算未標章節。
+  2. 開始練習多一個「章節」欄，可以複選，不勾就是全部章節；有未標章節的題目時多一個「未標章節」可勾。
+  選擇存在 prefs.chapters（章節 id 轉成文字的陣列，"" 代表未標章節），跟著帳號同步。
+  章節套用在開始練習的練習和模擬考、考前快速瀏覽和列印；每日一題和考我一題不分章節，一律從全部章節抽，兩者的說明都寫明這點。
+  3. 題庫地圖下方多一張「各章節的掌握情況」：已作答、累計正確率、正式考試題數（有填 exam 時），點章節名稱就只勾這一章。
+  練習或模擬考出到兩個以上章節時，成績頁列出各章節答對幾題。
+  4. 有章節填了 exam（正式考試這一章的題數）時，模擬考的題數多一個「照正式考試」：從勾選的章節（不勾就是全部）各抽 exam 題，
+  目前的出題範圍裡不夠的就全拿，說明裡寫少了幾題；沒填 exam 的章節和未標章節不會抽到。這個選擇不記住，和其他題數一樣。
+  作答紀錄（stats）和練習存檔（session）的結構沒有變；prefs 多 chapters。prefs 整包取較新的，所以 known-issues.md 的 KI-001 也適用。）
+  上一版 2026-10-23：每日一題加入「換一題」：
   1. 每日一題的題目頁，作答前在「每日一題・…」標籤旁有「換一題」按鈕，一天一次；作答後、或今天已經換過，就不顯示。
   2. 換成沒做過的新題；沒有新題時抽很久沒做、沒答錯過的題目。不抽排隊複習的錯題，也不抽和原題同一個易混淆題組的題目。
   3. 換掉的題目 7 天內每日一題不抽（抽到的是同組另一題時，連同原本答錯的那題），作答紀錄不動，延後期滿照原本的規則回來。
   考我一題、一般練習和到期複習不受影響。主頁的每日一題說明會寫今天換掉哪一題、幾月幾日起才會再出現。
   4. prefs.daily 多 sw（換掉的題號）、swk（換掉時的類型）、swsub；prefs 多 dailyHold：{題號: 可以再抽的那天}。
   兩者都跟著帳號同步；prefs 整包取較新的，所以 known-issues.md 的 KI-001 也適用於換題。作答紀錄（stats）的結構沒有變。）
-  上一版 2026-10-20c：主頁最下方顯示引擎版本，旁邊有「檢查新版」：
+  更早 2026-10-20c：主頁最下方顯示引擎版本，旁邊有「檢查新版」：
   1. 按下才連 GitHub，讀 HelloNiHowMa/Mock-Exam 的 main 分支 repo 根目錄的 VERSION；main 還沒有 VERSION 時改讀 main 範本最上方的引擎版本。
   不會自動連線，頁面載入時不送出任何請求。
   2. 結果分成：已是最新版、GitHub 上有新版（附更新紀錄的連結，說明要用新範本重新產生）、這裡比 GitHub 新（開發中的版本）、
@@ -764,6 +775,21 @@ header.top{margin-bottom:26px}
 .seg button[aria-checked="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .seg button:disabled{opacity:.45;cursor:not-allowed}
 .seg .n{font-variant-numeric:tabular-nums;opacity:.75;margin-left:.3em}
+/* 章節：開始練習的複選清單，和題庫地圖下方的各章節表 */
+.chpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15em),1fr));gap:6px 16px}
+.chpick .chk{cursor:pointer;align-items:flex-start;line-height:1.4;min-width:0}
+.chpick .chk input{margin-top:.15em;flex:none}
+.chpick .chn{min-width:0;overflow-wrap:anywhere}
+.chpick .n{font-variant-numeric:tabular-nums;color:var(--muted);margin-left:.1em;flex:none}
+.btn.text.inl{padding:0 .1em;margin:0 .4em 0 .2em;font-size:inherit}
+.chwrap{overflow-x:auto;margin:8px 0 0}
+.chtbl{width:100%;border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+.chtbl th,.chtbl td{padding:.42em .5em;border-bottom:1px solid var(--line);text-align:left;vertical-align:baseline}
+.chtbl th:first-child,.chtbl td:first-child{padding-left:0}
+.chtbl thead th{font-weight:500;color:var(--muted);font-size:.85rem}
+.chtbl .num{text-align:right;white-space:nowrap}
+.chtbl .btn.text{padding:0;text-align:left;color:var(--ink);overflow-wrap:anywhere}
+.chtbl .chsub{display:block;color:var(--muted);font-size:.82rem;margin-top:2px}
 .start .go{justify-self:start}
 
 .foot{margin-top:44px;padding-top:16px;border-top:1.5px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px}
@@ -878,6 +904,7 @@ header.top{margin-bottom:26px}
 @media (max-width:560px){.keys{display:none}}
 
 .wl{list-style:none;padding:0;margin:18px 0 24px;display:grid;gap:8px}
+.wl>li{min-width:0}
 .wrow{width:100%;text-align:left;display:flex;gap:12px;align-items:baseline;background:var(--surface);border:1.5px solid var(--line);border-radius:8px;padding:12px 14px;cursor:pointer}
 .wrow:hover{border-color:var(--ink)}
 .wn{flex:none;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums}
@@ -1079,6 +1106,29 @@ function loadBank(){
   const sk = {local: config.id + "-progress-v1", remote: config.id + "-progress", inbox: config.id + "-inbox", aiLocal: config.id + "-ai-v1", aiRemote: config.id + "-ai"};
   if (isObj(config.storageKeys)) Object.keys(sk).forEach(k => { const v = config.storageKeys[k]; if (typeof v === "string" && /^[A-Za-z0-9_.~:@+-]{2,80}$/.test(v)) sk[k] = v; });
 
+  /* 章節：[{id, name, sub, exam}]。題目和縮寫題用 ch 對到 id；id 可以是 0 以上的整數或 1 到 20 個字的文字，比對時一律轉成文字（key）。
+     ch 對不到任何一章時不擋題目，只提醒，那題算「未標章節」。 */
+  const chKey = v => Number.isInteger(v) && v >= 0 ? String(v) : (typeof v === "string" && v.trim() && v.trim().length <= 20 ? v.trim() : null);
+  const chapters = [], chKeys = new Set(), chMiss = [];
+  (Array.isArray(bank.chapters) ? bank.chapters : (bank.chapters === undefined ? [] : (errors.push("chapters 要是陣列。"), []))).forEach((c, idx) => {
+    const where = `章節第 ${idx + 1} 筆${isObj(c) && str(c.name) ? `（${c.name.trim()}）` : ""}`;
+    if (!isObj(c)) return errors.push(`${where}：要是一個 { } 物件，例如 {"id": 1, "name": "第 1 章 測試基礎"}。`);
+    const key = chKey(c.id);
+    if (key === null) return errors.push(`${where}：id 要是 0 以上的整數或 1 到 20 個字的文字，題目的 ch 用它對到這一章。`);
+    if (chKeys.has(key)) return errors.push(`${where}：id「${key}」重複了。`);
+    if (!str(c.name)) return errors.push(`${where}：缺少章節名稱 name。`);
+    if (c.sub !== undefined && typeof c.sub !== "string") return errors.push(`${where}：sub 要是文字。`);
+    if (c.exam !== undefined && !(Number.isInteger(c.exam) && c.exam >= 0)) return errors.push(`${where}：exam（正式考試這一章的題數）要是 0 以上的整數。`);
+    chKeys.add(key);
+    chapters.push({key, name: c.name.trim(), sub: typeof c.sub === "string" ? c.sub.trim() : "", exam: c.exam || 0});
+  });
+  const takeCh = (r, where) => {
+    if (r.ch === undefined) return undefined;
+    const k = chKey(r.ch);
+    if (k === null || !chKeys.has(k)){ chMiss.push(where); return undefined; }
+    return k;
+  };
+
   /* 題目 */
   const questions = [], seen = new Set();
   const TYPES = ["mcq", "multi", "cls", "order", "match"];
@@ -1104,6 +1154,8 @@ function loadBank(){
       if (miss.length) notes.push(`${where}：${f} 用到的圖片 ${miss.join("、")} 不在圖片區塊裡，這張圖不會顯示。`);
     }
     if (q.flag !== undefined) q.flag = !!q.flag;
+    const ck = takeCh(q, where);
+    if (ck === undefined) delete q.ch; else q.ch = ck;
     /* 不可作答：只是多一個狀態，題目原本的欄位照常檢查。 */
     if (q.void !== undefined && typeof q.void !== "boolean") return bad("void 要是 true 或 false（不加引號）。");
     if (q.voidNote !== undefined && typeof q.voidNote !== "string") return bad("voidNote 要是文字。");
@@ -1161,8 +1213,9 @@ function loadBank(){
     if (r.void === true && !str(r.voidNote)) notes.push(`${where}：標成不可作答（void），但沒有用 voidNote 說明這題哪裡有問題。`);
     seenAb.add(k);
     abbr.push({cat: str(r.cat) ? r.cat.trim() : "縮寫", abbr: r.abbr.trim(), full: r.full.trim(), alts: (r.alts || []).map(x => x.trim()).filter(Boolean).slice(0, 10), e: typeof r.e === "string" ? r.e : "",
-      void: r.void === true, voidNote: typeof r.voidNote === "string" ? r.voidNote : ""});
+      void: r.void === true, voidNote: typeof r.voidNote === "string" ? r.voidNote : "", ch: takeCh(r, `縮寫題 ${r.abbr.trim()}`)});
   });
+  if (chMiss.length) notes.push(`${chMiss.slice(0, 8).join("、")}${chMiss.length > 8 ? ` 等 ${chMiss.length} 題` : ""}的章節 ch 對不到 chapters 裡的任何一章${chapters.length ? "" : "（題庫沒有 chapters）"}，先算「未標章節」。`);
 
   /* 易混淆組：[{name, qs: [題號…], key: 分辨關鍵}] */
   const groups = [];
@@ -1177,7 +1230,7 @@ function loadBank(){
     groups.push({name: g.name.trim(), qs, key: typeof g.key === "string" ? g.key : ""});
   });
   if (!questions.length && !abbr.length) errors.push("題庫裡沒有任何有效的題目。");
-  return {config, sk, questions, abbr, groups, images, errors, notes};
+  return {config, sk, questions, abbr, groups, chapters, images, errors, notes};
 }
 function showBankIssues(){
   const {errors, notes} = BANK_LOAD;
@@ -1310,7 +1363,7 @@ function optIdx(n){ const q = byN[n]; return q && q.o ? q.o.map((_, i) => i) : [
    內建的縮寫題編號是 20000 + j；自己新增的縮寫題和補充選擇題一樣存在 state.extras（type: "abbr"）。
    判定全名時會忽略大小寫、標點、連字號、多餘空白、and/of/the 這類虛詞和字尾的複數 s，也接受 alts 裡的其他寫法。 */
 const ABBR_BASE = 20000;
-const ABBR = BANK_LOAD.abbr.map((r, j) => ({n: ABBR_BASE + j + 1, type: "abbr", cat: r.cat, q: r.abbr, ans: r.full, alts: r.alts, e: r.e, void: r.void, voidNote: r.voidNote}));
+const ABBR = BANK_LOAD.abbr.map((r, j) => Object.assign({n: ABBR_BASE + j + 1, type: "abbr", cat: r.cat, q: r.abbr, ans: r.full, alts: r.alts, e: r.e, void: r.void, voidNote: r.voidNote}, r.ch !== undefined ? {ch: r.ch} : {}));
 /* ---------- 不可作答的題目 ----------
    題庫裡的題目或縮寫題標了 "void": true：題目留在題庫，題庫地圖以灰色刪除線顯示，點進去只看答案和問題說明。
    所有出題來源、題數和統計都用 isVoid 排除；state 裡這題的作答紀錄、複習排程和標記一律不動，拿掉 void 就全部回來。
@@ -1350,9 +1403,49 @@ function syncTypeFilter(){
   if (t === "drag" && !ALLQ.some(q => qType(q.n) === "drag" && !q.void)) t = "mcq";
   typeFilter = t;
 }
+/* ---------- 章節 ----------
+   題庫有 chapters 時，「開始練習」多一個「章節」欄，可以複選，不勾就是全部章節。
+   選擇存在 prefs.chapters（章節 key 的陣列，"" 代表未標章節），跟著帳號同步，和 prefs.qtype 一樣在 render() 開頭讀回。
+   章節只套用在「開始練習」的練習和模擬考、考前快速瀏覽和列印（都經過 pools()）；每日一題和考我一題不分章節，
+   一律從全部章節抽：它們在主頁最上方，按下去就出題，使用者不會先看到下方的章節設定。畫面上的說明也這樣寫。
+   頁面上新增的補充題沒有章節，算「未標章節」。
+   chapters[].exam 是正式考試這一章的題數：模擬考的題數可以選「照正式考試」（count = -1），
+   從勾選的章節（不勾就是全部）各抽 exam 題；目前範圍裡不夠的就全拿，少的題數寫在說明裡。 */
+const CHAPTERS = BANK_LOAD.chapters;
+const CH_BY = Object.create(null);
+CHAPTERS.forEach(c => { CH_BY[c.key] = c; });
+let chSel = [];
+function chOf(n){ const q = byN[n]; return q && typeof q.ch === "string" && CH_BY[q.ch] ? q.ch : ""; }
+function chName(k){ return k ? (CH_BY[k] ? CH_BY[k].name : k) : "未標章節"; }
+function chHasNone(){ return ALLQ.some(q => !q.void && !chOf(q.n)); }
+function syncChFilter(){
+  const v = pref("chapters");
+  if (!CHAPTERS.length || !Array.isArray(v)){ chSel = []; return; }
+  const none = chHasNone();
+  chSel = v.filter((k, i) => typeof k === "string" && (k ? !!CH_BY[k] : none) && v.indexOf(k) === i);
+}
+function cssEsc(s){ return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, "\\$&"); }
+/* 每日一題、考我一題說明的結尾：有章節時講清楚它們不分章節。 */
+function chFreeNote(){ return CHAPTERS.length ? "，但不分章節，一律從全部章節抽" : ""; }
+function chOk(n){ return !chSel.length || chSel.indexOf(chOf(n)) >= 0; }
+/* 照正式考試出題時要抽的章節：有 exam 題數、而且在勾選範圍裡的章節，依 chapters 的順序。 */
+function chQuota(){ return CHAPTERS.filter(c => c.exam > 0 && (!chSel.length || chSel.indexOf(c.key) >= 0)); }
+function officialPlan(pool){
+  const rows = chQuota().map(c => { const have = pool.filter(n => chOf(n) === c.key).length; return {c, want: c.exam, take: Math.min(c.exam, have)}; });
+  return {rows, want: rows.reduce((s, r) => s + r.want, 0), total: rows.reduce((s, r) => s + r.take, 0)};
+}
+/* ordered：弱點題和到期複習照 pool 的順序取前面的，其他範圍隨機抽。 */
+function officialPick(pool, ordered){
+  const out = [];
+  chQuota().forEach(c => {
+    const l = pool.filter(n => chOf(n) === c.key);
+    (ordered ? l : shuffle(l.slice())).slice(0, c.exam).forEach(n => out.push(n));
+  });
+  return out;
+}
 const KEY = SK.local;
 /* 和最上方說明的「引擎版本」一致，寫進匯出的備份檔。scripts/package_skill.py 會檢查兩邊有沒有對上。 */
-const ENGINE_VERSION = "2026-10-23";
+const ENGINE_VERSION = "2026-10-24";
 /* 主頁最下方的「檢查新版」：按下才連 GitHub，讀 main 分支 repo 根目錄的 VERSION（還沒有時改讀範本最上方的引擎版本）。
    連不到（離線、逾時，或 Claude artifact 不能連外）就給連結讓使用者自己看。引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。 */
 const ENGINE_REPO = "https://github.com/HelloNiHowMa/Mock-Exam";
@@ -1558,10 +1651,11 @@ function weakList(){
     .sort((a, b) => b.sc - a.sc || b.w - a.w || b.t - a.t || a.n - b.n)
     .map(x => x.n);
 }
-function pools(){
+/* 開始練習、快速瀏覽和列印的出題範圍。noCh：不套用章節（主頁算各章節題數時用）。 */
+function pools(noCh){
   const examOnly = !!pref("examMode");
   const exT = Object.assign({}, PREF_DEFAULTS.examTypes, pref("examTypes") || {});
-  const ok = n => !isVoid(n) && srcOk(n) && (examOnly ? !!exT[examKind(n)] : typeOk(n));
+  const ok = n => !isVoid(n) && srcOk(n) && (examOnly ? !!exT[examKind(n)] : typeOk(n)) && (noCh || chOk(n));
   const all = ALLQ.map(q => q.n).filter(ok);
   return {
     weak: weakList().filter(ok),
@@ -2252,7 +2346,7 @@ function luckyPick(exclude){
 function luckyNote(){
   const list = ALLQ.map(q => q.n).filter(n => byN[n] && !isVoid(n) && srcOk(n) && typeOk(n));
   const fresh = list.filter(n => status(n) === "new").length;
-  const tail = "沿用下方的題型和題目來源設定。";
+  const tail = `沿用下方的題型和題目來源設定${chFreeNote()}。`;
   if (!list.length) return "目前的篩選設定下沒有題目。";
   if (fresh) return `先把題目做過一輪，再回頭加深：這個範圍有 ${list.length} 題，還有 ${fresh} 題沒做過，會先從這些題目抽。全部做過一輪後，才抽到期複習、弱點與答錯的題目。${tail}`;
   return `這個範圍的 ${list.length} 題都做過一輪了，現在依序抽到期複習、弱點與答錯、尚未熟練的題目。${tail}`;
@@ -2410,7 +2504,7 @@ function dailyHomeHTML(){
   if (today && today.done) note = `今天這題做完了（${today.ok ? "答對" : "答錯，" + DAILY_REV[0] + " 天後會再考一次"}）。明天會換一題。`;
   else if (busy) note = "有一回練習還沒做完，先繼續或放棄那一回，再做每日一題。";
   else if (today) note = `今天的題目已經抽好，還沒作答。`;
-  else note = `一天一題，每天不重複：${DAILY_COOL} 天內做過的題目不抽；答錯的題目 ${DAILY_REV[0]} 天後回來，連續答對再拉長到 ${DAILY_REV.slice(1).join("、")} 天；新題和錯題複習輪流。作答前可以換一題（一天一次），換掉的題目延後 ${DAILY_HOLD} 天。沿用下方的題型和題目來源設定。`;
+  else note = `一天一題，每天不重複：${DAILY_COOL} 天內做過的題目不抽；答錯的題目 ${DAILY_REV[0]} 天後回來，連續答對再拉長到 ${DAILY_REV.slice(1).join("、")} 天；新題和錯題複習輪流。作答前可以換一題（一天一次），換掉的題目延後 ${DAILY_HOLD} 天。沿用下方的題型和題目來源設定${chFreeNote()}。`;
   if (today && today.sw !== undefined){
     const h = dailyHoldMap()[today.sw];
     const also = today.swsub !== undefined ? `（連同同一個易混淆題組裡答錯過的${esc(qLabel(today.swsub))}）` : "";
@@ -3153,7 +3247,7 @@ function printRef(n){
 }
 function openPrint(){
   const ids = pools()[scope].slice();
-  const desc = [SCOPE_NAME[scope] || "全部題目", TYPE_NAME[typeFilter], srcFilter !== "all" ? SRC_NAME[srcFilter] : ""].filter(Boolean).join("、");
+  const desc = [SCOPE_NAME[scope] || "全部題目", TYPE_NAME[typeFilter], srcFilter !== "all" ? SRC_NAME[srcFilter] : "", chSel.length ? chSel.map(chName).join("、") : ""].filter(Boolean).join("、");
   printCfg = {ids, desc, fmt: printCfg ? printCfg.fmt : "sheet"};
   printMsg = "";
   view = "print";
@@ -3569,7 +3663,7 @@ function bkPreviewHTML(p){
   if (P.ex.add + P.ex.upd) other.push(`補充題 ${P.ex.add + P.ex.upd} 筆`);
   if (P.gr.add + P.gr.upd) other.push(`自訂題組 ${P.gr.add + P.gr.upd} 筆`);
   if (other.length) items.push(`另外會加入或更新：${other.join("、")}。`);
-  if (P.prefs) items.push("設定（題型、作答方式、計時等）改用備份裡的，因為備份的比較新。");
+  if (P.prefs) items.push(`設定（題型${CHAPTERS.length ? "、章節" : ""}、作答方式、計時等）改用備份裡的，因為備份的比較新。`);
   if (P.sess) items.push(`備份裡有一回還沒做完的練習（${p.r.session.ids.length} 題），匯入後可以接著做。`);
   if (P.newReset && !P.st.lost && !P.mk.lost) items.push(`備份記錄你在 ${bkStamp(P.resetAt)} 清除過所有進度；匯入後這裡也以這個時間為準，比它早的紀錄之後都不會再收下。`);
   const src = m.wrapped
@@ -3664,8 +3758,15 @@ function renderHome(){
   const masteredInScope = scope === "all" && !exam0 ? p.all.filter(isMastered).length : 0;
   const pool = isGroups ? [] : (skipM ? p[scope].filter(x => !isMastered(x)) : p[scope]);
   const UG = usableGroups();
+  /* 照正式考試的章節題數（count = -1）：只有模擬考、而且勾選範圍裡有章節填了 exam 時才能選，否則退回 10 題。 */
+  const quota = exam0 && CHAPTERS.length ? chQuota() : [];
+  if (count === -1 && !quota.length) count = 10;
+  const offPlan = count === -1 && !isGroups ? officialPlan(pool) : null;
   const n = isGroups ? (gcount === 0 ? UG.length : Math.min(gcount, UG.length))
-                     : (count === 0 ? pool.length : Math.min(count, pool.length));
+                     : offPlan ? offPlan.total : (count === 0 ? pool.length : Math.min(count, pool.length));
+  /* 各章節的題數：目前的題型、題目來源和出題範圍裡、不管勾了哪些章節，每一章有幾題。 */
+  const chBase = CHAPTERS.length && !isGroups ? (pools(true)[scope] || []) : [];
+  const chCnt = k => chBase.filter(x => chOf(x) === k).length;
   const answeredAny = Object.keys(state.stats).length > 0;
   const nd = nextDueIn();
   const srsLine = !answeredAny ? "" : p.due.length
@@ -3733,6 +3834,34 @@ function renderHome(){
     `<button role="radio" aria-checked="${count === val}" data-count="${val}">${label}</button>`;
   const gcountBtn = (val, label) =>
     `<button role="radio" aria-checked="${gcount === val}" data-gcount="${val}">${label}</button>`;
+  /* 章節：題庫地圖下方的「各章節的掌握情況」，和開始練習裡可以複選的「章節」欄。沒有 chapters 的練習簿兩個都不出現。 */
+  const hasNone = CHAPTERS.length ? chHasNone() : false;
+  const chKeysAll = CHAPTERS.map(c => c.key).concat(hasNone ? [""] : []);
+  const anyExam = CHAPTERS.some(c => c.exam > 0);
+  const chTable = !CHAPTERS.length ? "" : (() => {
+    const rows = chKeysAll.map(k => ({k, list: liveQ.filter(q => chOf(q.n) === k)})).filter(r => r.list.length);
+    if (!rows.length) return "";
+    return `<h3 class="subgrid-title" id="ch-title">各章節的掌握情況</h3>
+    <div class="chwrap"><table class="chtbl" aria-labelledby="ch-title">
+      <thead><tr><th scope="col">章節（點一下只練這一章）</th><th scope="col" class="num">已作答</th><th scope="col" class="num">正確率</th>${anyExam ? `<th scope="col" class="num">正式考試</th>` : ""}</tr></thead>
+      <tbody>${rows.map(r => {
+        const t = tally(r.list), c = CH_BY[r.k];
+        return `<tr><td><button class="btn text" data-chone="${esc(r.k)}">${esc(chName(r.k))}</button>${c && c.sub ? `<span class="chsub">${esc(c.sub)}</span>` : ""}</td><td class="num">${t.done} / ${t.total}</td><td class="num">${t.acc !== null ? t.acc + "%" : "–"}</td>${anyExam ? `<td class="num">${c && c.exam ? c.exam + " 題" : "–"}</td>` : ""}</tr>`;
+      }).join("")}</tbody>
+    </table></div>`;
+  })();
+  const chField = !CHAPTERS.length || isGroups ? "" : `<div class="field" id="fld-ch">
+      <span class="flabel" id="lab-ch">章節（可以複選）</span>
+      <div class="chpick" role="group" aria-labelledby="lab-ch">
+        ${chKeysAll.map(k => { const c = CH_BY[k]; return `<label class="chk"${c && c.sub ? ` title="${esc(c.sub)}"` : ""}><input type="checkbox" data-chsel="${esc(k)}" ${chSel.indexOf(k) >= 0 ? "checked" : ""}><span class="chn">${esc(chName(k))}</span><span class="n">${chCnt(k)}</span></label>`; }).join("")}
+      </div>
+      <p class="note">${chSel.length ? `目前只出勾選的 ${chSel.length} 個章節。<button class="btn text inl" data-act="ch-all">改回全部章節</button>` : "沒有勾選時出全部章節。"}章節後面的數字是目前的題型和出題範圍裡、這一章的題數。章節只套用在這裡的練習、模擬考、考前快速瀏覽和列印；最上方的每日一題和考我一題不分章節，一律從全部章節抽。</p>
+    </div>`;
+  const offNote = !offPlan ? "" : (() => {
+    const short = offPlan.rows.filter(r => r.take < r.want);
+    const skipped = (chSel.length ? chSel : chKeysAll).filter(k => !(CH_BY[k] && CH_BY[k].exam > 0));
+    return `<p class="note">照正式考試各章的題數抽題：${offPlan.rows.map(r => `${esc(chName(r.c.key))} ${r.want} 題`).join("、")}，共 ${offPlan.want} 題。${short.length ? `目前的出題範圍裡${short.map(r => `${esc(chName(r.c.key))}只有 ${r.take} 題`).join("、")}，這回共 ${offPlan.total} 題。` : ""}${chSel.length ? "只抽勾選的章節。" : ""}${skipped.length ? `${skipped.map(k => esc(chName(k))).join("、")}沒有正式考試的題數，不會抽到。` : ""}</p>`;
+  })();
 
   return `
   <header class="top">
@@ -3778,6 +3907,7 @@ function renderHome(){
       ${flagCount ? `<li><span class="sw sw-flag" aria-hidden="true">!</span>爭議題 ${flagCount}</li>` : ""}${voidCount ? `<li><span class="sw s-void"></span>不可作答 ${voidCount}</li>` : ""}
     </ul>
     <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。補充題的選擇題、變化題、拖拉題各有自己的題號。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。${flagCount ? "左上角有紫色驚嘆號、外圈加粗的是爭議題，爭議的地方寫在解析裡。" : ""}${voidCount ? "灰色、畫刪除線的是題目有問題、不可作答的題目，不計入題數和統計，點進去可以看原本的答案和問題說明。" : ""}題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
+    ${chTable}
     <div class="row extra-actions">
       <button class="btn ghost" data-act="new-extra">新增補充題</button>
       ${EXTRA.length ? `<button class="btn ghost" data-act="extras">管理補充題（${EXTRA.length} 題）</button>` : ""}
@@ -3812,6 +3942,7 @@ function renderHome(){
       </div>
       ${typeFilter === "drag" ? `<p class="note">拖拉題：分類題先點項目再點格子，每一格都放對才算答對，同一類裡沒有標籤的格子不計順序；排序題和配對題拖曳把手，或用 ↑ ↓ 調整。</p>` : typeFilter === "abbr" ? `<p class="note">縮寫題是輔助練習，幫你把專有名詞記熟。</p>` : ""}
     </div>` : ""}
+    ${chField}
     <div class="field">
       <span class="flabel" id="lab-scope">出題範圍</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-scope">
@@ -3853,8 +3984,9 @@ function renderHome(){
       <span class="flabel" id="lab-count">${isGroups ? "題組數" : "題數"}</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-count">
         ${isGroups ? gcountBtn(3,"3 組") + gcountBtn(5,"5 組") + gcountBtn(0,"全部")
-                   : countBtn(10,"10 題") + countBtn(20,"20 題") + countBtn(50,"50 題") + countBtn(0,"全部")}
+                   : countBtn(10,"10 題") + countBtn(20,"20 題") + countBtn(50,"50 題") + countBtn(0,"全部") + (quota.length ? `<button role="radio" aria-checked="${count === -1}" data-count="-1">照正式考試<span class="n">${quota.reduce((s, c) => s + c.exam, 0)}</span></button>` : "")}
       </div>
+      ${offNote}
     </div>
     ${exam ? "" : `<div class="field">
       <span class="flabel" id="lab-mode">作答方式</span>
@@ -4115,6 +4247,12 @@ function renderSummary(){
     ${slow.length > 1 ? `<h2 class="slowh">最花時間的題目</h2><ul class="slow">${slow.map(n => `<li><button data-q="${n}">${qLabel(n)}<span class="st">${fmtClock(s.qtime[n])}</span></button></li>`).join("")}</ul>` : ""}`;
   }
   const pct = res.length ? Math.round(right * 100 / res.length) : 0;
+  /* 這一回出到兩個以上的章節時，列出各章節答對幾題（模擬考的沒作答算答錯，和上面的總分一致）。 */
+  const chRes = !CHAPTERS.length ? [] : CHAPTERS.map(c => c.key).concat([""])
+    .map(k => { const l = res.filter(r => chOf(r.n) === k); return {k, total: l.length, right: l.filter(r => r.ok).length}; }).filter(x => x.total);
+  const chBlock = chRes.length < 2 ? "" : `<h2 class="slowh" id="chres-title">各章節的結果</h2>
+    <div class="chwrap"><table class="chtbl" aria-labelledby="chres-title"><thead><tr><th scope="col">章節</th><th scope="col" class="num">答對</th><th scope="col" class="num">正確率</th></tr></thead>
+    <tbody>${chRes.map(x => `<tr><td>${esc(chName(x.k))}</td><td class="num">${x.right} / ${x.total}</td><td class="num">${Math.round(x.right * 100 / x.total)}%</td></tr>`).join("")}</tbody></table></div>`;
   return `
   <header class="top">
     <h1>${s.exam ? "模擬考成績：" : "這回"}答對 ${right} / ${res.length} 題</h1>
@@ -4122,6 +4260,7 @@ function renderSummary(){
     <div class="row" style="margin-top:12px"><button class="btn primary" data-act="exam-review" data-i="0">逐題檢討</button></div>` : ""}
     <p class="sub">${exCount ? `另有 ${exCount} 題不列入紀錄。` : ""}${wrong.length ? (s.exam ? "下面是答錯和沒作答的題目，點一題可以直接看那題的檢討。" : "下面是這回答錯的題目，點一題可以再練一次。") : unanswered ? "作答過的題目全部答對。" : res.length ? "這回全部答對。" : ""}</p>
     ${timeBlock}
+    ${chBlock}
   </header>
   ${wrong.length ? `<ol class="wl">${wrong.map(r => `<li><button class="wrow" ${s.exam ? `data-act="exam-review" data-i="${s.ids.indexOf(r.n)}"` : `data-q="${r.n}"`}><span class="wn">${qLabel(r.n)}</span>${boxesHTML(r.n)}<span class="wt">${esc(snippet(r.n))}</span>${!r.answered ? `<span class="wm">沒作答</span>` : ""}${isMarked(r.n) ? `<span class="wm">已標記</span>` : ""}</button></li>`).join("")}</ol>` : `<p class="allright">答錯過的題目已經從題庫地圖上標出來，之後可以用「錯題複習」再練。</p>`}
   <div class="row">
@@ -4148,6 +4287,7 @@ function render(scrollTop){
   if ((view === "quiz" || view === "summary") && !state.session) view = "home";
   if (view === "edit" && !form) view = "extras";
   syncTypeFilter();
+  syncChFilter();
   $app.innerHTML = view === "quiz" ? renderQuiz() : view === "summary" ? renderSummary()
     : view === "extras" ? renderExtras() : view === "edit" ? renderEdit() : view === "print" && printCfg ? renderPrint() : view === "browse" && browse ? renderBrowse() : renderHome();
   if (bkSel){ const el = document.getElementById("bk-paste"); if (el){ el.focus({preventScroll: true}); try { el.setSelectionRange(bkSel[0], bkSel[1]); } catch(e){} } }
@@ -4219,6 +4359,16 @@ $app.addEventListener("change", e => {
   if (t && t.dataset && t.dataset.bkfile !== undefined){ const f = t.files && t.files[0]; if (f) bkReadFile(f); return; }
   if (t && t.dataset && t.dataset.bexp){ if (browse){ browse.showE = t.checked; render(); const el = document.querySelector("[data-bexp]"); if (el) el.focus(); } return; }
   if (t && t.dataset && t.dataset.skipm){ setPref("skipMastered", t.checked); render(); const el = document.querySelector("[data-skipm]"); if (el) el.focus(); return; }
+  if (t && t.dataset && t.dataset.chsel !== undefined){
+    const k = t.dataset.chsel;
+    const cur = chSel.filter(x => x !== k);
+    if (t.checked) cur.push(k);
+    const order = CHAPTERS.map(c => c.key).concat([""]);
+    setPref("chapters", cur.sort((x, y) => order.indexOf(x) - order.indexOf(y)));
+    render();
+    const el = document.querySelector(`[data-chsel="${cssEsc(k)}"]`); if (el) el.focus();
+    return;
+  }
   if (t && t.dataset && t.dataset.extype){
     const cur = Object.assign({}, PREF_DEFAULTS.examTypes, pref("examTypes") || {});
     cur[t.dataset.extype] = t.checked;
@@ -4254,6 +4404,15 @@ $app.addEventListener("click", e => {
   if (b.dataset.dtype){ collectForm(); form.dtype = b.dataset.dtype; formErrors = []; skipCollectOnce = true; render(); return; }
   if (b.dataset.ftype){ collectForm(); form.type = b.dataset.ftype; formErrors = []; skipCollectOnce = true; render(); const f = document.getElementById(form.type === "abbr" ? "f-abbr" : "f-q"); if (f) f.focus(); return; }
   if (b.dataset.count !== undefined){ count = Number(b.dataset.count); render(); return; }
+  if (b.dataset.chone !== undefined){
+    const k = b.dataset.chone;
+    setPref("chapters", [k]);
+    if (scope === "pairs") scope = "all";
+    render();
+    const f = document.getElementById("fld-ch"); if (f && f.scrollIntoView) f.scrollIntoView({block: "center"});
+    const el = document.querySelector(`[data-chsel="${cssEsc(k)}"]`); if (el) el.focus({preventScroll: true});
+    return;
+  }
   if (b.dataset.pfmt){ if (printCfg){ printCfg.fmt = b.dataset.pfmt; render(); } return; }
   if (b.dataset.exam !== undefined){ setPref("examMode", b.dataset.exam === "1"); render(); return; }
   if (b.dataset.recall !== undefined){ setPref("recall", b.dataset.recall === "1"); render(); return; }
@@ -4262,6 +4421,7 @@ $app.addEventListener("click", e => {
   if (b.dataset.gcount !== undefined){ gcount = Number(b.dataset.gcount); render(); return; }
   if (b.dataset.group !== undefined){ startGroups([Number(b.dataset.group)]); return; }
   const act = b.dataset.act;
+  if (act === "ch-all"){ setPref("chapters", []); render(); const el = document.querySelector("[data-chsel]"); if (el) el.focus(); return; }
   if (act === "print-setup"){ openPrint(); return; }
   if (act === "print-now"){ try { window.print(); } catch(err){} return; }
   if (act === "print-dl"){ downloadPrint(); return; }
@@ -4391,8 +4551,9 @@ $app.addEventListener("click", e => {
   if (act === "start"){
     const asExam0 = !!pref("examMode") && scope !== "pairs";
     const pool = scope === "all" && !asExam0 && pref("skipMastered") ? pools()[scope].filter(x => !isMastered(x)) : pools()[scope];
-    const take = count === 0 ? pool.length : count;
-    const picked = (scope === "weak" || scope === "due") ? pool.slice(0, take) : shuffle(pool.slice()).slice(0, take);
+    const take = count === 0 ? pool.length : count === -1 ? (asExam0 ? 0 : 10) : count;
+    const ordered = scope === "weak" || scope === "due";
+    const picked = count === -1 && asExam0 ? officialPick(pool, ordered) : ordered ? pool.slice(0, take) : shuffle(pool.slice()).slice(0, take);
     const asExam = !!pref("examMode") && scope !== "pairs";
     const list = picked;
     if (list.length) startSession(list, scope, asExam ? {exam: true} : undefined);

@@ -22,7 +22,7 @@
 | `v` | 紀錄的結構版本，目前是 `1`。 |
 | `stats` | 每題的作答紀錄，key 是題號（見下方）。沒做過的題目不會有這一筆。 |
 | `marks` | 標記：`{"題號": {"on": true 或 false, "t": 時間}}`。取消標記會留下 `on: false`。 |
-| `prefs` | 設定：題型 `qtype`、作答方式 `recall`、計時 `timerMode` 和 `pace`、模擬考 `examMode` 和 `examTypes`、略過已熟練 `skipMastered`、統計列 `statRows`、每日一題 `daily`（今天換過一題時多 `sw`、`swk`、`swsub`）、換掉延後中的題目 `dailyHold`（`{"題號": 可以再出現在每日一題的那天}`，那天是當地日期從 1970-01-01 起算的天數；引擎版本 2026-10-23 起）。`t` 是最後修改時間。 |
+| `prefs` | 設定：題型 `qtype`、作答方式 `recall`、計時 `timerMode` 和 `pace`、模擬考 `examMode` 和 `examTypes`、略過已熟練 `skipMastered`、統計列 `statRows`、每日一題 `daily`（今天換過一題時多 `sw`、`swk`、`swsub`）、換掉延後中的題目 `dailyHold`（`{"題號": 可以再出現在每日一題的那天}`，那天是當地日期從 1970-01-01 起算的天數；引擎版本 2026-10-23 起）、勾選的章節 `chapters`（章節 `id` 轉成文字的陣列，`""` 是「未標章節」，空陣列或沒有這個欄位就是全部章節；引擎版本 2026-10-24 起，只有題庫有 `chapters` 的練習簿會用到）。`t` 是最後修改時間。 |
 | `extras` | 在頁面上新增的補充題，key 是補充題編號 k。刪掉的題目留下 `{"k": …, "del": true, "t": …}`。 |
 | `groups` | 自訂的易混淆題組。 |
 | `resetAt` | 最後一次按「清除所有進度」的時間，`0` 表示沒有清除過。 |

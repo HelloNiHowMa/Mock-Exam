@@ -47,6 +47,53 @@ def void_fields(r):
 VOID_NO_NOTE = "標成不可作答（void），但沒有用 voidNote 說明這題哪裡有問題。"
 
 
+def ch_key(v):
+    """章節 id／題目的 ch 轉成比對用的文字：0 以上的整數，或 1 到 20 個字的文字。和頁面引擎的 chKey 一致。"""
+    if isinstance(v, int) and not isinstance(v, bool) and v >= 0:
+        return str(v)
+    if isinstance(v, str) and v.strip() and len(v.strip()) <= 20:
+        return v.strip()
+    return None
+
+
+def validate_chapters(bank, errors):
+    """檢查 chapters，回傳 [(key, name, exam)]，依原本的順序。"""
+    cs = bank.get("chapters", [])
+    if not isinstance(cs, list):
+        errors.append("chapters 要是陣列。")
+        return []
+    out, seen = [], set()
+    for i, c in enumerate(cs, 1):
+        where = f"章節第 {i} 筆" + (f"（{c['name'].strip()}）" if isinstance(c, dict) and s(c.get("name")) else "")
+        if not isinstance(c, dict):
+            errors.append(f'{where}：要是一個 {{ }} 物件，例如 {{"id": 1, "name": "第 1 章 測試基礎"}}。'); continue
+        k = ch_key(c.get("id"))
+        if k is None:
+            errors.append(f"{where}：id 要是 0 以上的整數或 1 到 20 個字的文字，題目的 ch 用它對到這一章。"); continue
+        if k in seen:
+            errors.append(f"{where}：id「{k}」重複了。"); continue
+        if not s(c.get("name")):
+            errors.append(f"{where}：缺少章節名稱 name。"); continue
+        if "sub" in c and not isinstance(c["sub"], str):
+            errors.append(f"{where}：sub 要是文字。"); continue
+        ex = c.get("exam", 0)
+        if not (isinstance(ex, int) and not isinstance(ex, bool) and ex >= 0):
+            errors.append(f"{where}：exam（正式考試這一章的題數）要是 0 以上的整數。"); continue
+        seen.add(k)
+        out.append((k, c["name"].strip(), ex))
+    return out
+
+
+def ch_error(r, keys):
+    """題目或縮寫題的 ch 有問題時回傳錯誤訊息。"""
+    if "ch" not in r:
+        return None
+    k = ch_key(r["ch"])
+    if k is None or k not in keys:
+        return f"章節 ch「{r['ch']}」對不到 chapters 裡的任何一章" + ("（題庫沒有 chapters）" if not keys else "") + "。"
+    return None
+
+
 def validate(bank, image_keys):
     """回傳 (錯誤, 提醒, 不可作答的題數)。不可作答只算格式正確、會出現在頁面上的題目和縮寫題。"""
     errors, notes = [], []
@@ -63,6 +110,9 @@ def validate(bank, image_keys):
     for k in ("aiRole", "aiBasis", "abbrScope"):
         if not s(cfg.get(k)):
             notes.append(f"config.{k} 沒有填，AI 解析會用通用的說法。")
+
+    chapters = validate_chapters(bank, errors)
+    ch_keys = {k for k, _, _ in chapters}
 
     qs = bank.get("questions")
     if not isinstance(qs, list):
@@ -109,6 +159,9 @@ def validate(bank, image_keys):
             bad(verr); continue
         if no_note:
             notes.append(f"{where}：{VOID_NO_NOTE}")
+        cerr = ch_error(q, ch_keys)
+        if cerr:
+            bad(cerr); continue
         if t in ("mcq", "multi"):
             o = q.get("o")
             if not (isinstance(o, list) and 2 <= len(o) <= 6 and all(s(x) for x in o)):
@@ -174,7 +227,7 @@ def validate(bank, image_keys):
     ab = bank.get("abbr", [])
     if not isinstance(ab, list):
         errors.append("abbr 要是陣列。"); ab = []
-    seen_ab, void_ab = set(), []
+    seen_ab, void_ab, valid_ab = set(), [], []
     for i, r in enumerate(ab, 1):
         if isinstance(r, list):
             r = {"cat": r[0] if len(r) > 0 else "", "abbr": r[1] if len(r) > 1 else "", "full": r[2] if len(r) > 2 else "", "alts": r[3] if len(r) > 3 else [], "e": r[4] if len(r) > 4 else ""}
@@ -190,9 +243,13 @@ def validate(bank, image_keys):
             errors.append(f"縮寫題第 {i} 筆（{r['abbr']}）：{verr}"); continue
         if no_note:
             notes.append(f"縮寫題第 {i} 筆（{r['abbr']}）：{VOID_NO_NOTE}")
+        cerr = ch_error(r, ch_keys)
+        if cerr:
+            errors.append(f"縮寫題第 {i} 筆（{r['abbr']}）：{cerr}"); continue
         if r.get("void") is True:
             void_ab.append(r["abbr"].strip())
         seen_ab.add(k)
+        valid_ab.append(r)
 
     gs = bank.get("groups", [])
     if not isinstance(gs, list):
@@ -212,9 +269,31 @@ def validate(bank, image_keys):
     if void_n or void_ab:
         which = ([f"第 {'、'.join(map(str, void_n))} 題"] if void_n else []) + ([f"縮寫題 {'、'.join(void_ab)}"] if void_ab else [])
         notes.append(f"有 {len(void_n) + len(void_ab)} 題標成不可作答（{'，'.join(which)}）：這些題目不計入題數，也不會出題；拿掉 void 就會恢復，原本的作答紀錄都還在。")
+    if chapters:
+        notes.extend(chapter_notes(chapters, [q for q in valid if q.get("void") is not True], [r for r in valid_ab if r.get("void") is not True]))
     if not valid and not ab:
         errors.append("題庫裡沒有任何有效的題目。")
     return errors, notes + quality(valid), len(void_n) + len(void_ab)
+
+
+def chapter_notes(chapters, live_q, live_ab):
+    """章節的提醒：沒標章節的題目、沒有題目的章節、正式考試題數比題庫多。只算可以作答的題目。"""
+    out = []
+    untagged = [f"第 {q['n']} 題" for q in live_q if "ch" not in q] + [f"縮寫題 {r['abbr'].strip()}" for r in live_ab if "ch" not in r]
+    if untagged:
+        out.append(f"有 {len(untagged)} 題沒有標章節 ch（{'、'.join(untagged[:6])}{' 等' if len(untagged) > 6 else ''}）：練習時算「未標章節」，模擬考「照正式考試」出題時不會抽到。教材本來就沒分到章節的題目可以不標。")
+    for k, name, ex in chapters:
+        nq = sum(1 for q in live_q if ch_key(q.get("ch")) == k)
+        na = sum(1 for r in live_ab if ch_key(r.get("ch")) == k)
+        if not nq and not na:
+            out.append(f"章節「{name}」沒有任何題目。")
+        elif ex > nq:
+            out.append(f"章節「{name}」正式考試是 {ex} 題，但題庫只有 {nq} 題（不算縮寫題）：模擬考「照正式考試」出題時，這一章最多只出得到 {nq} 題。")
+    with_exam = [name for _, name, ex in chapters if ex > 0]
+    if with_exam and len(with_exam) < len(chapters):
+        miss = [name for _, name, ex in chapters if ex == 0]
+        out.append(f"只有部分章節填了正式考試題數 exam：{'、'.join(miss)} 沒填，模擬考「照正式考試」出題時不會抽到這些章節。")
+    return out
 
 
 def quality(qs):
@@ -429,6 +508,7 @@ def main():
     qs = [q for q in bank.get("questions", []) if isinstance(q, dict)]
     mix = Counter(q.get("type", "mcq") for q in qs)
     print("題型：" + "、".join(f"{TYPE_ZH.get(k, k)} {v}" for k, v in mix.items()) + f"、縮寫 {len(bank.get('abbr', []))}、易混淆組 {len(bank.get('groups', []))}"
+          + (f"、章節 {len(bank['chapters'])}" if isinstance(bank.get("chapters"), list) and bank["chapters"] else "")
           + (f"、不可作答 {nvoid}" if nvoid else ""))
     for e in errors:
         print("錯誤：" + e)
