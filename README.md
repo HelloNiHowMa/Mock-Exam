@@ -114,6 +114,16 @@ python3 scripts/build.py --bank my-workbook/bank.json --images my-workbook/image
 
 圖片會內嵌進 HTML，仍然是單一檔案。
 
+選項本身是圖或表格時（例如四張決策表選一張），單選、複選題用 `oimg` 放每個選項的圖，和 `o` 一樣長，沒有圖的選項寫 `null`；`o` 仍然要寫，當作每張圖的簡短說明：
+
+```json
+{"n": 21, "q": "依下列規則，哪一張決策表正確？",
+ "o": ["表 1：兩個 input 欄、一個 output 欄", "表 2：一個 input 欄、一個 output 欄", "表 3：三個 input 欄、一個 output 欄", "表 4：兩個 input 欄、兩個 output 欄"],
+ "oimg": ["dmn-t1", "dmn-t2", "dmn-t3", "dmn-t4"], "a": 0, "e": "……"}
+```
+
+同一題的選項圖片要用同一個畫布寬度輸出，圖裡不要畫 A、B、C（選項會打亂）。細節見 [`references/schema.md`](references/schema.md) 第 7 節。
+
 ## 修改已經發出去的練習簿
 
 手上只有 HTML 也沒關係，先把題庫取出來，改完再重新產生：

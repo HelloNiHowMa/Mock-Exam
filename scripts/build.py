@@ -46,6 +46,90 @@ def void_fields(r):
 
 VOID_NO_NOTE = "標成不可作答（void），但沒有用 voidNote 說明這題哪裡有問題。"
 
+# 舊版練習簿用 const FIGS 放 HTML 圖表，題目文字裡寫 [[fig:代號]]。新版引擎不認得，會原樣顯示。
+FIG_MARK = "[[fig:"
+FIG_RE = re.compile(r"\[\[fig:([^\]\s]+)\]\]")
+FIG_FIELDS = (("q", "題目"), ("o", "選項"), ("items", "項目"), ("pairs", "配對"), ("e", "解析"))
+
+
+def fig_fields(q):
+    """題目裡哪些欄位有 [[fig:…]]，回傳欄位的中文名稱。"""
+    out = []
+    for f, zh in FIG_FIELDS:
+        v = q.get(f)
+        if v is not None and FIG_MARK in (v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)):
+            out.append(zh)
+    return out
+
+
+def px_width(src):
+    """data URI 圖片的像素寬度；SVG 用 width 屬性（沒有時用 viewBox 的寬）。讀不出來（路徑、網址、格式不認得）時回傳 None。"""
+    m = re.match(r"data:([^;,]+)(;base64)?,(.*)$", src or "", re.S)
+    if not m:
+        return None
+    try:
+        raw = base64.b64decode(m.group(3)) if m.group(2) else m.group(3).encode()
+    except Exception:
+        return None
+    mime = m.group(1).lower()
+    try:
+        if mime == "image/svg+xml":
+            from urllib.parse import unquote
+            head = re.search(r"<svg\b[^>]*>", raw.decode("utf-8", "replace") if m.group(2) else unquote(raw.decode()), re.S)
+            if not head:
+                return None
+            w = re.search(r'\swidth\s*=\s*["\']\s*([\d.]+)\s*(px)?\s*["\']', head.group(0))
+            if w:
+                return round(float(w.group(1)))
+            vb = re.search(r'\sviewBox\s*=\s*["\']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)', head.group(0))
+            return round(float(vb.group(1))) if vb else None
+        if raw[:8] == b"\x89PNG\r\n\x1a\n":
+            return int.from_bytes(raw[16:20], "big")
+        if raw[:4] == b"GIF8":
+            return int.from_bytes(raw[6:8], "little")
+        if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+            kind = raw[12:16]
+            if kind == b"VP8 ":
+                return int.from_bytes(raw[26:28], "little") & 0x3FFF
+            if kind == b"VP8L":
+                return 1 + (((raw[22] & 0x3F) << 8) | raw[21])
+            if kind == b"VP8X":
+                return 1 + int.from_bytes(raw[24:27], "little")
+            return None
+        if raw[:2] == b"\xff\xd8":
+            i = 2
+            while i + 9 < len(raw):
+                if raw[i] != 0xFF:
+                    i += 1; continue
+                mk = raw[i + 1]
+                if mk in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                    return int.from_bytes(raw[i + 7:i + 9], "big")
+                if mk in (0xD8, 0x01) or 0xD0 <= mk <= 0xD7 or mk == 0xFF:
+                    i += 2 if mk != 0xFF else 1; continue
+                i += 2 + int.from_bytes(raw[i + 2:i + 4], "big")
+    except Exception:
+        return None
+    return None
+
+
+def oimg_width_notes(bank, imgs):
+    """同一題的選項圖片寬度不一樣時提醒：頁面依像素寬度縮放，寬度不同字級就不一致。"""
+    out = []
+    for q in bank.get("questions", []) if isinstance(bank, dict) else []:
+        if not (isinstance(q, dict) and isinstance(q.get("oimg"), list)):
+            continue
+        ids = []
+        for x in q["oimg"]:
+            if isinstance(x, str) and x in imgs and x not in ids:
+                ids.append(x)
+        ws = [(x, px_width(imgs[x])) for x in ids]
+        ws = [(x, w) for x, w in ws if w]
+        if len({w for _, w in ws}) > 1:
+            where = f"第 {q['n']} 題" if isinstance(q.get("n"), int) else "有一題"
+            out.append(f"{where}：選項圖片的寬度不一樣（{'、'.join(f'{x} {w}px' for x, w in ws)}）。頁面依圖片的像素寬度縮放，寬度不同，圖裡的字看起來就大小不一。"
+                       "請用同一個畫布寬度輸出這一題的選項圖片（內容靠左、右邊留白）。")
+    return out
+
 
 def ch_key(v):
     """章節 id／題目的 ch 轉成比對用的文字：0 以上的整數，或 1 到 20 個字的文字。和頁面引擎的 chKey 一致。"""
@@ -162,6 +246,8 @@ def validate(bank, image_keys):
         cerr = ch_error(q, ch_keys)
         if cerr:
             bad(cerr); continue
+        if "oimg" in q and t not in ("mcq", "multi"):
+            bad("oimg（選項圖片）只能用在單選和複選題。"); continue
         if t in ("mcq", "multi"):
             o = q.get("o")
             if not (isinstance(o, list) and 2 <= len(o) <= 6 and all(s(x) for x in o)):
@@ -169,6 +255,14 @@ def validate(bank, image_keys):
             d = dup(o)
             if d is not None:
                 bad(f"選項「{d}」重複了。"); continue
+            if "oimg" in q:
+                oi = q["oimg"]
+                if not (isinstance(oi, list) and len(oi) == len(o) and all(x is None or s(x) for x in oi)):
+                    eg = json.dumps([None if i == 2 else f"tbl{i + 1}" for i in range(len(o))])
+                    bad(f"oimg 要是和選項 o 一樣長（{len(o)} 格）的陣列，每格是圖片代號或 null（那個選項沒有圖），例如 {eg}。"); continue
+                miss = [x for x in oi if x is not None and x not in image_keys]
+                if miss:
+                    errors.append(f"{where}：oimg 用到的圖片 {'、'.join(miss)} 找不到（圖片檔名去掉副檔名就是代號）。")
             a = q.get("a")
             if t == "mcq":
                 if not isinstance(a, int) or isinstance(a, bool) or not 0 <= a < len(o):
@@ -271,6 +365,11 @@ def validate(bank, image_keys):
         notes.append(f"有 {len(void_n) + len(void_ab)} 題標成不可作答（{'，'.join(which)}）：這些題目不計入題數，也不會出題；拿掉 void 就會恢復，原本的作答紀錄都還在。")
     if chapters:
         notes.extend(chapter_notes(chapters, [q for q in valid if q.get("void") is not True], [r for r in valid_ab if r.get("void") is not True]))
+    for q in valid:
+        where = fig_fields(q)
+        if where:
+            notes.append(f"第 {q['n']} 題：{'、'.join(where)}裡有 [[fig:…]]，這是舊版練習簿放圖表的寫法，新版引擎不會轉換，頁面會原樣顯示這段文字。"
+                         "請把圖表輸出成圖片，改用 img（題目附圖）或 oimg（選項圖片）引用，再把文字裡的 [[fig:…]] 換成簡短說明。")
     if not valid and not ab:
         errors.append("題庫裡沒有任何有效的題目。")
     return errors, notes + quality(valid), len(void_n) + len(void_ab)
@@ -317,7 +416,7 @@ def quality(qs):
             if not re.search(r"選出所有|所有正確|哪些", q["q"]):
                 out.append(f"提醒：{where} 複選題的題目建議註明「（選出所有正確答案）」。")
         e = q.get("e", "")
-        if re.search(r"圖上|圖中|附圖|如圖", e + q.get("q", "")) and not (q.get("img") or q.get("eimg")):
+        if re.search(r"圖上|圖中|附圖|如圖", e + q.get("q", "")) and not (q.get("img") or q.get("eimg") or any(q.get("oimg") or [])):
             out.append(f"提醒：{where} 的題目或解析提到圖，但沒有附圖。")
     no_trap = [q["n"] for q in qs if q.get("e") and "容易卡住的地方" not in q["e"]]
     if no_trap and len(no_trap) / max(1, len(qs)) > 0.3:
@@ -462,6 +561,39 @@ def extract(html_path, dump_dir):
     print(f"已從{kind}練習簿取出 {len(bank.get('questions', []))} 題、縮寫 {len(bank.get('abbr', []))} 個、圖片 {len(imgs)} 張到 {out}/")
     if kind == "舊版":
         print("提醒：config 是從舊程式推測的，請檢查 title、subtitle、aiRole 等欄位；storageKeys 沿用舊的作答紀錄，不要刪。")
+    for line in fig_report(t, bank):
+        print(line)
+
+
+def fig_report(html, bank):
+    """舊版練習簿用 const FIGS 放圖表、題目文字寫 [[fig:代號]]。--extract 不會轉換，列出要手動處理的題目。"""
+    has_figs = re.search(r"\bconst\s+FIGS\s*=", html) is not None
+    hits = []
+    for q in bank.get("questions", []) if isinstance(bank, dict) else []:
+        if not isinstance(q, dict):
+            continue
+        where = fig_fields(q)
+        if where:
+            codes = sorted(set(FIG_RE.findall(json.dumps({f: q.get(f) for f, _ in FIG_FIELDS}, ensure_ascii=False))))
+            n = q.get("n")
+            hits.append(f"第 {n} 題（{'、'.join(where)}{'：' + '、'.join(codes) if codes else ''}）" if isinstance(n, int) else f"題號不明的題目（{'、'.join(where)}）")
+    if not has_figs and not hits:
+        return []
+    out = []
+    if has_figs:
+        keys = []
+        try:
+            figs = _decode_after(html, "const FIGS = ")
+            keys = list(figs) if isinstance(figs, dict) else []
+        except Exception:
+            keys = []
+        out.append("提醒：這份練習簿用 const FIGS 放圖表" + (f"（{len(keys)} 個：{'、'.join(keys[:10])}{' 等' if len(keys) > 10 else ''}）" if keys else "")
+                   + "。--extract 不會轉換這些圖表，取出的 images.json 裡沒有它們，新版引擎也不會顯示。")
+    if hits:
+        out.append(f"提醒：下列 {len(hits)} 題的文字裡有 [[fig:…]]，要手動處理：{'；'.join(hits)}。")
+    out.append("提醒：做法是把每個圖表輸出成圖片（同一題的選項圖片用同一個畫布寬度），放進 --images 的資料夾，題目改用 img（題目附圖）或 oimg（選項圖片）引用，"
+               "再把文字裡的 [[fig:…]] 換成簡短說明（例如「表 1：兩個 input 欄、一個 output 欄」）。改完用 --check 確認沒有遺漏，格式見 references/schema.md 第 7 節。")
+    return out
 
 
 def embed(tpl, block_id, obj):
@@ -494,7 +626,9 @@ def main():
         bank = json.loads(Path(args.bank).read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         sys.exit(f"題庫不是合法的 JSON：第 {e.lineno} 行第 {e.colno} 字，{e.msg}")
-    wanted = {k for q in bank.get("questions", []) if isinstance(q, dict) for f in ("img", "eimg") for k in (q.get(f) or []) if isinstance(k, str)}
+    # 題目附圖 img、解析附圖 eimg、選項圖片 oimg 用到的代號；只有這些圖會放進練習簿
+    wanted = {k for q in bank.get("questions", []) if isinstance(q, dict) for f in ("img", "eimg", "oimg")
+              for k in (q.get(f) if isinstance(q.get(f), list) else []) if isinstance(k, str)}
     imgs, img_notes = load_images(args.images, wanted)
     if args.images_json:
         extra = json.loads(Path(args.images_json).read_text(encoding="utf-8"))
@@ -503,7 +637,7 @@ def main():
             img_notes.append(f"images.json 有 {len(unused)} 張圖沒有被題目用到，沒有放進練習簿。")
         imgs.update({k: v for k, v in extra.items() if k in wanted and isinstance(v, str) and v})
     errors, notes, nvoid = validate(bank, set(imgs))
-    notes = img_notes + notes
+    notes = img_notes + notes + oimg_width_notes(bank, imgs)
 
     qs = [q for q in bank.get("questions", []) if isinstance(q, dict)]
     mix = Counter(q.get("type", "mcq") for q in qs)

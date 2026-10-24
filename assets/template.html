@@ -11,7 +11,18 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-24（依章節出題：
+  引擎版本：2026-10-24b（選項圖片正式支援：
+  1. 單選、複選題可以加 oimg：和 o 一樣長的陣列，每格是圖片代號或 null（那個選項沒有圖）。o 仍然必填，是圖片的簡短說明，
+  誤選分析、列印答案表、aria-label 和 AI 提示詞都用這段文字。選項打亂時圖片跟著選項走。
+  2. loadBank 檢查 oimg：不是陣列、長度和 o 不同、每格不是代號或 null、用在單選和複選以外的題型，都是錯誤（那題不出現）；
+  代號不在圖片區塊時只提醒、那張圖不顯示，和 img 一樣。
+  3. 選項卡片裡的圖片放在選項文字和「已選／正確答案」標籤的下一行、撐滿卡片寬，圖片寬度不受標籤影響，同一題的圖縮放比例一致。
+  有選項圖片的題目，選項旁的 ○ × 改成固定高度、靠上對齊，不被圖片撐高。交卷後檢討的沒作答複選題，正確答案清單也附上選項圖片。
+  下載的列印檔補上選項圖片的樣式（之前圖片不會縮到紙張寬度）。AI 解析的附圖順序不變：先題目附圖，再依題庫的選項順序附選項圖片。
+  頁面依圖片的像素寬度縮放，所以同一題的選項圖片要用同一個畫布寬度輸出，縮小顯示時字級才會一致。
+  4. 修正：模擬考交卷後檢討，沒作答的複選題和縮寫題會讓畫面出錯，停在上一題。
+  作答紀錄（state）的結構沒有變；除了第 4 點的修正，沒有 oimg 的練習簿畫面和行為不變。）
+  上一版 2026-10-24：依章節出題：
   1. 題庫可以加 chapters：[{id, name, sub, exam}]，題目和縮寫題用 ch 對到章節的 id。沒有 chapters 的練習簿畫面和行為完全不變。
   ch 對不到任何一章時不擋題目，只在頁面最上方提醒，那題算「未標章節」。頁面上新增的補充題沒有章節，也算未標章節。
   2. 開始練習多一個「章節」欄，可以複選，不勾就是全部章節；有未標章節的題目時多一個「未標章節」可勾。
@@ -22,7 +33,7 @@
   4. 有章節填了 exam（正式考試這一章的題數）時，模擬考的題數多一個「照正式考試」：從勾選的章節（不勾就是全部）各抽 exam 題，
   目前的出題範圍裡不夠的就全拿，說明裡寫少了幾題；沒填 exam 的章節和未標章節不會抽到。這個選擇不記住，和其他題數一樣。
   作答紀錄（stats）和練習存檔（session）的結構沒有變；prefs 多 chapters。prefs 整包取較新的，所以 known-issues.md 的 KI-001 也適用。）
-  上一版 2026-10-23：每日一題加入「換一題」：
+  更早 2026-10-23：每日一題加入「換一題」：
   1. 每日一題的題目頁，作答前在「每日一題・…」標籤旁有「換一題」按鈕，一天一次；作答後、或今天已經換過，就不顯示。
   2. 換成沒做過的新題；沒有新題時抽很久沒做、沒答錯過的題目。不抽排隊複習的錯題，也不抽和原題同一個易混淆題組的題目。
   3. 換掉的題目 7 天內每日一題不抽（抽到的是同組另一題時，連同原本答錯的那題），作答紀錄不動，延後期滿照原本的規則回來。
@@ -943,6 +954,14 @@ header.top{margin-bottom:26px}
 .qimg + .qimg{margin-top:-12px}
 .oimg{display:block;margin-top:8px}
 .oimg img{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:6px;background:#fff}
+.opt.withimg,.bopt.withimg{flex-wrap:wrap;row-gap:8px}
+.withimg > .oimg{flex:0 0 100%;margin:0}
+.opt.elim > .oimg{opacity:.5}
+.optwrap.hasimg{align-items:flex-start}
+.optwrap.hasimg .xbtn{height:3.25rem}
+@media (max-width:560px){.optwrap.hasimg .marks .xbtn{flex:none;height:2.5rem;min-height:0}}
+.printdoc .oimg{margin:4px 0 6px}
+.printdoc .oimg img{border-color:#ccc;border-radius:0}
 .bank{margin:18px 0 6px;padding:14px 16px 12px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px}
 .bank-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
 .bank-head .subgrid-title{margin:0}
@@ -1160,9 +1179,17 @@ function loadBank(){
     if (q.void !== undefined && typeof q.void !== "boolean") return bad("void 要是 true 或 false（不加引號）。");
     if (q.voidNote !== undefined && typeof q.voidNote !== "string") return bad("voidNote 要是文字。");
     if (q.void === true && !str(q.voidNote)) notes.push(`${where}：標成不可作答（void），但沒有用 voidNote 說明這題哪裡有問題。`);
+    /* 選項圖片 oimg：和 o 一樣長，每格是圖片代號或 null。只用在單選和複選；o 仍然必填，是圖片的簡短說明。 */
+    if (q.oimg !== undefined && type !== "mcq" && type !== "multi") return bad("oimg（選項圖片）只能用在單選和複選題。");
     if (type === "mcq" || type === "multi"){
       if (!strArr(q.o) || q.o.length < 2 || q.o.length > 6) return bad("選項 o 要是 2 到 6 個非空白的文字。");
       const d = dupOf(q.o); if (d !== null) return bad(`選項「${d}」重複了。`);
+      if (q.oimg !== undefined){
+        if (!Array.isArray(q.oimg) || q.oimg.length !== q.o.length || !q.oimg.every(id => id === null || str(id)))
+          return bad(`oimg 要是和選項 o 一樣長（${q.o.length} 格）的陣列，每格是圖片代號或 null（那個選項沒有圖），例如 ${JSON.stringify(q.o.map((_, i) => i === 2 ? null : "tbl" + (i + 1))).replace(/,/g, ", ")}。`);
+        const miss = q.oimg.filter(id => id !== null && !images[id]);
+        if (miss.length) notes.push(`${where}：oimg 用到的圖片 ${miss.join("、")} 不在圖片區塊裡，這張圖不會顯示。`);
+      }
       if (type === "mcq"){
         if (!Number.isInteger(q.a) || q.a < 0 || q.a >= q.o.length) return bad(`單選題的答案 a 要是 0 到 ${q.o.length - 1} 的整數（0 代表第一個選項）。`);
       } else {
@@ -1272,6 +1299,11 @@ function imgsHTML(ids, cls, alt){
       : `<figure class="${cls}"><img src="${imgSrc(id)}" alt="${esc(alt || "題目附圖")}" loading="lazy" decoding="async"></figure>`).join("");
 }
 function optImgHTML(q, oi){ const id = q && q.oimg ? q.oimg[oi] : null; return id && IMG[id] ? `<span class="oimg"><img src="${imgSrc(id)}" alt="選項圖片" loading="lazy" decoding="async"></span>` : ""; }
+/* 選項卡片裡的圖片放在文字和「已選／正確答案」標籤的下一行、撐滿卡片寬（.withimg）：
+   圖片的寬度才不會因為有沒有標籤而不同，同一題的圖縮放比例一致。 */
+function optImgCls(q, oi){ return optHasImg(q, oi) ? " withimg" : ""; }
+/* 有選項圖片的題目：選項旁的 ○ × 改成固定高度、靠上對齊（.optwrap.hasimg），不被圖片撐高。 */
+function optWrapCls(q){ return q && Array.isArray(q.oimg) && q.oimg.some(id => id && IMG[id]) ? "optwrap hasimg" : "optwrap"; }
 function b64Blob(b64, type){ const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type}); }
 const QN = new Set(Q.map(q => q.n));
 
@@ -1445,7 +1477,7 @@ function officialPick(pool, ordered){
 }
 const KEY = SK.local;
 /* 和最上方說明的「引擎版本」一致，寫進匯出的備份檔。scripts/package_skill.py 會檢查兩邊有沒有對上。 */
-const ENGINE_VERSION = "2026-10-24";
+const ENGINE_VERSION = "2026-10-24b";
 /* 主頁最下方的「檢查新版」：按下才連 GitHub，讀 main 分支 repo 根目錄的 VERSION（還沒有時改讀範本最上方的引擎版本）。
    連不到（離線、逾時，或 Claude artifact 不能連外）就給連結讓使用者自己看。引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。 */
 const ENGINE_REPO = "https://github.com/HelloNiHowMa/Mock-Exam";
@@ -2210,7 +2242,7 @@ function examBodyHTML(s, n, q){
     const elim = (s.elim && s.elim[n]) || [], maybe = (s.maybe && s.maybe[n]) || [];
     const opts = order.map((oi, pos) => {
       const out = elim.includes(oi), cand = maybe.includes(oi), on = kind === "multi" ? (Array.isArray(pk) && pk.includes(oi)) : pk === oi;
-      return `<div class="optwrap"><button class="opt${on ? " picked" : ""}${out ? " elim" : ""}${cand ? " maybe" : ""}" data-opt="${oi}" ${kind === "multi" ? `role="checkbox" aria-checked="${on}"` : `aria-pressed="${on}"`} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}${optImgHTML(q, oi)}</span>${on ? `<span class="tag">已選</span>` : ""}</button><div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
+      return `<div class="${optWrapCls(q)}"><button class="opt${on ? " picked" : ""}${out ? " elim" : ""}${cand ? " maybe" : ""}${optImgCls(q, oi)}" data-opt="${oi}" ${kind === "multi" ? `role="checkbox" aria-checked="${on}"` : `aria-pressed="${on}"`} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}</span>${on ? `<span class="tag">已選</span>` : ""}${optImgHTML(q, oi)}</button><div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
     }).join("");
     body = `<p class="qtext">${esc(q.q)}</p>${qimgHTML(q)}${kind === "multi" ? `<p class="multi-hint">複選題：選出所有正確答案。</p>` : ""}<div class="opts${kind === "multi" ? " multi" : ""}">${opts}</div>`;
     keys = `按 1–${order.length} 或 A–${LETTERS[order.length - 1]} ${kind === "multi" ? "勾選" : "選答案"}（可以改），← → 換題，Shift + 數字刪去、Shift + 字母標為可能，按 M 標記`;
@@ -2254,7 +2286,7 @@ function reviewMissHTML(s, n, q){
   else if (q.type === "order") ansHTML = `<p>正確順序：</p><ol>${q.items.map(x => `<li>${esc(x)}</li>`).join("")}</ol>`;
   else if (q.type === "match") ansHTML = `<p>正確配對：</p><ul>${q.pairs.map(p => `<li>${esc(p[0])} → ${esc(p[1])}</li>`).join("")}</ul>`;
   else if (q.type === "cls") ansHTML = clsKeyHTML(q) + clsOrigHTML(q);
-  else if (q.type === "multi") ansHTML = `<p>正確答案：</p><ul>${q.a.map(i => `<li>${esc(q.o[i])}</li>`).join("")}</ul>`;
+  else if (q.type === "multi") ansHTML = `<p>正確答案：</p><ul>${q.a.map(i => `<li>${esc(q.o[i])}${optImgHTML(q, i)}</li>`).join("")}</ul>`;
   const nextLabel = s.i === s.ids.length - 1 ? "看這回結果" : "下一題";
   return `<div class="qhead"><h2 id="qh" tabindex="-1">${esc(qLabel(n))}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span></div>
     <p class="qtext">${esc(q.type === "abbr" ? "寫出這個縮寫的英文全名" : (q.q || DRAG_PROMPT[q.type] || ""))}</p>
@@ -2827,7 +2859,7 @@ async function saveAiRemote(n){
     await ref.set({notes: cur});
   } catch(e){}
 }
-function optHasImg(q, i){ return !!(q && q.oimg && q.oimg[i] && IMG[q.oimg[i]]); }
+function optHasImg(q, i){ return !!(q && Array.isArray(q.oimg) && q.oimg[i] && IMG[q.oimg[i]]); }
 /* sentOpt：圖片真的有附給 AI 的選項索引（aiImagesFor 的 optIdx）；沒傳就當作都沒有附上。 */
 function aiPromptFor(q, sentOpt){
   const multi = q.type === "multi";
@@ -2847,7 +2879,7 @@ function aiPromptFor(q, sentOpt){
    提示詞才能標出哪些選項的圖真的附上了。 */
 async function aiImagesFor(q){
   const items = (Array.isArray(q.img) ? q.img : []).map(id => ({id, oi: -1}))
-    .concat(q.oimg ? Object.keys(q.oimg).sort().map(k => ({id: q.oimg[k], oi: Number(k)})) : []).filter(x => IMG[x.id]);
+    .concat(Array.isArray(q.oimg) ? q.oimg.map((id, oi) => ({id, oi})) : []).filter(x => x.id && IMG[x.id]);
   const out = {has: items.length > 0, blobs: [], nExhibit: 0, optIdx: []};
   if (!items.length || !sampleApi || typeof sampleApi.limits !== "function") return out;
   let lim = null;
@@ -3220,7 +3252,7 @@ function renderEdit(){
 }
 
 /* ---------- 列印：用目前的出題範圍產生練習卷或複習講義 ---------- */
-const PRINT_CSS = ".printdoc{background:#fff;color:#111;border:1.5px solid var(--line);border-radius:8px;padding:28px 28px 32px;margin-top:22px;font-family:\"Source Serif 4\",Georgia,\"Noto Serif TC\",serif;line-height:1.6}\n.printdoc h1{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:1.4rem;margin:0 0 4px;color:#111}\n.phead p{margin:2px 0;color:#444;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.phead .pname{margin-top:12px;color:#111}\n.plist{list-style:none;padding:0;margin:22px 0 0}\n.pq{margin:0 0 18px;break-inside:avoid;page-break-inside:avoid}\n.pref{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-weight:700;font-size:.92rem;margin:0 0 4px}\n.pstem{white-space:pre-line;margin:0 0 6px}\n.pimg{margin:4px 0 8px}\n.pimg img{max-width:100%;height:auto;border:1px solid #ccc}\n.popts{margin:0 0 4px;padding-left:1.9em}\n.popts li{margin:2px 0}\n.pline{margin:8px 0 0;border-bottom:1px solid #999;min-height:1.7em;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pmatch{display:grid;grid-template-columns:1fr 1fr;gap:16px}\n.pmatch ol{margin:0;padding-left:1.9em}\n.pans{margin-top:8px;padding:8px 12px;border-left:3px solid #999;background:#f4f4f4;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pans p{margin:2px 0}\n.pkey{margin-top:28px;border-top:1.5px solid #999;padding-top:12px;break-before:page;page-break-before:always;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif}\n.pkey h2{font-size:1.1rem;margin:0 0 8px}\n.pkey ol{columns:2;column-gap:28px;padding-left:2.2em;margin:0;font-size:.9rem}\n.pkey li{break-inside:avoid;margin:2px 0}";
+const PRINT_CSS = ".printdoc{background:#fff;color:#111;border:1.5px solid var(--line);border-radius:8px;padding:28px 28px 32px;margin-top:22px;font-family:\"Source Serif 4\",Georgia,\"Noto Serif TC\",serif;line-height:1.6}\n.printdoc h1{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:1.4rem;margin:0 0 4px;color:#111}\n.phead p{margin:2px 0;color:#444;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.phead .pname{margin-top:12px;color:#111}\n.plist{list-style:none;padding:0;margin:22px 0 0}\n.pq{margin:0 0 18px;break-inside:avoid;page-break-inside:avoid}\n.pref{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-weight:700;font-size:.92rem;margin:0 0 4px}\n.pstem{white-space:pre-line;margin:0 0 6px}\n.pimg{margin:4px 0 8px}\n.pimg img{max-width:100%;height:auto;border:1px solid #ccc}\n.popts{margin:0 0 4px;padding-left:1.9em}\n.popts li{margin:2px 0}\n.pline{margin:8px 0 0;border-bottom:1px solid #999;min-height:1.7em;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pmatch{display:grid;grid-template-columns:1fr 1fr;gap:16px}\n.pmatch ol{margin:0;padding-left:1.9em}\n.pans{margin-top:8px;padding:8px 12px;border-left:3px solid #999;background:#f4f4f4;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pans p{margin:2px 0}\n.pkey{margin-top:28px;border-top:1.5px solid #999;padding-top:12px;break-before:page;page-break-before:always;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif}\n.pkey h2{font-size:1.1rem;margin:0 0 8px}\n.pkey ol{columns:2;column-gap:28px;padding-left:2.2em;margin:0;font-size:.9rem}\n.pkey li{break-inside:avoid;margin:2px 0}\n.oimg{display:block;margin:4px 0 6px}\n.oimg img{display:block;box-sizing:border-box;max-width:100%;height:auto;border:1px solid #ccc;background:#fff}";
 const SCOPE_NAME = {all:"全部題目", review:"錯題複習", weak:"弱點題", due:"到期複習", fresh:"還沒做過", marked:"已標記"};
 const TYPE_NAME = {mcq:CONFIG.mainLabel, abbr:"縮寫題", drag:"拖拉題", all:"全部題型"};
 const SRC_NAME = {orig:"只有題庫", extra:"只有補充題", variant:"只有變化題"};
@@ -3414,7 +3446,7 @@ function browseGo(i){
 }
 function browseBody(n){
   const q = byN[n];
-  const optList = (marks) => `<div class="bopts">${q.o.map((o, i) => `<div class="bopt${marks.includes(i) ? " ok" : ""}"><span class="let" aria-hidden="true">${LETTERS[i]}</span><span class="otext">${esc(o)}${optImgHTML(q, i)}</span>${marks.includes(i) ? `<span class="tag">正確答案</span>` : ""}</div>`).join("")}</div>`;
+  const optList = (marks) => `<div class="bopts">${q.o.map((o, i) => `<div class="bopt${marks.includes(i) ? " ok" : ""}${optImgCls(q, i)}"><span class="let" aria-hidden="true">${LETTERS[i]}</span><span class="otext">${esc(o)}</span>${marks.includes(i) ? `<span class="tag">正確答案</span>` : ""}${optImgHTML(q, i)}</div>`).join("")}</div>`;
   if (q.type === "abbr") return `<p class="abbr" lang="en">${esc(q.q)}</p><p class="bans">${esc(q.ans)}</p>${q.alts && q.alts.length ? `<p class="nextrev">也接受：${esc(q.alts.join("、"))}</p>` : ""}<p class="abbr-cat">類別：${esc(q.cat || "自訂")}</p>`;
   const stem = `<p class="qtext">${esc(q.q || DRAG_PROMPT[q.type] || "")}</p>${qimgHTML(q)}`;
   if (q.type === "order") return `${stem}<ol class="blist">${q.items.map(x => `<li>${esc(x)}</li>`).join("")}</ol>`;
@@ -4116,8 +4148,8 @@ function renderQuiz(){
       if (mq && msel.includes(oi)) cls += " picked";
     }
     const mOn = mq && !answered && msel.includes(oi);
-    const optBtn = `<button class="opt ${cls}" data-opt="${oi}" ${answered || reviewMiss ? "disabled" : ""}${mq && !answered ? ` role="checkbox" aria-checked="${mOn}"` : ""} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}${optImgHTML(q, oi)}</span>${tag}</button>`;
-    return answered || reviewMiss ? optBtn : `<div class="optwrap">${optBtn}<div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
+    const optBtn = `<button class="opt ${cls}${optImgCls(q, oi)}" data-opt="${oi}" ${answered || reviewMiss ? "disabled" : ""}${mq && !answered ? ` role="checkbox" aria-checked="${mOn}"` : ""} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}</span>${tag}${optImgHTML(q, oi)}</button>`;
+    return answered || reviewMiss ? optBtn : `<div class="${optWrapCls(q)}">${optBtn}<div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
   }).join("");
 
   const nextLabel = s.mode === "lucky" ? "再來一題" : s.ids.length === 1 ? "回到總覽" : (s.i === s.ids.length - 1 ? "看這回結果" : "下一題");
@@ -4136,7 +4168,8 @@ function renderQuiz(){
   const drill = abbr && answered && !s.exam ? drillOf(n, ok) : null;
   const cover = drillCovered(drill);
 
-  const fb = answered || reviewMiss ? `
+  /* 沒作答的複選、縮寫、拖拉題交卷後由 reviewMissHTML 顯示（見下方），這裡不組 fb，否則會讀到 undefined 的作答內容。 */
+  const fb = answered || (reviewMiss && examKind(n) === "mcq") ? `
     <div class="fb ${ok ? "ok" : "bad"}" aria-live="polite">
       <h3 id="fbh" tabindex="-1">${idd ? (ok ? "自評：全部放對" : "自評：有放錯，記為答錯") : cq ? (ok ? "答對了" : `答錯了，有 ${clsGrade(q, (chosen && chosen.place) || []).wrong} 格不對`) : mq ? (ok ? "答對了" : `答錯了，正確答案是 ${q.a.map(i => LETTERS[order.indexOf(i)]).sort().join("、")}`) : reviewMiss ? `沒有作答，正確答案是 ${LETTERS[order.indexOf(q.a)]}` : drag ? (ok ? "答對了" : `答錯了，有 ${chosen.arr.filter((x, i) => x !== i).length} 個位置不對`) : abbr ? (ok ? (chosen.override ? "已改判為答對" : "答對了") : chosen.gaveUp ? "已直接看答案（記為答錯）" : "答錯了") : ok ? "答對了" : `答錯了，正確答案是 ${LETTERS[order.indexOf(q.a)]}`}</h3>
       ${excluded ? `<p class="excl-tag">不列入紀錄</p>` : ""}
