@@ -15,6 +15,7 @@
 - 題數：【例如：25 題，另外加 10 個縮寫題】
 - 圖片：【沒有圖片就刪掉這行。有的話寫：我附了 topo1.png、topo1-blank.png，圖片代號就是檔名去掉副檔名】
 - 章節：【教材沒有分章節就刪掉這行。有的話寫：依教材的章節分類；正式考試各章題數是 8、6、4、11、9、2 題（沒有這項資料就不寫題數）】
+- 情境題組：【教材沒有個案或情境就刪掉這行。有的話寫：同一段情境出兩題以上時，包成情境題組】
 
 ## 出題原則
 
@@ -28,10 +29,11 @@
 6. 只根據我提供的教材出題，教材沒寫或你不確定的不要出，不要捏造規格編號或參數。
 7. 如果需求裡有「章節」：每題和每個縮寫題都標 ch，題數大致照各章的份量分配，不要有章節完全沒題目。
 8. 繁體中文、台灣用語、全形標點；專有名詞、指令和參數保留英文原文。不要用 Markdown 語法。
+9. 如果需求裡有「情境題組」：同一段背景出兩題以上、或背景超過兩三句時，把背景寫成一個情境題組（cases），題目的 q 只寫這一題要問的事。同一組的題目會連續出現、作答後馬上看得到解析，所以前一題的選項、答案和解析不能讓下一題變簡單；情境文字也不要直接寫出某一題的答案。情境文字不要超過 800 字。
 
 ## 格式
 
-輸出一個 JSON 物件，有四個部分：config、questions、abbr、groups。需求裡有「章節」時，再加第五個部分 chapters。
+輸出一個 JSON 物件，有四個部分：config、questions、abbr、groups。需求裡有「情境題組」時加 cases，有「章節」時加 chapters。
 
 config：
 - id：練習簿代號。title：標題。subtitle：一句話說明給誰用、想檢查什麼。
@@ -52,24 +54,26 @@ abbr（縮寫題）：每個 {"cat": 分類, "abbr": 縮寫, "full": 英文全�
 
 groups（易混淆題組）：每組 {"name": 名稱, "qs": [題號, …], "key": 分辨關鍵}。
 
+cases（情境題組，只有需求裡有「情境題組」時才寫）：每組 {"id": 簡短的英數代號, "title": 題組名稱, "text": 情境文字（用 \n 分段）, "qs": [題號, …]}。qs 照出題順序排；一題最多放在一個情境題組，縮寫題不能放。情境有附圖時加 "img": [圖片代號]。
+
 chapters（章節，只有需求裡有「章節」時才寫）：每章 {"id": 章節編號, "name": 照教材寫法的章名（例如「第 1 章 測試基礎」）, "exam": 正式考試這一章的題數}。id 用整數或簡短的英數代號，不能重複；exam 只有需求裡給了題數才寫。每個題目和縮寫題加上 "ch": 所屬章節的 id。
 
 ## 輸出要求
 
 - 只輸出 JSON，放在一個 ```json 程式碼區塊裡，前後不要有其他文字。
 - JSON 要合法：字串用半形雙引號，字串裡的雙引號寫成 \"，最後一個項目後面不要有逗號。不要出現 </script 這幾個字。
-- 題數超過 20 題時分批輸出：第一批輸出完整的 JSON（含 config、abbr、groups，有章節時含 chapters，questions 先放前 20 題）；我說「繼續」時，只輸出接下來的題目，格式是用逗號分隔的題目物件（不要外層的中括號），題號接續。
+- 題數超過 20 題時分批輸出：第一批輸出完整的 JSON（含 config、abbr、groups，有情境題組時含 cases，有章節時含 chapters，questions 先放前 20 題）；我說「繼續」時，只輸出接下來的題目，格式是用逗號分隔的題目物件（不要外層的中括號），題號接續。
 
 ## 範例
 
-下面是格式和品質的標準：六種題型各三題，加上兩組易混淆題組。範例是 5G 領域，只用來示範格式、題型用法和解析寫法；你的題目內容要完全來自我附上的教材。
+下面是格式和品質的標準：六種題型各三題，加上兩組易混淆題組和一組三題的情境題組（第 16 到 18 題）。範例是 5G 領域，只用來示範格式、題型用法和解析寫法；你的題目內容要完全來自我附上的教材。
 
 ```json
 {
  "config": {
   "id": "example-5gsa",
   "title": "5G SA 協定架構練習簿（範例）",
-  "subtitle": "範本示範：六種題型各三題。答案都在架構概念裡，但只靠「看過」選不對，要真的想過才行。",
+  "subtitle": "範本示範：六種題型各三題，另有一組三題的情境題組。答案都在架構概念裡，但只靠「看過」選不對，要真的想過才行。",
   "mainLabel": "觀念題",
   "passLine": 80,
   "passNote": "",
@@ -453,6 +457,79 @@ chapters（章節，只有需求裡有「章節」時才寫）：每章 {"id": �
     ]
    ],
    "e": "排查時先判斷失敗發生在哪一層：連 SCTP 都建不起來是傳輸層的問題；SCTP 通了但 Setup 被拒，是應用層設定不相容，要看 cause；控制面都成功但資料過不去，問題在使用者面那條 GTP-U／UDP／IP 路徑。\n容易卡住的地方：三個現象都會被說成「連不上」。先問「哪一層失敗」，才知道該查網路還是查設定。"
+  },
+  {
+   "n": 16,
+   "type": "cls",
+   "q": "把情境裡抓到的六則訊息，放到它出現的介面。",
+   "items": [
+    "PDU SESSION RESOURCE SETUP REQUEST",
+    "BEARER CONTEXT SETUP REQUEST",
+    "UE CONTEXT MODIFICATION REQUEST",
+    "PDU SESSION RESOURCE SETUP RESPONSE",
+    "BEARER CONTEXT SETUP RESPONSE",
+    "UE CONTEXT MODIFICATION RESPONSE"
+   ],
+   "groups": [
+    {
+     "t": "N2",
+     "s": [
+      {
+       "a": 0
+      },
+      {
+       "a": 3
+      }
+     ]
+    },
+    {
+     "t": "E1",
+     "s": [
+      {
+       "a": 1
+      },
+      {
+       "a": 4
+      }
+     ]
+    },
+    {
+     "t": "F1-C",
+     "s": [
+      {
+       "a": 2
+      },
+      {
+       "a": 5
+      }
+     ]
+    }
+   ],
+   "e": "PDU SESSION RESOURCE SETUP 是 NGAP 的訊息，走 AMF 和 CU-CP 之間的 N2；BEARER CONTEXT SETUP 是 E1AP 的訊息，走 CU-CP 和 CU-UP 之間的 E1；UE CONTEXT MODIFICATION 是 F1AP 的訊息，走 CU-CP 和 DU 之間的 F1-C。REQUEST 和 RESPONSE 是同一個程序的一來一回，一定出現在同一個介面上。\n容易卡住的地方：看到 BEARER 就以為是使用者面的東西，會出現在 N3 或 F1-U。建立和修改承載是控制面的工作，先認出訊息屬於哪一個 AP 協定，再對到介面。"
+  },
+  {
+   "n": 17,
+   "type": "order",
+   "q": "把情境裡這四則訊息，排成實際送出的先後順序。",
+   "items": [
+    "PDU SESSION RESOURCE SETUP REQUEST",
+    "BEARER CONTEXT SETUP REQUEST",
+    "UE CONTEXT MODIFICATION REQUEST",
+    "PDU SESSION RESOURCE SETUP RESPONSE"
+   ],
+   "e": "AMF 先在 N2 上要求 gNB 為這個 PDU Session 準備資源。CU-CP 自己不處理使用者資料，所以先在 E1 上請 CU-UP 建立承載；CU-UP 回覆之後，CU-CP 才在 F1-C 上請 DU 加入對應的資料承載。gNB 裡面都準備好了，CU-CP 才在 N2 上回覆 AMF。\n容易卡住的地方：以為 CU-CP 會先通知離手機最近的 DU。使用者面的承載要先在 CU-UP 建好，CU-CP 才有完整的設定可以交給 DU；回覆 AMF 一定在最後，因為那代表 gNB 這邊全部準備好了。"
+  },
+  {
+   "n": 18,
+   "q": "建立完成、手機開始下載後，UPF 要把下行資料用 GTP-U 送到 CU-UP。UPF 是怎麼知道 CU-UP 這一端的隧道位址和 TEID？",
+   "o": [
+    "CU-CP 在回覆 AMF 的 PDU SESSION RESOURCE SETUP RESPONSE 裡帶上，再經 SMF 設定到 UPF",
+    "CU-UP 開機時用 GTP-U Echo 向 UPF 登記自己的位址，之後每個 PDU Session 都沿用",
+    "DU 在 UE CONTEXT MODIFICATION RESPONSE 裡帶上，CU-CP 原封不動轉給 UPF",
+    "UPF 等手機送出第一個上行封包，從那個 GTP-U 封包的來源位址和 TEID 學到"
+   ],
+   "a": 0,
+   "e": "CU-UP 這一端的 N3 隧道位址和 TEID，是 CU-UP 在 E1 上回覆 CU-CP 時給的；CU-CP 把它放進 N2 上回覆 AMF 的 PDU SESSION RESOURCE SETUP RESPONSE，AMF 轉給 SMF，SMF 再透過 N4 設定 UPF。GTP-U Echo 只用來確認路徑通不通，不帶隧道資訊；DU 回覆的是 F1-U 那一段 DU 這一端的位址，和 N3 無關；上行封包標頭裡的 TEID 是 UPF 自己那一端的，從上行封包學不到下行該用的 TEID。\n容易卡住的地方：以為使用者面的位址是兩端自己互相學來的。GTP-U 隧道兩端的位址和 TEID 都是控制面在建立 PDU Session 時交換好的，所以上行通了，不代表下行一定通。"
   }
  ],
  "abbr": [
@@ -501,6 +578,21 @@ chapters（章節，只有需求裡有「章節」時才寫）：每章 {"id": �
     15
    ],
    "key": "SCTP association 是通道，Setup 是應用層合作。控制面全部成功，也不代表使用者面那條 GTP-U 路徑是通的。"
+  }
+ ],
+ "cases": [
+  {
+   "id": "pdu-setup",
+   "title": "試驗場建立 PDU Session",
+   "text": "手機已經完成 Registration，接著要建立 PDU Session。試驗場的 gNB 拆成 CU-CP、CU-UP、DU 和 RU，核心網這邊和 gNB 直接相連的是 AMF 和 UPF，拓撲如圖。\n工程師在 CU-CP 上同時抓 N2、E1、F1-C 三個介面。這次建立過程中抓到六則訊息：PDU SESSION RESOURCE SETUP REQUEST／RESPONSE、BEARER CONTEXT SETUP REQUEST／RESPONSE、UE CONTEXT MODIFICATION REQUEST／RESPONSE。\n建立完成後，手機開始下載檔案。",
+   "img": [
+    "lab-topo"
+   ],
+   "qs": [
+    16,
+    17,
+    18
+   ]
   }
  ]
 }

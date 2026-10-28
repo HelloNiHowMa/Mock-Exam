@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 330" width="680" height="330" font-family="Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif">
+<rect width="680" height="330" fill="#ffffff"/>
+<text x="340" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#1c2433">試驗場拓撲</text>
+<line x1="150" y1="104" x2="150" y2="150" stroke="#5a6376" stroke-width="2"/>
+<text x="162" y="134" font-size="17" fill="#1c2433">N2</text>
+<line x1="530" y1="104" x2="530" y2="150" stroke="#5a6376" stroke-width="2"/>
+<text x="542" y="134" font-size="17" fill="#1c2433">N3</text>
+<line x1="220" y1="172" x2="460" y2="172" stroke="#5a6376" stroke-width="2"/>
+<text x="340" y="162" text-anchor="middle" font-size="17" fill="#1c2433">E1</text>
+<line x1="185" y1="194" x2="305" y2="256" stroke="#5a6376" stroke-width="2"/>
+<text x="206" y="244" text-anchor="middle" font-size="17" fill="#1c2433">F1-C</text>
+<line x1="495" y1="194" x2="375" y2="256" stroke="#5a6376" stroke-width="2"/>
+<text x="474" y="244" text-anchor="middle" font-size="17" fill="#1c2433">F1-U</text>
+<line x1="180" y1="280" x2="270" y2="280" stroke="#5a6376" stroke-width="2"/>
+<text x="225" y="270" text-anchor="middle" font-size="17" fill="#1c2433">前傳</text>
+<rect x="80" y="60" width="140" height="44" rx="6" fill="#cfe3ff" stroke="#1c2433" stroke-width="1.5"/>
+<text x="150" y="89" text-anchor="middle" font-size="20" fill="#1c2433">AMF</text>
+<rect x="460" y="60" width="140" height="44" rx="6" fill="#cfe3ff" stroke="#1c2433" stroke-width="1.5"/>
+<text x="530" y="89" text-anchor="middle" font-size="20" fill="#1c2433">UPF</text>
+<rect x="80" y="150" width="140" height="44" rx="6" fill="#ffe8c2" stroke="#1c2433" stroke-width="1.5"/>
+<text x="150" y="179" text-anchor="middle" font-size="20" fill="#1c2433">CU-CP</text>
+<rect x="460" y="150" width="140" height="44" rx="6" fill="#ffe8c2" stroke="#1c2433" stroke-width="1.5"/>
+<text x="530" y="179" text-anchor="middle" font-size="20" fill="#1c2433">CU-UP</text>
+<rect x="270" y="258" width="140" height="44" rx="6" fill="#d8f0dc" stroke="#1c2433" stroke-width="1.5"/>
+<text x="340" y="287" text-anchor="middle" font-size="20" fill="#1c2433">DU</text>
+<rect x="40" y="258" width="140" height="44" rx="6" fill="#eeeeee" stroke="#1c2433" stroke-width="1.5"/>
+<text x="110" y="287" text-anchor="middle" font-size="20" fill="#1c2433">RU</text>
+</svg>

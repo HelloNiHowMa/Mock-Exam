@@ -2,7 +2,7 @@
   "config": {
     "id": "example-5gsa",
     "title": "5G SA 協定架構練習簿（範例）",
-    "subtitle": "範本示範：六種題型各三題。答案都在架構概念裡，但只靠「看過」選不對，要真的想過才行。",
+    "subtitle": "範本示範：六種題型各三題，另有一組三題的情境題組。答案都在架構概念裡，但只靠「看過」選不對，要真的想過才行。",
     "mainLabel": "觀念題",
     "passLine": 80,
     "passNote": "",
@@ -386,6 +386,79 @@
         ]
       ],
       "e": "排查時先判斷失敗發生在哪一層：連 SCTP 都建不起來是傳輸層的問題；SCTP 通了但 Setup 被拒，是應用層設定不相容，要看 cause；控制面都成功但資料過不去，問題在使用者面那條 GTP-U／UDP／IP 路徑。\n容易卡住的地方：三個現象都會被說成「連不上」。先問「哪一層失敗」，才知道該查網路還是查設定。"
+    },
+    {
+      "n": 16,
+      "type": "cls",
+      "q": "把情境裡抓到的六則訊息，放到它出現的介面。",
+      "items": [
+        "PDU SESSION RESOURCE SETUP REQUEST",
+        "BEARER CONTEXT SETUP REQUEST",
+        "UE CONTEXT MODIFICATION REQUEST",
+        "PDU SESSION RESOURCE SETUP RESPONSE",
+        "BEARER CONTEXT SETUP RESPONSE",
+        "UE CONTEXT MODIFICATION RESPONSE"
+      ],
+      "groups": [
+        {
+          "t": "N2",
+          "s": [
+            {
+              "a": 0
+            },
+            {
+              "a": 3
+            }
+          ]
+        },
+        {
+          "t": "E1",
+          "s": [
+            {
+              "a": 1
+            },
+            {
+              "a": 4
+            }
+          ]
+        },
+        {
+          "t": "F1-C",
+          "s": [
+            {
+              "a": 2
+            },
+            {
+              "a": 5
+            }
+          ]
+        }
+      ],
+      "e": "PDU SESSION RESOURCE SETUP 是 NGAP 的訊息，走 AMF 和 CU-CP 之間的 N2；BEARER CONTEXT SETUP 是 E1AP 的訊息，走 CU-CP 和 CU-UP 之間的 E1；UE CONTEXT MODIFICATION 是 F1AP 的訊息，走 CU-CP 和 DU 之間的 F1-C。REQUEST 和 RESPONSE 是同一個程序的一來一回，一定出現在同一個介面上。\n容易卡住的地方：看到 BEARER 就以為是使用者面的東西，會出現在 N3 或 F1-U。建立和修改承載是控制面的工作，先認出訊息屬於哪一個 AP 協定，再對到介面。"
+    },
+    {
+      "n": 17,
+      "type": "order",
+      "q": "把情境裡這四則訊息，排成實際送出的先後順序。",
+      "items": [
+        "PDU SESSION RESOURCE SETUP REQUEST",
+        "BEARER CONTEXT SETUP REQUEST",
+        "UE CONTEXT MODIFICATION REQUEST",
+        "PDU SESSION RESOURCE SETUP RESPONSE"
+      ],
+      "e": "AMF 先在 N2 上要求 gNB 為這個 PDU Session 準備資源。CU-CP 自己不處理使用者資料，所以先在 E1 上請 CU-UP 建立承載；CU-UP 回覆之後，CU-CP 才在 F1-C 上請 DU 加入對應的資料承載。gNB 裡面都準備好了，CU-CP 才在 N2 上回覆 AMF。\n容易卡住的地方：以為 CU-CP 會先通知離手機最近的 DU。使用者面的承載要先在 CU-UP 建好，CU-CP 才有完整的設定可以交給 DU；回覆 AMF 一定在最後，因為那代表 gNB 這邊全部準備好了。"
+    },
+    {
+      "n": 18,
+      "q": "建立完成、手機開始下載後，UPF 要把下行資料用 GTP-U 送到 CU-UP。UPF 是怎麼知道 CU-UP 這一端的隧道位址和 TEID？",
+      "o": [
+        "CU-CP 在回覆 AMF 的 PDU SESSION RESOURCE SETUP RESPONSE 裡帶上，再經 SMF 設定到 UPF",
+        "CU-UP 開機時用 GTP-U Echo 向 UPF 登記自己的位址，之後每個 PDU Session 都沿用",
+        "DU 在 UE CONTEXT MODIFICATION RESPONSE 裡帶上，CU-CP 原封不動轉給 UPF",
+        "UPF 等手機送出第一個上行封包，從那個 GTP-U 封包的來源位址和 TEID 學到"
+      ],
+      "a": 0,
+      "e": "CU-UP 這一端的 N3 隧道位址和 TEID，是 CU-UP 在 E1 上回覆 CU-CP 時給的；CU-CP 把它放進 N2 上回覆 AMF 的 PDU SESSION RESOURCE SETUP RESPONSE，AMF 轉給 SMF，SMF 再透過 N4 設定 UPF。GTP-U Echo 只用來確認路徑通不通，不帶隧道資訊；DU 回覆的是 F1-U 那一段 DU 這一端的位址，和 N3 無關；上行封包標頭裡的 TEID 是 UPF 自己那一端的，從上行封包學不到下行該用的 TEID。\n容易卡住的地方：以為使用者面的位址是兩端自己互相學來的。GTP-U 隧道兩端的位址和 TEID 都是控制面在建立 PDU Session 時交換好的，所以上行通了，不代表下行一定通。"
     }
   ],
   "abbr": [
@@ -434,6 +507,21 @@
         15
       ],
       "key": "SCTP association 是通道，Setup 是應用層合作。控制面全部成功，也不代表使用者面那條 GTP-U 路徑是通的。"
+    }
+  ],
+  "cases": [
+    {
+      "id": "pdu-setup",
+      "title": "試驗場建立 PDU Session",
+      "text": "手機已經完成 Registration，接著要建立 PDU Session。試驗場的 gNB 拆成 CU-CP、CU-UP、DU 和 RU，核心網這邊和 gNB 直接相連的是 AMF 和 UPF，拓撲如圖。\n工程師在 CU-CP 上同時抓 N2、E1、F1-C 三個介面。這次建立過程中抓到六則訊息：PDU SESSION RESOURCE SETUP REQUEST／RESPONSE、BEARER CONTEXT SETUP REQUEST／RESPONSE、UE CONTEXT MODIFICATION REQUEST／RESPONSE。\n建立完成後，手機開始下載檔案。",
+      "img": [
+        "lab-topo"
+      ],
+      "qs": [
+        16,
+        17,
+        18
+      ]
     }
   ]
 }

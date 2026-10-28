@@ -7,6 +7,8 @@
   python build.py --extract 舊練習簿.html --dump 資料夾 # 從現有練習簿取出 bank.json 和 images.json
   python build.py --bank 資料夾/bank.json --images-json 資料夾/images.json --out 新版.html
 
+情境題組（cases）：題庫可以加一段共用的情境文字底下掛好幾題，檢查規則見 validate_cases 和 references/schema.md 第 5 節。
+
 檢查分兩級：
   錯誤：格式不符，頁面會把那一題排除。有錯誤時預設不產生檔案（加 --force 仍然產生）。
   提醒：格式沒問題，但可能影響出題品質（例如正確答案老是放在同一個位置）。
@@ -360,6 +362,7 @@ def validate(bank, image_keys):
             errors.append(f"易混淆組第 {i} 組（{g['name']}）：至少要有兩題有效的題目。")
         elif len([x for x in g["qs"] if x in vn and x not in void_n]) < 2:
             notes.append(f"易混淆組第 {i} 組（{g['name']}）：扣掉不可作答的題目後不到兩題，這一組不會出現在練習裡。")
+    case_of = validate_cases(bank, valid, valid_ab, image_keys, errors, notes, {k: name for k, name, _ in chapters})
     if void_n or void_ab:
         which = ([f"第 {'、'.join(map(str, void_n))} 題"] if void_n else []) + ([f"縮寫題 {'、'.join(void_ab)}"] if void_ab else [])
         notes.append(f"有 {len(void_n) + len(void_ab)} 題標成不可作答（{'，'.join(which)}）：這些題目不計入題數，也不會出題；拿掉 void 就會恢復，原本的作答紀錄都還在。")
@@ -372,7 +375,93 @@ def validate(bank, image_keys):
                          "請把圖表輸出成圖片，改用 img（題目附圖）或 oimg（選項圖片）引用，再把文字裡的 [[fig:…]] 換成簡短說明。")
     if not valid and not ab:
         errors.append("題庫裡沒有任何有效的題目。")
-    return errors, notes + quality(valid), len(void_n) + len(void_ab)
+    return errors, notes + quality(valid, case_of), len(void_n) + len(void_ab)
+
+
+FIG_WORDS = r"圖上|圖中|附圖|如圖"
+CASE_LONG = 800   # 情境文字超過這個字數就提醒：手機上大約要捲三個畫面
+
+
+def validate_cases(bank, valid, valid_ab, image_keys, errors, notes, ch_names):
+    """檢查情境題組（cases），回傳 {題號: {"title", "img"}}，只含沒有錯誤的題組。
+    頁面引擎遇到題組本身的格式錯誤（id、title、text、qs、img）會整組略過；qs 裡個別題號有問題時只提醒、略過那一題。
+    build.py 一律當成錯誤，因為頁面上那一題會變成不屬於任何題組，和出題的人想的不一樣。"""
+    cs = bank.get("cases", [])
+    if not isinstance(cs, list):
+        errors.append("cases 要是陣列。")
+        return {}
+    vq = {q["n"]: q for q in valid}
+    ab_names = {r["abbr"].strip().lower() for r in valid_ab}
+    seen_ids, owner, out = set(), {}, {}
+    for i, c in enumerate(cs, 1):
+        where = f"情境題組第 {i} 組" + (f"（{c['title'].strip()}）" if isinstance(c, dict) and s(c.get("title")) else "")
+        if not isinstance(c, dict):
+            errors.append(f'{where}：要是一個 {{ }} 物件，例如 {{"id": "hsr", "title": "高鐵票務系統", "text": "……", "qs": [312, 313]}}。'); continue
+        k = ch_key(c.get("id"))
+        if k is None:
+            errors.append(f"{where}：id 要是 0 以上的整數或 1 到 20 個字的文字，規則和章節的 id 相同。"); continue
+        if k in seen_ids:
+            errors.append(f"{where}：id「{k}」重複了。"); continue
+        seen_ids.add(k)
+        bad = False
+        if not s(c.get("title")):
+            errors.append(f"{where}：缺少題組名稱 title。"); bad = True
+        if not s(c.get("text")):
+            errors.append(f"{where}：缺少情境文字 text。"); bad = True
+        qs = c.get("qs")
+        if not (isinstance(qs, list) and qs):
+            errors.append(f"{where}：缺少題號陣列 qs，例如 [312, 313]。"); bad = True; qs = []
+        img = c.get("img", [])
+        if not (isinstance(img, list) and all(s(x) for x in img)):
+            errors.append(f'{where}：img 要是圖片代號的陣列，例如 ["seatmap"]。'); bad = True; img = []
+        miss = [x for x in img if x not in image_keys]
+        if miss:
+            errors.append(f"{where}：img 用到的圖片 {'、'.join(miss)} 找不到（圖片檔名去掉副檔名就是代號）。"); bad = True
+        members = []
+        for n in qs:
+            if isinstance(n, str) and n.strip().lower() in ab_names:
+                errors.append(f"{where}：縮寫題「{n.strip()}」不能放進情境題組。"); bad = True; continue
+            if not isinstance(n, int) or isinstance(n, bool):
+                errors.append(f"{where}：qs 裡的「{n}」不是題號，qs 要寫題目的 n。"); bad = True; continue
+            if 20000 < n <= 20000 + len(valid_ab):
+                errors.append(f"{where}：{n} 是縮寫題的編號，縮寫題不能放進情境題組。"); bad = True; continue
+            if n > 10000:
+                errors.append(f"{where}：{n} 是頁面上新增的補充題的編號，不能放進情境題組；只有題庫裡的題目（1 到 9998）可以。"); bad = True; continue
+            if n in members:
+                errors.append(f"{where}：題號 {n} 重複了。"); bad = True; continue
+            if n not in vq:
+                errors.append(f"{where}：題號 {n} 不存在或格式有錯。"); bad = True; continue
+            if n in owner:
+                errors.append(f"{where}：第 {n} 題已經在情境題組「{owner[n]}」裡，一題只能屬於一個情境題組。"); bad = True; continue
+            members.append(n)
+        if bad or not members:
+            continue
+        title, text = c["title"].strip(), c["text"].strip()
+        for n in members:
+            owner[n] = title
+            out[n] = {"title": title, "img": img}
+        live = [n for n in members if vq[n].get("void") is not True]
+        if not live:
+            notes.append(f"{where}：題目都標成不可作答，這一組不會出現。")
+        elif len(members) == 1:
+            notes.append(f"{where}：只有一題。情境題組是給同一段情境出好幾題用的，只有一題時把情境寫進題目就好。")
+        elif len(live) == 1:
+            notes.append(f"{where}：扣掉不可作答的題目後只剩一題。")
+        if ch_names and len(live) > 1:
+            chs = []
+            for n in live:
+                v = ch_key(vq[n].get("ch")) if "ch" in vq[n] else None
+                if v not in chs:
+                    chs.append(v)
+            if len(chs) > 1:
+                names = "、".join(ch_names.get(v, v) if v is not None else "未標章節" for v in chs)
+                notes.append(f"{where}：題目分在 {len(chs)} 個章節（{names}）。依章節出題時只勾其中一章，這一組會被拆開；"
+                             "模擬考「照正式考試」時整組算在第一題所在的章節。如果是同一章的內容，請把 ch 改成一樣。")
+        if re.search(FIG_WORDS, text) and not img:
+            notes.append(f"{where}：情境文字提到圖，但沒有附圖（img）。")
+        if len(text) > CASE_LONG:
+            notes.append(f"{where}：情境文字有 {len(text)} 字，超過 {CASE_LONG} 字。手機上要捲好幾個畫面才看完，建議刪掉和題目無關的背景，或拆成幾個情境題組。")
+    return out
 
 
 def chapter_notes(chapters, live_q, live_ab):
@@ -395,8 +484,9 @@ def chapter_notes(chapters, live_q, live_ab):
     return out
 
 
-def quality(qs):
-    """不影響格式、但會影響出題品質的提醒。"""
+def quality(qs, case_of=None):
+    """不影響格式、但會影響出題品質的提醒。case_of：{題號: 情境題組}，題目在有附圖的情境題組裡時，提到「圖」不提醒。"""
+    case_of = case_of or {}
     out = []
     # 練習時選項順序會自動打亂，所以不檢查答案位置；但「正確答案最長」這個線索打亂也還在。
     mcq = [q for q in qs if q.get("type", "mcq") == "mcq"]
@@ -416,7 +506,7 @@ def quality(qs):
             if not re.search(r"選出所有|所有正確|哪些", q["q"]):
                 out.append(f"提醒：{where} 複選題的題目建議註明「（選出所有正確答案）」。")
         e = q.get("e", "")
-        if re.search(r"圖上|圖中|附圖|如圖", e + q.get("q", "")) and not (q.get("img") or q.get("eimg") or any(q.get("oimg") or [])):
+        if re.search(FIG_WORDS, e + q.get("q", "")) and not (q.get("img") or q.get("eimg") or any(q.get("oimg") or []) or (case_of.get(q["n"]) or {}).get("img")):
             out.append(f"提醒：{where} 的題目或解析提到圖，但沒有附圖。")
     no_trap = [q["n"] for q in qs if q.get("e") and "容易卡住的地方" not in q["e"]]
     if no_trap and len(no_trap) / max(1, len(qs)) > 0.3:
@@ -558,7 +648,8 @@ def extract(html_path, dump_dir):
         kind = "舊版"
     (out / "bank.json").write_text(json.dumps(bank, ensure_ascii=False, indent=2), encoding="utf-8")
     (out / "images.json").write_text(json.dumps(imgs, ensure_ascii=False), encoding="utf-8")
-    print(f"已從{kind}練習簿取出 {len(bank.get('questions', []))} 題、縮寫 {len(bank.get('abbr', []))} 個、圖片 {len(imgs)} 張到 {out}/")
+    nc = len(bank["cases"]) if isinstance(bank.get("cases"), list) else 0
+    print(f"已從{kind}練習簿取出 {len(bank.get('questions', []))} 題、縮寫 {len(bank.get('abbr', []))} 個{f'、情境題組 {nc} 組' if nc else ''}、圖片 {len(imgs)} 張到 {out}/")
     if kind == "舊版":
         print("提醒：config 是從舊程式推測的，請檢查 title、subtitle、aiRole 等欄位；storageKeys 沿用舊的作答紀錄，不要刪。")
     for line in fig_report(t, bank):
@@ -592,7 +683,7 @@ def fig_report(html, bank):
     if hits:
         out.append(f"提醒：下列 {len(hits)} 題的文字裡有 [[fig:…]]，要手動處理：{'；'.join(hits)}。")
     out.append("提醒：做法是把每個圖表輸出成圖片（同一題的選項圖片用同一個畫布寬度），放進 --images 的資料夾，題目改用 img（題目附圖）或 oimg（選項圖片）引用，"
-               "再把文字裡的 [[fig:…]] 換成簡短說明（例如「表 1：兩個 input 欄、一個 output 欄」）。改完用 --check 確認沒有遺漏，格式見 references/schema.md 第 7 節。")
+               "再把文字裡的 [[fig:…]] 換成簡短說明（例如「表 1：兩個 input 欄、一個 output 欄」）。改完用 --check 確認沒有遺漏，格式見 references/schema.md 第 8 節。")
     return out
 
 
@@ -626,9 +717,11 @@ def main():
         bank = json.loads(Path(args.bank).read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         sys.exit(f"題庫不是合法的 JSON：第 {e.lineno} 行第 {e.colno} 字，{e.msg}")
-    # 題目附圖 img、解析附圖 eimg、選項圖片 oimg 用到的代號；只有這些圖會放進練習簿
+    # 題目附圖 img、解析附圖 eimg、選項圖片 oimg、情境題組的附圖 img 用到的代號；只有這些圖會放進練習簿
     wanted = {k for q in bank.get("questions", []) if isinstance(q, dict) for f in ("img", "eimg", "oimg")
               for k in (q.get(f) if isinstance(q.get(f), list) else []) if isinstance(k, str)}
+    wanted |= {k for c in (bank.get("cases") if isinstance(bank.get("cases"), list) else []) if isinstance(c, dict)
+               for k in (c.get("img") if isinstance(c.get("img"), list) else []) if isinstance(k, str)}
     imgs, img_notes = load_images(args.images, wanted)
     if args.images_json:
         extra = json.loads(Path(args.images_json).read_text(encoding="utf-8"))
@@ -642,6 +735,7 @@ def main():
     qs = [q for q in bank.get("questions", []) if isinstance(q, dict)]
     mix = Counter(q.get("type", "mcq") for q in qs)
     print("題型：" + "、".join(f"{TYPE_ZH.get(k, k)} {v}" for k, v in mix.items()) + f"、縮寫 {len(bank.get('abbr', []))}、易混淆組 {len(bank.get('groups', []))}"
+          + (f"、情境題組 {len(bank['cases'])}" if isinstance(bank.get("cases"), list) and bank["cases"] else "")
           + (f"、章節 {len(bank['chapters'])}" if isinstance(bank.get("chapters"), list) and bank["chapters"] else "")
           + (f"、不可作答 {nvoid}" if nvoid else ""))
     for e in errors:
