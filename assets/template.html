@@ -6,12 +6,60 @@
 <title>5G SA 協定架構練習簿（範例）</title>
 <!-- ================================================================
   題庫資料區：要換成自己的題目，只需要改下面兩個 <script> 區塊。
-  1. id="bank"：設定（config）、題目（questions）、縮寫題（abbr）、易混淆組（groups）、章節（chapters，可省略）。
+  1. id="bank"：設定（config）、題目（questions）、縮寫題（abbr）、易混淆組（groups）、情境題組（cases，可省略）、章節（chapters，可省略）、卷別（sets，可省略）。
      格式說明見 schema.md；格式有錯時，打開頁面最上方會列出錯在哪一題。
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-24（依章節出題：
+  引擎版本：2026-10-28b（題幹區塊、逐選項解析、卷別與整套模擬考。以 ISTQB CTFL 客製版的功能為藍本，全部是選用的：
+  題庫沒有用到下面的欄位時，畫面、出題和亂數的使用次數都和上一版相同。
+  1. 題幹區塊 blk：題目文字 q 裡的 {{0}}、{{1}} 標出位置，blk 依序放 table（rows、hr、hc、cap）、box（text）、pre（text）、
+  img（img、alt、w：顯示寬度，可以點開放大，深色模式反相）、svg（svg、alt）。五種題型都能用。練習、模擬考、交卷檢討、考前快速瀏覽、
+  列印和題目摘要都照位置排好；AI 解析的提示詞把表格和文字轉成文字，img 區塊的圖接在題目附圖後面一起送。
+  svg 裡有 script、on* 屬性或 javascript: 時，那一題是錯誤、不出現。
+  2. 逐選項解析 oe：和 o 一樣長，依原始選項順序存放；畫面上依打亂後的順序標字母、標出正確選項。作答回饋、快速瀏覽、交卷檢討、
+  列印（用列印時的字母）和 AI 解析（用選項內容稱呼，不帶字母）都有。
+  3. 學習目標 lo、認知層級 k、出處 ref：解析下方一行標籤，也放進 AI 解析的提示詞；lo、k 放進列印的題號說明。
+  4. 卷別 sets：[{id, name}]，題目用 set（只限題號 1 到 999）、no（卷內題號）、add（附加題）、unoff（原創題）。
+  題號顯示成「A 卷第 23 題」，來源標籤用 config.setLabels；開始練習多「卷別」欄（不記住，每日一題和考我一題不分卷別）；
+  題庫地圖依卷別分組、用緊密的格子，有原創題時標「內建／原創」。
+  5. 整套模擬考：每一卷照題號順序出題（附加題除外）、交卷後才看答案、倒數計時、及格線用 passLine。時間是 config.fullMinutes，
+  沒填時是題數乘 pace。config.extraTime（例如 0.25）是非母語加時比例：整套模擬考多一個加時的時間選項，
+  開始練習的「每題時間」也多一個 pace 乘上 1 + extraTime 的選項。prefs.fullExtra 記選的時間（也讀 CTFL 客製版的 prefs.fullMin），
+  prefs.fullRes 記每一卷上次的成績 {r, n, t}，session.full 是卷別 id。
+  6. config.multiCount：複選題提示「選出 N 個答案」。config.passCount：模擬考成績頁寫出「這回要答對 N 題」（整套模擬考一律寫）。
+  7. config.notice（主頁最下方）、config.printNotice、config.printNoticeUnoff（列印最後一行；後者在印出的題目有原創題時才接上）。
+  作答紀錄：state.v 可以是 1 或 2，結構相同（2 是 CTFL 客製版換號後標的），讀進來不換號、不拒絕，寫回時保留原本的值。
+  stats 和 session 的結構沒有變；prefs 多 fullExtra、fullRes，prefs 整包取較新的，所以 known-issues.md 的 KI-001 也適用。）
+  上一版 2026-10-28：情境題組：
+  1. 題庫可以加 cases：[{id, title, text, img, qs}]，一段共用的情境文字（可以附圖）底下掛好幾題。和易混淆組一樣是引用題號的外層結構，
+  題目維持原本的題型和題號，作答紀錄照樣綁在題號上。一題最多屬於一個情境題組（可以同時在易混淆組裡）；縮寫題和頁面上新增的補充題不能放。
+  id 的規則和章節相同。題組本身格式有錯（id、title、text、qs）時整組不出現、列在頁面最上方；qs 裡個別題號有問題時只提醒、略過那一題。
+  沒有 cases 的練習簿畫面和行為完全不變。
+  2. 作答畫面在題目上方顯示情境，標示「情境：題組名稱（第 2／5 題）」。同一組連續作答時，情境的內容區塊直接沿用、不重畫，
+  圖片不閃動、捲到哪裡也不變；太長時在區塊內捲動。每一組都可以收起（記在 prefs.caseFold，跟著帳號同步），新的一組一律先展開。
+  3. 練習的「整組出」（prefs.caseWhole，預設開）：出題範圍是全部題目、還沒做過或已標記時，抽到情境題組的題目就把同組符合目前題型、
+  題目來源、章節和情境題組勾選的題目照 qs 順序接著出完，題數夠了就停（最後一組可能讓題數超出）。錯題複習、弱點題、到期複習、
+  考我一題、每日一題和易混淆題組一次出一題，但都顯示情境。
+  4. 模擬考以題組為單位抽題、不拆開：放不下的題組先跳過，改抽單題或較小的題組補足；湊不滿時，再加一組比較接近設定題數的話就多放這一組。
+  隨機抽時最多試 20 種順序，用第一個剛好湊滿的，都湊不滿就用最接近的。
+  照正式考試時每章各自照這個規則，題組算在它第一題所在的章節。session.want 記設定的題數，成績頁寫出實際題數。
+  5. 開始練習多一個「情境題組」欄（prefs.cases，可複選，"" 代表不屬於情境題組的題目），套用在練習、模擬考、快速瀏覽和列印；
+  每日一題和考我一題不分情境題組。題庫地圖的題號格底部有色條（相鄰兩組不同色），下方有「各情境題組的掌握情況」，點名稱只勾這一組；
+  成績頁列出各情境題組答對幾題。考前快速瀏覽和列印把同一組排在一起、情境只出現一次。AI 解析的提示詞帶情境文字，附圖先送情境附圖。
+  作答紀錄（stats）和練習存檔（session）的結構沒有變；prefs 多 caseWhole、caseFold、cases。prefs 整包取較新的，所以 known-issues.md 的 KI-001 也適用。）
+  更早 2026-10-24b：選項圖片正式支援：
+  1. 單選、複選題可以加 oimg：和 o 一樣長的陣列，每格是圖片代號或 null（那個選項沒有圖）。o 仍然必填，是圖片的簡短說明，
+  誤選分析、列印答案表、aria-label 和 AI 提示詞都用這段文字。選項打亂時圖片跟著選項走。
+  2. loadBank 檢查 oimg：不是陣列、長度和 o 不同、每格不是代號或 null、用在單選和複選以外的題型，都是錯誤（那題不出現）；
+  代號不在圖片區塊時只提醒、那張圖不顯示，和 img 一樣。
+  3. 選項卡片裡的圖片放在選項文字和「已選／正確答案」標籤的下一行、撐滿卡片寬，圖片寬度不受標籤影響，同一題的圖縮放比例一致。
+  有選項圖片的題目，選項旁的 ○ × 改成固定高度、靠上對齊，不被圖片撐高。交卷後檢討的沒作答複選題，正確答案清單也附上選項圖片。
+  下載的列印檔補上選項圖片的樣式（之前圖片不會縮到紙張寬度）。AI 解析的附圖順序不變：先題目附圖，再依題庫的選項順序附選項圖片。
+  頁面依圖片的像素寬度縮放，所以同一題的選項圖片要用同一個畫布寬度輸出，縮小顯示時字級才會一致。
+  4. 修正：模擬考交卷後檢討，沒作答的複選題和縮寫題會讓畫面出錯，停在上一題。
+  作答紀錄（state）的結構沒有變；除了第 4 點的修正，沒有 oimg 的練習簿畫面和行為不變。）
+  更早 2026-10-24：依章節出題：
   1. 題庫可以加 chapters：[{id, name, sub, exam}]，題目和縮寫題用 ch 對到章節的 id。沒有 chapters 的練習簿畫面和行為完全不變。
   ch 對不到任何一章時不擋題目，只在頁面最上方提醒，那題算「未標章節」。頁面上新增的補充題沒有章節，也算未標章節。
   2. 開始練習多一個「章節」欄，可以複選，不勾就是全部章節；有未標章節的題目時多一個「未標章節」可勾。
@@ -22,7 +70,7 @@
   4. 有章節填了 exam（正式考試這一章的題數）時，模擬考的題數多一個「照正式考試」：從勾選的章節（不勾就是全部）各抽 exam 題，
   目前的出題範圍裡不夠的就全拿，說明裡寫少了幾題；沒填 exam 的章節和未標章節不會抽到。這個選擇不記住，和其他題數一樣。
   作答紀錄（stats）和練習存檔（session）的結構沒有變；prefs 多 chapters。prefs 整包取較新的，所以 known-issues.md 的 KI-001 也適用。）
-  上一版 2026-10-23：每日一題加入「換一題」：
+  更早 2026-10-23：每日一題加入「換一題」：
   1. 每日一題的題目頁，作答前在「每日一題・…」標籤旁有「換一題」按鈕，一天一次；作答後、或今天已經換過，就不顯示。
   2. 換成沒做過的新題；沒有新題時抽很久沒做、沒答錯過的題目。不抽排隊複習的錯題，也不抽和原題同一個易混淆題組的題目。
   3. 換掉的題目 7 天內每日一題不抽（抽到的是同組另一題時，連同原本答錯的那題），作答紀錄不動，延後期滿照原本的規則回來。
@@ -77,7 +125,7 @@
  "config": {
   "id": "example-5gsa",
   "title": "5G SA 協定架構練習簿（範例）",
-  "subtitle": "範本示範：六種題型各三題。答案都在架構概念裡，但只靠「看過」選不對，要真的想過才行。",
+  "subtitle": "範本示範：六種題型各三題，另有一組三題的情境題組，和兩題題目裡有表格、方框並附逐選項解析的題目。答案都在架構概念裡，但只靠「看過」選不對，要真的想過才行。",
   "mainLabel": "觀念題",
   "passLine": 80,
   "passNote": "",
@@ -461,6 +509,164 @@
     ]
    ],
    "e": "排查時先判斷失敗發生在哪一層：連 SCTP 都建不起來是傳輸層的問題；SCTP 通了但 Setup 被拒，是應用層設定不相容，要看 cause；控制面都成功但資料過不去，問題在使用者面那條 GTP-U／UDP／IP 路徑。\n容易卡住的地方：三個現象都會被說成「連不上」。先問「哪一層失敗」，才知道該查網路還是查設定。"
+  },
+  {
+   "n": 16,
+   "type": "cls",
+   "q": "把情境裡抓到的六則訊息，放到它出現的介面。",
+   "items": [
+    "PDU SESSION RESOURCE SETUP REQUEST",
+    "BEARER CONTEXT SETUP REQUEST",
+    "UE CONTEXT MODIFICATION REQUEST",
+    "PDU SESSION RESOURCE SETUP RESPONSE",
+    "BEARER CONTEXT SETUP RESPONSE",
+    "UE CONTEXT MODIFICATION RESPONSE"
+   ],
+   "groups": [
+    {
+     "t": "N2",
+     "s": [
+      {
+       "a": 0
+      },
+      {
+       "a": 3
+      }
+     ]
+    },
+    {
+     "t": "E1",
+     "s": [
+      {
+       "a": 1
+      },
+      {
+       "a": 4
+      }
+     ]
+    },
+    {
+     "t": "F1-C",
+     "s": [
+      {
+       "a": 2
+      },
+      {
+       "a": 5
+      }
+     ]
+    }
+   ],
+   "e": "PDU SESSION RESOURCE SETUP 是 NGAP 的訊息，走 AMF 和 CU-CP 之間的 N2；BEARER CONTEXT SETUP 是 E1AP 的訊息，走 CU-CP 和 CU-UP 之間的 E1；UE CONTEXT MODIFICATION 是 F1AP 的訊息，走 CU-CP 和 DU 之間的 F1-C。REQUEST 和 RESPONSE 是同一個程序的一來一回，一定出現在同一個介面上。\n容易卡住的地方：看到 BEARER 就以為是使用者面的東西，會出現在 N3 或 F1-U。建立和修改承載是控制面的工作，先認出訊息屬於哪一個 AP 協定，再對到介面。"
+  },
+  {
+   "n": 17,
+   "type": "order",
+   "q": "把情境裡這四則訊息，排成實際送出的先後順序。",
+   "items": [
+    "PDU SESSION RESOURCE SETUP REQUEST",
+    "BEARER CONTEXT SETUP REQUEST",
+    "UE CONTEXT MODIFICATION REQUEST",
+    "PDU SESSION RESOURCE SETUP RESPONSE"
+   ],
+   "e": "AMF 先在 N2 上要求 gNB 為這個 PDU Session 準備資源。CU-CP 自己不處理使用者資料，所以先在 E1 上請 CU-UP 建立承載；CU-UP 回覆之後，CU-CP 才在 F1-C 上請 DU 加入對應的資料承載。gNB 裡面都準備好了，CU-CP 才在 N2 上回覆 AMF。\n容易卡住的地方：以為 CU-CP 會先通知離手機最近的 DU。使用者面的承載要先在 CU-UP 建好，CU-CP 才有完整的設定可以交給 DU；回覆 AMF 一定在最後，因為那代表 gNB 這邊全部準備好了。"
+  },
+  {
+   "n": 18,
+   "q": "建立完成、手機開始下載後，UPF 要把下行資料用 GTP-U 送到 CU-UP。UPF 是怎麼知道 CU-UP 這一端的隧道位址和 TEID？",
+   "o": [
+    "CU-CP 在回覆 AMF 的 PDU SESSION RESOURCE SETUP RESPONSE 裡帶上，再經 SMF 設定到 UPF",
+    "CU-UP 開機時用 GTP-U Echo 向 UPF 登記自己的位址，之後每個 PDU Session 都沿用",
+    "DU 在 UE CONTEXT MODIFICATION RESPONSE 裡帶上，CU-CP 原封不動轉給 UPF",
+    "UPF 等手機送出第一個上行封包，從那個 GTP-U 封包的來源位址和 TEID 學到"
+   ],
+   "a": 0,
+   "e": "CU-UP 這一端的 N3 隧道位址和 TEID，是 CU-UP 在 E1 上回覆 CU-CP 時給的；CU-CP 把它放進 N2 上回覆 AMF 的 PDU SESSION RESOURCE SETUP RESPONSE，AMF 轉給 SMF，SMF 再透過 N4 設定 UPF。GTP-U Echo 只用來確認路徑通不通，不帶隧道資訊；DU 回覆的是 F1-U 那一段 DU 這一端的位址，和 N3 無關；上行封包標頭裡的 TEID 是 UPF 自己那一端的，從上行封包學不到下行該用的 TEID。\n容易卡住的地方：以為使用者面的位址是兩端自己互相學來的。GTP-U 隧道兩端的位址和 TEID 都是控制面在建立 PDU Session 時交換好的，所以上行通了，不代表下行一定通。"
+  },
+  {
+   "n": 19,
+   "q": "同事把試驗場抓到的四則訊息，和他判斷的介面整理成下表：\n{{0}}\n哪一列記錯了？",
+   "blk": [
+    {
+     "t": "table",
+     "hr": 1,
+     "hc": 1,
+     "cap": "同事整理的對照表",
+     "rows": [
+      [
+       "",
+       "訊息",
+       "記錄的介面"
+      ],
+      [
+       "第 1 列",
+       "NG SETUP REQUEST",
+       "N2"
+      ],
+      [
+       "第 2 列",
+       "GNB-CU-UP E1 SETUP REQUEST",
+       "E1"
+      ],
+      [
+       "第 3 列",
+       "F1 SETUP REQUEST",
+       "F1-C"
+      ],
+      [
+       "第 4 列",
+       "UE CONTEXT SETUP REQUEST",
+       "N2"
+      ]
+     ]
+    }
+   ],
+   "o": [
+    "第 1 列",
+    "第 2 列",
+    "第 3 列",
+    "第 4 列"
+   ],
+   "a": 3,
+   "e": "UE CONTEXT SETUP 是 F1AP 的程序，CU-CP 用它在 DU 建立這支手機的 context，走 F1-C。N2 上名字很像的是 NGAP 的 INITIAL CONTEXT SETUP，由 AMF 送給 gNB。其他三列都對：NG SETUP 是 NGAP、GNB-CU-UP E1 SETUP 是 E1AP、F1 SETUP 是 F1AP。\n容易卡住的地方：只看名字裡有沒有 CONTEXT SETUP 就判斷介面。先認出訊息屬於哪一個 AP 協定，再對到介面；NGAP 的是 INITIAL CONTEXT SETUP，F1AP 的才是 UE CONTEXT SETUP。",
+   "oe": [
+    "NG SETUP 是 NGAP 的介面管理程序，gNB 和 AMF 之間，走 N2，記得對。",
+    "GNB-CU-UP E1 SETUP 是 E1AP 的程序，CU-UP 和 CU-CP 之間，走 E1，記得對。",
+    "F1 SETUP 是 F1AP 的程序，DU 開機後和 CU-CP 建立，走 F1-C，記得對。",
+    "UE CONTEXT SETUP 是 F1AP 的程序，走 F1-C；N2 上的是 NGAP 的 INITIAL CONTEXT SETUP，名字很像但不是同一個。"
+   ],
+   "ref": "TS 38.413（NGAP）、TS 38.463（E1AP）、TS 38.473（F1AP）的程序名稱"
+  },
+  {
+   "n": 20,
+   "type": "multi",
+   "q": "閱讀下面的需求：\n{{0}}\n這次換到 DU2，需要新建立哪些東西？（選出所有正確答案）",
+   "blk": [
+    {
+     "t": "box",
+     "text": "手機正在下載檔案，要從 DU1 底下的小區換到 DU2 底下的小區。\nDU1 和 DU2 都連到同一台 CU-CP 和同一台 CU-UP，兩個 DU 都已經開機、完成 F1 Setup。\n換的過程中下載不能中斷。"
+    }
+   ],
+   "o": [
+    "在 DU2 建立這支手機的 UE context",
+    "CU-UP 和 DU2 之間的 F1-U 隧道",
+    "UPF 和 CU-UP 之間的 N3 隧道",
+    "這支手機的 PDU Session",
+    "DU2 和 CU-CP 之間的 F1 Setup"
+   ],
+   "a": [
+    0,
+    1
+   ],
+   "e": "換的是同一台 CU 底下的 DU，所以只有 CU 和 DU 之間的部分要重建：CU-CP 用 F1AP 在 DU2 建立 UE context，CU-UP 和 DU2 之間建立新的 F1-U 隧道（CU-UP 透過 E1 更新下行要送往的位址）。CU-UP 沒有換，N3 隧道和 PDU Session 都不用動；F1 Setup 是 DU 開機時做一次，跟手機無關。\n容易卡住的地方：以為換手就要整條路重建。先看換掉的是哪一個節點：只換 DU 時，只有 DU 那一段要重建，CU-UP 以上都不變。",
+   "oe": [
+    "CU-CP 要用 F1AP 的 UE CONTEXT SETUP 在 DU2 建立這支手機的 context，DU2 才知道怎麼服務它。",
+    "使用者資料要改從 DU2 走，CU-UP 和 DU2 之間要有新的 F1-U 隧道。",
+    "CU-UP 沒有換，UPF 送到 CU-UP 的 N3 隧道照用，不用重建。",
+    "PDU Session 是手機和核心網之間的連線，只換 DU 不會影響它。",
+    "F1 Setup 是 DU 開機時和 CU-CP 做一次的介面設定，題目說兩個 DU 都已經完成，換手不用再做。"
+   ],
+   "ref": "TS 38.401（Inter-gNB-DU mobility 程序）"
   }
  ],
  "abbr": [
@@ -510,11 +716,27 @@
    ],
    "key": "SCTP association 是通道，Setup 是應用層合作。控制面全部成功，也不代表使用者面那條 GTP-U 路徑是通的。"
   }
+ ],
+ "cases": [
+  {
+   "id": "pdu-setup",
+   "title": "試驗場建立 PDU Session",
+   "text": "手機已經完成 Registration，接著要建立 PDU Session。試驗場的 gNB 拆成 CU-CP、CU-UP、DU 和 RU，核心網這邊和 gNB 直接相連的是 AMF 和 UPF，拓撲如圖。\n工程師在 CU-CP 上同時抓 N2、E1、F1-C 三個介面。這次建立過程中抓到六則訊息：PDU SESSION RESOURCE SETUP REQUEST／RESPONSE、BEARER CONTEXT SETUP REQUEST／RESPONSE、UE CONTEXT MODIFICATION REQUEST／RESPONSE。\n建立完成後，手機開始下載檔案。",
+   "img": [
+    "lab-topo"
+   ],
+   "qs": [
+    16,
+    17,
+    18
+   ]
+  }
  ]
 }
 </script>
 <script type="application/json" id="bank-images">
 {
+ "lab-topo": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2ODAgMzMwIiB3aWR0aD0iNjgwIiBoZWlnaHQ9IjMzMCIgZm9udC1mYW1pbHk9Ik5vdG8gU2FucyBUQywgUGluZ0ZhbmcgVEMsIE1pY3Jvc29mdCBKaGVuZ0hlaSwgc2Fucy1zZXJpZiI+CjxyZWN0IHdpZHRoPSI2ODAiIGhlaWdodD0iMzMwIiBmaWxsPSIjZmZmZmZmIi8+Cjx0ZXh0IHg9IjM0MCIgeT0iMzIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMjAiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMxYzI0MzMiPuippumpl+WgtOaLk+aSsjwvdGV4dD4KPGxpbmUgeDE9IjE1MCIgeTE9IjEwNCIgeDI9IjE1MCIgeTI9IjE1MCIgc3Ryb2tlPSIjNWE2Mzc2IiBzdHJva2Utd2lkdGg9IjIiLz4KPHRleHQgeD0iMTYyIiB5PSIxMzQiIGZvbnQtc2l6ZT0iMTciIGZpbGw9IiMxYzI0MzMiPk4yPC90ZXh0Pgo8bGluZSB4MT0iNTMwIiB5MT0iMTA0IiB4Mj0iNTMwIiB5Mj0iMTUwIiBzdHJva2U9IiM1YTYzNzYiIHN0cm9rZS13aWR0aD0iMiIvPgo8dGV4dCB4PSI1NDIiIHk9IjEzNCIgZm9udC1zaXplPSIxNyIgZmlsbD0iIzFjMjQzMyI+TjM8L3RleHQ+CjxsaW5lIHgxPSIyMjAiIHkxPSIxNzIiIHgyPSI0NjAiIHkyPSIxNzIiIHN0cm9rZT0iIzVhNjM3NiIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjx0ZXh0IHg9IjM0MCIgeT0iMTYyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE3IiBmaWxsPSIjMWMyNDMzIj5FMTwvdGV4dD4KPGxpbmUgeDE9IjE4NSIgeTE9IjE5NCIgeDI9IjMwNSIgeTI9IjI1NiIgc3Ryb2tlPSIjNWE2Mzc2IiBzdHJva2Utd2lkdGg9IjIiLz4KPHRleHQgeD0iMjA2IiB5PSIyNDQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTciIGZpbGw9IiMxYzI0MzMiPkYxLUM8L3RleHQ+CjxsaW5lIHgxPSI0OTUiIHkxPSIxOTQiIHgyPSIzNzUiIHkyPSIyNTYiIHN0cm9rZT0iIzVhNjM3NiIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjx0ZXh0IHg9IjQ3NCIgeT0iMjQ0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE3IiBmaWxsPSIjMWMyNDMzIj5GMS1VPC90ZXh0Pgo8bGluZSB4MT0iMTgwIiB5MT0iMjgwIiB4Mj0iMjcwIiB5Mj0iMjgwIiBzdHJva2U9IiM1YTYzNzYiIHN0cm9rZS13aWR0aD0iMiIvPgo8dGV4dCB4PSIyMjUiIHk9IjI3MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxNyIgZmlsbD0iIzFjMjQzMyI+5YmN5YKzPC90ZXh0Pgo8cmVjdCB4PSI4MCIgeT0iNjAiIHdpZHRoPSIxNDAiIGhlaWdodD0iNDQiIHJ4PSI2IiBmaWxsPSIjY2ZlM2ZmIiBzdHJva2U9IiMxYzI0MzMiIHN0cm9rZS13aWR0aD0iMS41Ii8+Cjx0ZXh0IHg9IjE1MCIgeT0iODkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiMxYzI0MzMiPkFNRjwvdGV4dD4KPHJlY3QgeD0iNDYwIiB5PSI2MCIgd2lkdGg9IjE0MCIgaGVpZ2h0PSI0NCIgcng9IjYiIGZpbGw9IiNjZmUzZmYiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iNTMwIiB5PSI4OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzFjMjQzMyI+VVBGPC90ZXh0Pgo8cmVjdCB4PSI4MCIgeT0iMTUwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjQ0IiByeD0iNiIgZmlsbD0iI2ZmZThjMiIgc3Ryb2tlPSIjMWMyNDMzIiBzdHJva2Utd2lkdGg9IjEuNSIvPgo8dGV4dCB4PSIxNTAiIHk9IjE3OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzFjMjQzMyI+Q1UtQ1A8L3RleHQ+CjxyZWN0IHg9IjQ2MCIgeT0iMTUwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjQ0IiByeD0iNiIgZmlsbD0iI2ZmZThjMiIgc3Ryb2tlPSIjMWMyNDMzIiBzdHJva2Utd2lkdGg9IjEuNSIvPgo8dGV4dCB4PSI1MzAiIHk9IjE3OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzFjMjQzMyI+Q1UtVVA8L3RleHQ+CjxyZWN0IHg9IjI3MCIgeT0iMjU4IiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjQ0IiByeD0iNiIgZmlsbD0iI2Q4ZjBkYyIgc3Ryb2tlPSIjMWMyNDMzIiBzdHJva2Utd2lkdGg9IjEuNSIvPgo8dGV4dCB4PSIzNDAiIHk9IjI4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZmlsbD0iIzFjMjQzMyI+RFU8L3RleHQ+CjxyZWN0IHg9IjQwIiB5PSIyNTgiIHdpZHRoPSIxNDAiIGhlaWdodD0iNDQiIHJ4PSI2IiBmaWxsPSIjZWVlZWVlIiBzdHJva2U9IiMxYzI0MzMiIHN0cm9rZS13aWR0aD0iMS41Ii8+Cjx0ZXh0IHg9IjExMCIgeT0iMjg3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjIwIiBmaWxsPSIjMWMyNDMzIj5SVTwvdGV4dD4KPC9zdmc+Cg==",
  "n3-blank": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2ODAgMjUwIiB3aWR0aD0iNjgwIiBoZWlnaHQ9IjI1MCIgZm9udC1mYW1pbHk9Ik5vdG8gU2FucyBUQywgUGluZ0ZhbmcgVEMsIE1pY3Jvc29mdCBKaGVuZ0hlaSwgc2Fucy1zZXJpZiI+CjxyZWN0IHdpZHRoPSI2ODAiIGhlaWdodD0iMjUwIiBmaWxsPSIjZmZmZmZmIi8+Cjx0ZXh0IHg9IjM0MC4wIiB5PSIzNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzFjMjQzMyI+TjMg5LiK55qEIEdUUC1VIOWwgeWMhe+8iOeUseWkluWIsOWFp++8iTwvdGV4dD4KPHJlY3QgeD0iMzAiIHk9IjcwIiB3aWR0aD0iODAiIGhlaWdodD0iNTYiIGZpbGw9IiNlOWVjZWYiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iNzAuMCIgeT0iMTA0LjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMxYzI0MzMiPkV0aGVybmV0PC90ZXh0Pgo8cmVjdCB4PSIxMTAiIHk9IjcwIiB3aWR0aD0iMTEwIiBoZWlnaHQ9IjU2IiBmaWxsPSIjY2ZlM2ZmIiBzdHJva2U9IiMxYzI0MzMiIHN0cm9rZS13aWR0aD0iMS41Ii8+Cjx0ZXh0IHg9IjE2NS4wIiB5PSIxMDQuMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzFjMjQzMyI+5aSW5bGkIElQPC90ZXh0Pgo8cmVjdCB4PSIyMjAiIHk9IjcwIiB3aWR0aD0iNzAiIGhlaWdodD0iNTYiIGZpbGw9IiNkOGYwZGMiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iMjU1LjAiIHk9IjEwNC4wIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMWMyNDMzIj5VRFA8L3RleHQ+CjxyZWN0IHg9IjI5MCIgeT0iNzAiIHdpZHRoPSIxMjAiIGhlaWdodD0iNTYiIGZpbGw9IiNmZmU4YzIiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iMzUwLjAiIHk9IjEwNC4wIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMWMyNDMzIj5HVFAtVSDmqJnpoK08L3RleHQ+CjxyZWN0IHg9IjQxMCIgeT0iNzAiIHdpZHRoPSIxMTAiIGhlaWdodD0iNTYiIGZpbGw9IiNmM2Q5ZmEiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iNDY1LjAiIHk9IjEwNC4wIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMWMyNDMzIj7lhaflsaQgSVA8L3RleHQ+CjxyZWN0IHg9IjUyMCIgeT0iNzAiIHdpZHRoPSIxMzAiIGhlaWdodD0iNTYiIGZpbGw9IiNlZWVlZWUiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iNTg1LjAiIHk9IjEwNC4wIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMWMyNDMzIj5VRSDnmoTos4fmlpk8L3RleHQ+CjxsaW5lIHgxPSIxNjUuMCIgeTE9IjEyNiIgeDI9IjE2NS4wIiB5Mj0iMTYwIiBzdHJva2U9IiM1YTYzNzYiIHN0cm9rZS13aWR0aD0iMS41Ii8+CjxyZWN0IHg9IjEwMy4wIiB5PSIxNjIiIHdpZHRoPSIxMjQiIGhlaWdodD0iMzQiIHJ4PSI2IiBmaWxsPSIjZjViODJlIi8+Cjx0ZXh0IHg9IjE2NS4wIiB5PSIxODUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTgiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiMyYjIxMDAiPu+8nyDihpQg77yfPC90ZXh0Pgo8bGluZSB4MT0iNDY1LjAiIHkxPSIxMjYiIHgyPSI0NjUuMCIgeTI9IjE2MCIgc3Ryb2tlPSIjNWE2Mzc2IiBzdHJva2Utd2lkdGg9IjEuNSIvPgo8cmVjdCB4PSI0MDMuMCIgeT0iMTYyIiB3aWR0aD0iMTI0IiBoZWlnaHQ9IjM0IiByeD0iNiIgZmlsbD0iI2Y1YjgyZSIvPgo8dGV4dCB4PSI0NjUuMCIgeT0iMTg1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE4IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjMmIyMTAwIj7vvJ8g4oaUIO+8nzwvdGV4dD4KPHBhdGggZD0iTTQxMiA2MiB2LTggaDIzNiB2OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNWE2Mzc2IiBzdHJva2Utd2lkdGg9IjEuNSIvPgo8dGV4dCB4PSI1MzAuMCIgeT0iNDgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM1YTYzNzYiPkdUUC1VIHBheWxvYWQ8L3RleHQ+Cjwvc3ZnPg==",
  "n3-full": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2ODAgMjUwIiB3aWR0aD0iNjgwIiBoZWlnaHQ9IjI1MCIgZm9udC1mYW1pbHk9Ik5vdG8gU2FucyBUQywgUGluZ0ZhbmcgVEMsIE1pY3Jvc29mdCBKaGVuZ0hlaSwgc2Fucy1zZXJpZiI+CjxyZWN0IHdpZHRoPSI2ODAiIGhlaWdodD0iMjUwIiBmaWxsPSIjZmZmZmZmIi8+Cjx0ZXh0IHg9IjM0MC4wIiB5PSIzNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZm9udC13ZWlnaHQ9IjcwMCIgZmlsbD0iIzFjMjQzMyI+TjMg5LiK55qEIEdUUC1VIOWwgeWMhe+8iOeUseWkluWIsOWFp++8iTwvdGV4dD4KPHJlY3QgeD0iMzAiIHk9IjcwIiB3aWR0aD0iODAiIGhlaWdodD0iNTYiIGZpbGw9IiNlOWVjZWYiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iNzAuMCIgeT0iMTA0LjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiMxYzI0MzMiPkV0aGVybmV0PC90ZXh0Pgo8cmVjdCB4PSIxMTAiIHk9IjcwIiB3aWR0aD0iMTEwIiBoZWlnaHQ9IjU2IiBmaWxsPSIjY2ZlM2ZmIiBzdHJva2U9IiMxYzI0MzMiIHN0cm9rZS13aWR0aD0iMS41Ii8+Cjx0ZXh0IHg9IjE2NS4wIiB5PSIxMDQuMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxNiIgZmlsbD0iIzFjMjQzMyI+5aSW5bGkIElQPC90ZXh0Pgo8cmVjdCB4PSIyMjAiIHk9IjcwIiB3aWR0aD0iNzAiIGhlaWdodD0iNTYiIGZpbGw9IiNkOGYwZGMiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iMjU1LjAiIHk9IjEwNC4wIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMWMyNDMzIj5VRFA8L3RleHQ+CjxyZWN0IHg9IjI5MCIgeT0iNzAiIHdpZHRoPSIxMjAiIGhlaWdodD0iNTYiIGZpbGw9IiNmZmU4YzIiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iMzUwLjAiIHk9IjEwNC4wIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMWMyNDMzIj5HVFAtVSDmqJnpoK08L3RleHQ+CjxyZWN0IHg9IjQxMCIgeT0iNzAiIHdpZHRoPSIxMTAiIGhlaWdodD0iNTYiIGZpbGw9IiNmM2Q5ZmEiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iNDY1LjAiIHk9IjEwNC4wIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMWMyNDMzIj7lhaflsaQgSVA8L3RleHQ+CjxyZWN0IHg9IjUyMCIgeT0iNzAiIHdpZHRoPSIxMzAiIGhlaWdodD0iNTYiIGZpbGw9IiNlZWVlZWUiIHN0cm9rZT0iIzFjMjQzMyIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iNTg1LjAiIHk9IjEwNC4wIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjMWMyNDMzIj5VRSDnmoTos4fmlpk8L3RleHQ+CjxsaW5lIHgxPSIxNjUuMCIgeTE9IjEyNiIgeDI9IjE2NS4wIiB5Mj0iMTYwIiBzdHJva2U9IiM1YTYzNzYiIHN0cm9rZS13aWR0aD0iMS41Ii8+CjxyZWN0IHg9Ijg1LjAiIHk9IjE2MiIgd2lkdGg9IjE2MCIgaGVpZ2h0PSIzNCIgcng9IjYiIGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iIzVhNjM3NiIvPgo8dGV4dCB4PSIxNjUuMCIgeT0iMTg1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE1IiBmaWxsPSIjMWMyNDMzIj5DVS1VUCDihpQgVVBGPC90ZXh0Pgo8bGluZSB4MT0iNDY1LjAiIHkxPSIxMjYiIHgyPSI0NjUuMCIgeTI9IjE2MCIgc3Ryb2tlPSIjNWE2Mzc2IiBzdHJva2Utd2lkdGg9IjEuNSIvPgo8cmVjdCB4PSIzODUuMCIgeT0iMTYyIiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjM0IiByeD0iNiIgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjNWE2Mzc2Ii8+Cjx0ZXh0IHg9IjQ2NS4wIiB5PSIxODUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTUiIGZpbGw9IiMxYzI0MzMiPlVFIOKGlCDpgaDnq6/kuLvmqZ88L3RleHQ+CjxwYXRoIGQ9Ik00MTIgNjIgdi04IGgyMzYgdjgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzVhNjM3NiIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KPHRleHQgeD0iNTMwLjAiIHk9IjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE0IiBmaWxsPSIjNWE2Mzc2Ij5HVFAtVSBwYXlsb2FkPC90ZXh0Pgo8L3N2Zz4="
 }
@@ -532,7 +754,7 @@
   --red:#c92a2a;--red-ink:#ffffff;--bad-bg:#fbecec;
   --amber:#f5b82e;--amber-2:#fbd67a;--amber-ink:#2b2100;
   --green:#a6e3b2;--green-ink:#123d1d;--ok:#2b8a3e;--ok-bg:#e8f6eb;
-  --focus:#3553d6;
+  --focus:#3553d6;--figf:none;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -540,7 +762,7 @@
     --red:#e05252;--red-ink:#ffffff;--bad-bg:#3a1c1f;
     --amber:#d99a17;--amber-2:#a8770f;--amber-ink:#1c1400;
     --green:#3f8f55;--green-ink:#effff2;--ok:#5ccf74;--ok-bg:#16301f;
-    --focus:#8fa5ff;
+    --focus:#8fa5ff;--figf:invert(1);
   }
 }
 :root[data-theme="dark"]{
@@ -548,7 +770,7 @@
   --red:#e05252;--red-ink:#ffffff;--bad-bg:#3a1c1f;
   --amber:#d99a17;--amber-2:#a8770f;--amber-ink:#1c1400;
   --green:#3f8f55;--green-ink:#effff2;--ok:#5ccf74;--ok-bg:#16301f;
-  --focus:#8fa5ff;
+  --focus:#8fa5ff;--figf:invert(1);
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 html,body{margin:0}
@@ -943,6 +1165,14 @@ header.top{margin-bottom:26px}
 .qimg + .qimg{margin-top:-12px}
 .oimg{display:block;margin-top:8px}
 .oimg img{display:block;max-width:100%;height:auto;border:1px solid var(--line);border-radius:6px;background:#fff}
+.opt.withimg,.bopt.withimg{flex-wrap:wrap;row-gap:8px}
+.withimg > .oimg{flex:0 0 100%;margin:0}
+.opt.elim > .oimg{opacity:.5}
+.optwrap.hasimg{align-items:flex-start}
+.optwrap.hasimg .xbtn{height:3.25rem}
+@media (max-width:560px){.optwrap.hasimg .marks .xbtn{flex:none;height:2.5rem;min-height:0}}
+.printdoc .oimg{margin:4px 0 6px}
+.printdoc .oimg img{border-color:#ccc;border-radius:0}
 .bank{margin:18px 0 6px;padding:14px 16px 12px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px}
 .bank-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
 .bank-head .subgrid-title{margin:0}
@@ -1055,6 +1285,99 @@ header.top{margin-bottom:26px}
 .fb.void{margin-top:0;border-left-color:var(--muted);background:var(--surface)}
 .fb.void p + p{margin-top:.5em}
 .voidcard{margin-top:18px}
+/* 情境題組：作答畫面上方的情境、題庫地圖和模擬考導覽的色條、快速瀏覽和列印。沒有 cases 的練習簿用不到這些樣式。 */
+:root{--casec:#0c8599;--casec2:#66758a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--casec:#3bc9db;--casec2:#a5b2c5}}
+:root[data-theme="dark"]{--casec:#3bc9db;--casec2:#a5b2c5}
+.case{margin:0 0 20px;background:var(--surface);border:1.5px solid var(--line);border-left:5px solid var(--casec);border-radius:10px;min-width:0}
+.case-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px;padding:10px 14px}
+.case-h{margin:0;font-size:.95rem;font-weight:700;line-height:1.45;overflow-wrap:anywhere}
+.case-pos{font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.case-head .btn.text{padding:.1em .1em;font-size:.9rem}
+.case-body{padding:0 14px 12px;max-height:min(45vh,480px);overflow-y:auto;font-family:"Source Serif 4",Georgia,"Noto Serif TC",serif;font-size:1.02rem;line-height:1.75;
+  /* 內容比區塊長時，上下緣出現陰影，提示還可以在區塊裡捲動 */
+  background:linear-gradient(var(--surface) 30%,transparent) center top,linear-gradient(transparent,var(--surface) 70%) center bottom,
+    radial-gradient(farthest-side at 50% 0,rgba(0,0,0,.18),transparent) center top,radial-gradient(farthest-side at 50% 100%,rgba(0,0,0,.18),transparent) center bottom;
+  background-repeat:no-repeat;background-size:100% 28px,100% 28px,100% 12px,100% 12px;background-attachment:local,local,scroll,scroll}
+.case-body:focus-visible{outline-offset:-3px}
+.case-body p{margin:0 0 .65em;overflow-wrap:anywhere}
+.case-body .qimg{margin:6px 0 10px}
+.case.static .case-body{max-height:none;overflow:visible}
+.case-mini{margin:0 0 16px;border:1.5px dashed var(--line);border-left:5px solid var(--casec);border-radius:10px;background:var(--surface)}
+.case-mini summary{cursor:pointer;padding:8px 14px;font-size:.92rem;color:var(--muted)}
+.case-mini summary strong{color:var(--ink)}
+.case-mini .case-body{max-height:none;overflow:visible;padding-top:2px}
+@media (max-width:560px){.case-head{padding:9px 12px}.case-body{padding:0 12px 10px;max-height:50vh}}
+.cell.incase,.navc.incase{box-shadow:inset 0 -4px 0 var(--casec)}
+.cell.incase.case-b,.navc.incase.case-b{box-shadow:inset 0 -4px 0 var(--casec2)}
+.cell.incase.flagged{box-shadow:inset 0 0 0 2.5px var(--flagc),inset 0 -5px 0 var(--casec)}
+.cell.incase.case-b.flagged{box-shadow:inset 0 0 0 2.5px var(--flagc),inset 0 -5px 0 var(--casec2)}
+.navc.incase.cur{box-shadow:0 0 0 2.5px var(--focus),inset 0 -4px 0 var(--casec)}
+.navc.incase.case-b.cur{box-shadow:0 0 0 2.5px var(--focus),inset 0 -4px 0 var(--casec2)}
+.sw.sw-case{box-shadow:inset 0 -4px 0 var(--casec)}
+.chtbl .cnums{display:block;color:var(--muted);font-size:.82rem;margin-top:2px;overflow-wrap:anywhere}
+.pcase{margin:0 0 14px;padding:10px 12px;border:1px solid #999;border-left:4px solid #555}
+.pcase .pref{margin-bottom:6px}
+.pcase .pimg{margin:4px 0 8px}
+.pcase .pimg img{display:block;max-width:100%;height:auto;border:1px solid #ccc}
+/* 題幹區塊（blk）、逐選項解析（oe）、學習目標標籤、卷別與整套模擬考、主頁最下方的說明。題庫沒用到時這些樣式都用不到。 */
+.qstem{margin:0 0 24px;max-width:68ch}
+.qstem .qtext{margin:0 0 14px;max-width:none}
+.qstem > :last-child{margin-bottom:0}
+.qblk{margin:0 0 14px;max-width:100%;overflow-x:auto}
+.qtbl{border-collapse:collapse;font-size:.95rem;font-variant-numeric:tabular-nums;background:var(--surface)}
+.qtbl th,.qtbl td{border:1.5px solid var(--line);padding:.35em .7em;text-align:center;vertical-align:top}
+.qtbl th{font-weight:700;background:var(--bg)}
+.qtbl tbody th,.qtbl td:first-child{text-align:left}
+.qtbl caption{caption-side:top;text-align:left;color:var(--muted);font-size:.88rem;padding:0 0 6px}
+.qbox{border:1.5px solid var(--line);border-left:4px solid var(--muted);border-radius:8px;background:var(--surface);padding:12px 14px;white-space:pre-line;font-size:1rem;line-height:1.6;font-family:"Source Serif 4",Georgia,"Noto Serif TC",serif;overflow-wrap:anywhere}
+.qpre{border:1.5px solid var(--line);border-radius:8px;background:var(--surface);padding:12px 14px;margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.84rem;line-height:1.55;white-space:pre;overflow-x:auto}
+.qfig{border:1.5px solid var(--line);border-radius:8px;background:var(--surface);padding:12px;display:inline-block;max-width:100%}
+.qfig img{display:block;max-width:100%;height:auto;filter:var(--figf)}
+.qfig svg{display:block;max-width:100%;height:auto;color:var(--ink)}
+.qfig .zoomable{display:block;padding:0;margin:0;border:0;background:none;color:inherit;cursor:zoom-in;max-width:100%}
+.oexp{list-style:none;padding:0;margin:12px 0 0;display:grid;gap:8px}
+.oexp li{display:flex;gap:10px;align-items:flex-start;line-height:1.6}
+.oexp .let{width:1.6em;height:1.6em;font-size:.76rem;margin-top:.12em;color:var(--muted)}
+.oexp li.ok .let{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.oexp .oet{flex:1;min-width:0;overflow-wrap:anywhere}
+.lotag{margin-top:12px;font-size:.88rem;color:var(--muted);overflow-wrap:anywhere}
+.grid.g10{grid-template-columns:repeat(20,1fr);gap:4px;margin:8px 0 6px}
+.grid.g10 .cell{font-size:.74rem;border-radius:5px}
+.grid.g10 .csub{display:none}
+.grid.g10 .cell.has-sub{text-decoration:underline;text-underline-offset:2px}
+@media (max-width:640px){.grid.g10{grid-template-columns:repeat(10,1fr)}}
+.bank .grid.g10{margin:10px 0 4px}
+.subgrid-title .fu,.fullgrid .fu{display:inline-block;margin-left:.45em;font-size:.72rem;font-weight:700;padding:.05em .5em;border-radius:999px;border:1.5px solid var(--amber);color:var(--ink);vertical-align:.12em}
+.subgrid-title .fu.bi,.fullgrid .fu.bi{border-color:var(--line);color:var(--muted)}
+.fullexam{margin:0 0 30px;display:grid;gap:12px}
+.fullexam h2{margin:0}
+.fullexam .note{margin:0}
+.fullgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media (max-width:700px){.fullgrid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:560px){.fullgrid{grid-template-columns:repeat(2,1fr)}}
+.fullbtn{border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:12px 14px;text-align:left;cursor:pointer;display:grid;gap:4px;font:inherit;min-width:0}
+.fullbtn:hover{border-color:var(--focus)}
+.fullbtn:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.fullbtn .fs{font-weight:700;font-size:1.05rem;overflow-wrap:anywhere}
+.fullbtn .fn{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.ack{margin:14px 0 0;font-size:.8rem;color:var(--muted);line-height:1.6;white-space:pre-line;overflow-wrap:anywhere}
+.printdoc .qstem{margin:0 0 6px;max-width:none}
+.printdoc .qstem .pstem{margin:0 0 6px}
+.printdoc .qblk{margin:0 0 8px}
+.printdoc .qtbl{font-size:.88rem;background:#fff}
+.printdoc .qtbl th,.printdoc .qtbl td{border:1px solid #999;padding:.25em .55em}
+.printdoc .qtbl th{background:#f0f0f0}
+.printdoc .qbox,.printdoc .qpre,.printdoc .qfig{border:1px solid #999;background:#fff;color:#111}
+.printdoc .qbox{font-size:.95rem;padding:8px 10px}
+.printdoc .qpre{font-size:.74rem;white-space:pre-wrap;padding:8px 10px}
+.printdoc .qfig img{filter:none;max-height:260px;width:auto}
+.printdoc .qfig svg{color:#111}
+.printdoc .oexp{margin:4px 0 0;gap:2px}
+.printdoc .oexp .let{color:#333}
+.printdoc .oexp li.ok .let{background:#333;border-color:#333;color:#fff}
+.printdoc .popts li{white-space:pre-line}
+.pnotice{margin-top:18px;font-size:.78rem;color:#555;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;white-space:pre-line}
 </style>
 </head>
 <body>
@@ -1087,7 +1410,18 @@ function loadBank(){
   const config = Object.assign({id: "", title: "模擬考練習簿", subtitle: "", mainLabel: "選擇題", passLine: 80, passNote: "", pace: 60, examNote: "",
     aiRole: "這門課的內訓講師", aiTerms: "專有名詞保留英文原文", aiBasis: "依教材與業界標準的正確定義說明", abbrScope: "這門課", storageKeys: null},
     isObj(bank.config) ? bank.config : {});
-  ["title","subtitle","mainLabel","passNote","examNote","aiRole","aiTerms","aiBasis","abbrScope"].forEach(k => { config[k] = typeof config[k] === "string" ? config[k].trim() : ""; });
+  ["title","subtitle","mainLabel","passNote","examNote","aiRole","aiTerms","aiBasis","abbrScope","fullNote","notice","printNotice","printNoticeUnoff"].forEach(k => { config[k] = typeof config[k] === "string" ? config[k].trim() : ""; });
+  /* 卷別、整套模擬考和成績頁的選用設定。格式不對時提醒，用預設值，不擋題目。 */
+  const sl0 = config.setLabels, sl = {set: "題庫", add: "附加題", unoff: "原創題"};
+  if (sl0 !== undefined && !isObj(sl0)) notes.push('config.setLabels 要是 { } 物件，例如 {"set": "官方範例題", "add": "官方附加題", "unoff": "原創練習題"}，已改用預設的說法。');
+  else if (isObj(sl0)) Object.keys(sl).forEach(k => { if (sl0[k] === undefined) return; if (str(sl0[k])) sl[k] = sl0[k].trim(); else notes.push(`config.setLabels.${k} 要是文字，已改用預設的「${sl[k]}」。`); });
+  config.setLabels = sl;
+  const fm = config.fullMinutes, xt = config.extraTime;
+  if (fm !== undefined && !(typeof fm === "number" && fm > 0 && fm <= 1440)) notes.push("config.fullMinutes（整套模擬考的時間，分鐘）要是大於 0 的數字，已改成依題數和 pace 計算。");
+  config.fullMinutes = typeof fm === "number" && fm > 0 && fm <= 1440 ? fm : 0;
+  if (xt !== undefined && !(typeof xt === "number" && xt > 0 && xt <= 1)) notes.push("config.extraTime（非母語加時的比例）要是大於 0、最多 1 的數字，例如 0.25 代表多 25%，這次不提供加時選項。");
+  config.extraTime = typeof xt === "number" && xt > 0 && xt <= 1 ? xt : 0;
+  ["multiCount", "passCount"].forEach(k => { if (config[k] !== undefined && typeof config[k] !== "boolean") notes.push(`config.${k} 要是 true 或 false（不加引號），這次當成 false。`); config[k] = config[k] === true; });
   if (!isObj(bank.config)) errors.push("缺少 config 設定。");
   if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(String(config.id || ""))){
     errors.push(`config.id「${config.id || ""}」要用 2 到 40 個小寫英文、數字或連字號，例如 "fw-upgrade-101"。目前暫用 "workbook"；不同練習簿放在同一個網站時會共用作答紀錄。`);
@@ -1129,6 +1463,50 @@ function loadBank(){
     return k;
   };
 
+  /* 卷別：[{id, name}]。題目用 set 對到 id（規則和章節的 id 相同，比對時轉成文字）。只有題庫的題目（1 到 999）能標卷別。
+     set 對不到任何一卷、或用在 1001 以上的題號時不擋題目，只提醒，那題當成沒有卷別。 */
+  const sets = [], setKeys = new Set(), setMiss = [];
+  (Array.isArray(bank.sets) ? bank.sets : (bank.sets === undefined ? [] : (errors.push("sets 要是陣列。"), []))).forEach((c, idx) => {
+    const where = `卷別第 ${idx + 1} 筆${isObj(c) && str(c.name) ? `（${c.name.trim()}）` : ""}`;
+    if (!isObj(c)) return errors.push(`${where}：要是一個 { } 物件，例如 {"id": "A", "name": "A 卷"}。`);
+    const key = chKey(c.id);
+    if (key === null) return errors.push(`${where}：id 要是 0 以上的整數或 1 到 20 個字的文字，題目的 set 用它對到這一卷。`);
+    if (setKeys.has(key)) return errors.push(`${where}：id「${key}」重複了。`);
+    if (!str(c.name)) return errors.push(`${where}：缺少卷別名稱 name，例如 "A 卷"。`);
+    setKeys.add(key);
+    sets.push({key, name: c.name.trim()});
+  });
+  const flag01 = v => v === true || v === 1;   // add、unoff：true／false，也接受 1／0
+  /* 題幹區塊（blk）的檢查：回傳錯誤訊息或 null。圖片代號不在圖片區塊時只提醒（missImg 收集）。 */
+  const BLK_T = ["table", "box", "pre", "img", "svg"];
+  const svgBad = v => /<script\b/i.test(v) ? "script" : /<[^>]*\son[a-z]+\s*=/i.test(v) ? "on* 屬性（例如 onclick）" : /javascript\s*:/i.test(v) ? "javascript: 連結" : "";
+  const blkErr = (b, i, missImg) => {
+    const at = `blk 第 ${i + 1} 個區塊（{{${i}}}）`;
+    if (!isObj(b) || !BLK_T.includes(b.t)) return `${at}要有類型 t：table、box、pre、img 或 svg。`;
+    if (b.t === "table"){
+      if (!Array.isArray(b.rows) || !b.rows.length || !b.rows.every(r => Array.isArray(r) && r.length && r.every(x => typeof x === "string"))) return `${at}：表格的 rows 要是每列都是文字陣列的陣列，例如 [["", "第 1 次"], ["TC1", "通過"]]。`;
+      const w = b.rows[0].length;
+      const bi = b.rows.findIndex(r => r.length !== w);
+      if (bi >= 0) return `${at}：表格第 ${bi + 1} 列有 ${b.rows[bi].length} 格，第 1 列有 ${w} 格，每一列的格數要一樣（空白的格子寫 ""）。`;
+      if (b.hr !== undefined && !(Number.isInteger(b.hr) && b.hr >= 0 && b.hr <= b.rows.length)) return `${at}：hr（表頭有幾列）要是 0 到 ${b.rows.length} 的整數。`;
+      if (b.hc !== undefined && !(Number.isInteger(b.hc) && b.hc >= 0 && b.hc <= w)) return `${at}：hc（左邊有幾欄是標題）要是 0 到 ${w} 的整數。`;
+      if (b.cap !== undefined && typeof b.cap !== "string") return `${at}：cap（表格標題）要是文字。`;
+    } else if (b.t === "box" || b.t === "pre"){
+      if (!str(b.text)) return `${at}：${b.t === "box" ? "方框" : "程式碼"}區塊要有文字 text。`;
+    } else if (b.t === "img"){
+      if (!str(b.img)) return `${at}：圖片區塊要有圖片代號 img，例如 "std1"。`;
+      if (b.w !== undefined && !(typeof b.w === "number" && b.w > 0 && b.w <= 4000)) return `${at}：w（顯示寬度，px）要是大於 0 的數字。`;
+      if (b.alt !== undefined && typeof b.alt !== "string") return `${at}：alt（圖片的文字說明）要是文字。`;
+      if (!images[b.img]) missImg.push(b.img);
+    } else {
+      if (!str(b.svg) || !/^\s*<svg[\s>]/i.test(b.svg)) return `${at}：svg 區塊的 svg 要是以 <svg 開頭的 SVG 原始碼。`;
+      const bad = svgBad(b.svg);
+      if (bad) return `${at}：svg 裡不能有 ${bad}，頁面不會執行 SVG 裡的程式。`;
+      if (b.alt !== undefined && typeof b.alt !== "string") return `${at}：alt（圖的文字說明）要是文字。`;
+    }
+    return null;
+  };
+
   /* 題目 */
   const questions = [], seen = new Set();
   const TYPES = ["mcq", "multi", "cls", "order", "match"];
@@ -1160,9 +1538,53 @@ function loadBank(){
     if (q.void !== undefined && typeof q.void !== "boolean") return bad("void 要是 true 或 false（不加引號）。");
     if (q.voidNote !== undefined && typeof q.voidNote !== "string") return bad("voidNote 要是文字。");
     if (q.void === true && !str(q.voidNote)) notes.push(`${where}：標成不可作答（void），但沒有用 voidNote 說明這題哪裡有問題。`);
+    /* 卷別 set、卷內題號 no、附加題 add、原創題 unoff；學習目標 lo、認知層級 k、出處 ref。 */
+    if (q.set !== undefined){
+      const sk = chKey(q.set);
+      if (q.n > 999 || sk === null || !setKeys.has(sk)){ setMiss.push(where + (q.n > 999 ? "（1001 以上的題號不能標卷別）" : "")); delete q.set; }
+      else q.set = sk;
+    }
+    if (q.no !== undefined){
+      if (!((typeof q.no === "string" && q.no.trim() && q.no.trim().length <= 10) || (Number.isInteger(q.no) && q.no >= 0))) return bad('no（卷內題號）要是 1 到 10 個字的文字或整數，例如 "23"。');
+      q.no = String(q.no).trim();
+    }
+    for (const f of ["add", "unoff"]){
+      if (q[f] !== undefined && typeof q[f] !== "boolean" && q[f] !== 0 && q[f] !== 1) return bad(`${f} 要是 true 或 false（不加引號）。`);
+      if (flag01(q[f])) q[f] = true; else delete q[f];
+    }
+    for (const f of ["lo", "k", "ref"]){
+      if (q[f] !== undefined && typeof q[f] !== "string") return bad(`${f} 要是文字。`);
+      if (typeof q[f] === "string"){ q[f] = q[f].trim(); if (!q[f]) delete q[f]; }
+    }
+    /* 題幹區塊 blk：q 裡的 {{0}}、{{1}}…… 標出每個區塊的位置，每個區塊剛好出現一次。 */
+    if (q.blk !== undefined){
+      if (!Array.isArray(q.blk) || !q.blk.length) return bad("blk（題幹區塊）要是至少一個區塊的陣列，題目文字 q 用 {{0}}、{{1}} 標出位置。");
+      const missImg = [];
+      for (let i = 0; i < q.blk.length; i++){ const m = blkErr(q.blk[i], i, missImg); if (m) return bad(m); }
+      if (typeof q.q !== "string") return bad("有 blk 時要有題目文字 q，並用 {{0}}、{{1}} 標出區塊的位置。");
+      const marks = (q.q.match(/\{\{\d+\}\}/g) || []).map(x => Number(x.slice(2, -2)));
+      const over = marks.filter(x => x >= q.blk.length);
+      if (over.length) return bad(`題目文字裡有 {{${over[0]}}}，但 blk 只有 ${q.blk.length} 個區塊（從 {{0}} 數起）。`);
+      const cnt = q.blk.map((_, i) => marks.filter(x => x === i).length);
+      const mi = cnt.findIndex(c => c !== 1);
+      if (mi >= 0) return bad(cnt[mi] ? `{{${mi}}} 在題目文字裡出現了 ${cnt[mi]} 次，每個區塊只能放一次。` : `blk 有 ${q.blk.length} 個區塊，但題目文字裡沒有 {{${mi}}}，這個區塊不會顯示。`);
+      if (missImg.length) notes.push(`${where}：blk 用到的圖片 ${missImg.join("、")} 不在圖片區塊裡，這張圖不會顯示。`);
+    }
+    /* 選項圖片 oimg：和 o 一樣長，每格是圖片代號或 null。只用在單選和複選；o 仍然必填，是圖片的簡短說明。 */
+    if (q.oimg !== undefined && type !== "mcq" && type !== "multi") return bad("oimg（選項圖片）只能用在單選和複選題。");
+    if (q.oe !== undefined && type !== "mcq" && type !== "multi") return bad("oe（逐選項解析）只能用在單選和複選題。");
     if (type === "mcq" || type === "multi"){
       if (!strArr(q.o) || q.o.length < 2 || q.o.length > 6) return bad("選項 o 要是 2 到 6 個非空白的文字。");
       const d = dupOf(q.o); if (d !== null) return bad(`選項「${d}」重複了。`);
+      if (q.oimg !== undefined){
+        if (!Array.isArray(q.oimg) || q.oimg.length !== q.o.length || !q.oimg.every(id => id === null || str(id)))
+          return bad(`oimg 要是和選項 o 一樣長（${q.o.length} 格）的陣列，每格是圖片代號或 null（那個選項沒有圖），例如 ${JSON.stringify(q.o.map((_, i) => i === 2 ? null : "tbl" + (i + 1))).replace(/,/g, ", ")}。`);
+        const miss = q.oimg.filter(id => id !== null && !images[id]);
+        if (miss.length) notes.push(`${where}：oimg 用到的圖片 ${miss.join("、")} 不在圖片區塊裡，這張圖不會顯示。`);
+      }
+      /* 逐選項解析 oe：和 o 一樣長，照 o 的原始順序寫；不需要說明的選項寫 ""。 */
+      if (q.oe !== undefined && (!Array.isArray(q.oe) || q.oe.length !== q.o.length || !q.oe.every(x => typeof x === "string")))
+        return bad(`oe（逐選項解析）要是和選項 o 一樣長（${q.o.length} 格）的文字陣列，照 o 的順序寫；某個選項不需要說明時寫 ""。`);
       if (type === "mcq"){
         if (!Number.isInteger(q.a) || q.a < 0 || q.a >= q.o.length) return bad(`單選題的答案 a 要是 0 到 ${q.o.length - 1} 的整數（0 代表第一個選項）。`);
       } else {
@@ -1197,6 +1619,7 @@ function loadBank(){
     questions.push(q);
   });
   questions.sort((x, y) => x.n - y.n);
+  if (setMiss.length) notes.push(`${setMiss.slice(0, 8).join("、")}${setMiss.length > 8 ? ` 等 ${setMiss.length} 題` : ""}的卷別 set 對不到 sets 裡的任何一卷${sets.length ? "" : "（題庫沒有 sets）"}，先當成沒有卷別。`);
 
   /* 縮寫題：[{cat, abbr, full, alts, e, void, voidNote}]；也接受舊格式 [分類, 縮寫, 全名, [其他寫法], 說明]。
      作答紀錄依排列位置記錄，新增請加在最後，不要插入或刪除中間的項目。 */
@@ -1229,8 +1652,44 @@ function loadBank(){
     if (qs.length < 2) return errors.push(`${where}：至少要有兩題有效的題目。`);
     groups.push({name: g.name.trim(), qs, key: typeof g.key === "string" ? g.key : ""});
   });
+
+  /* 情境題組：[{id, title, text, img, qs}]。和易混淆組一樣是引用題號的外層結構，題目維持原本的題型和題號。
+     id 的規則和章節相同，比對時一律轉成文字（key）。題組本身格式有錯就整組略過（錯誤）；qs 裡個別題號有問題時只提醒、略過那一題，
+     那一題照樣出現，只是不屬於任何情境題組。一題最多屬於一個情境題組；縮寫題和頁面上新增的補充題不能放。 */
+  const cases = [], caseKeys = new Set(), inCase = new Map();
+  const abbrNames = new Set(abbr.map(r => r.abbr.toLowerCase()));
+  (Array.isArray(bank.cases) ? bank.cases : (bank.cases === undefined ? [] : (errors.push("cases 要是陣列。"), []))).forEach((c, idx) => {
+    const where = `情境題組第 ${idx + 1} 組${isObj(c) && str(c.title) ? `（${c.title.trim()}）` : ""}`;
+    if (!isObj(c)) return errors.push(`${where}：要是一個 { } 物件，例如 {"id": "hsr", "title": "高鐵票務系統", "text": "……", "qs": [312, 313]}。`);
+    const key = chKey(c.id);
+    if (key === null) return errors.push(`${where}：id 要是 0 以上的整數或 1 到 20 個字的文字，規則和章節的 id 相同。`);
+    if (caseKeys.has(key)) return errors.push(`${where}：id「${key}」重複了。`);
+    if (!str(c.title)) return errors.push(`${where}：缺少題組名稱 title。`);
+    if (!str(c.text)) return errors.push(`${where}：缺少情境文字 text。`);
+    if (!Array.isArray(c.qs) || !c.qs.length) return errors.push(`${where}：缺少題號陣列 qs，例如 [312, 313]。`);
+    if (c.img !== undefined && !strArr(c.img)) return errors.push(`${where}：img 要是圖片代號的陣列，例如 ["seatmap"]。`);
+    caseKeys.add(key);
+    const qs = [];
+    c.qs.forEach(n => {
+      if (typeof n === "string" && abbrNames.has(n.trim().toLowerCase())) return notes.push(`${where}：縮寫題「${n.trim()}」不能放進情境題組，已略過。`);
+      if (!Number.isInteger(n)) return notes.push(`${where}：qs 裡的「${n}」不是題號，已略過。`);
+      /* 20000 + j 是縮寫題的編號（ABBR_BASE，在下面才定義） */
+      if (n > 20000 && n <= 20000 + abbr.length) return notes.push(`${where}：${n} 是縮寫題的編號，縮寫題不能放進情境題組，已略過。`);
+      if (n > 10000) return notes.push(`${where}：題號 ${n} 是頁面上新增的補充題的編號，不能放進情境題組，已略過。`);
+      if (!qset.has(n)) return notes.push(`${where}：題號 ${n} 不存在或格式有錯，已略過。`);
+      if (qs.includes(n)) return notes.push(`${where}：題號 ${n} 重複了，只算一次。`);
+      if (inCase.has(n)) return notes.push(`${where}：第 ${n} 題已經在情境題組「${inCase.get(n)}」裡，一題只能屬於一個情境題組，這裡略過。`);
+      qs.push(n);
+    });
+    if (!qs.length) return errors.push(`${where}：qs 裡沒有任何有效的題目，這一組不會出現。`);
+    qs.forEach(n => inCase.set(n, c.title.trim()));
+    const img = c.img || [];
+    const miss = img.filter(id => !images[id]);
+    if (miss.length) notes.push(`${where}：img 用到的圖片 ${miss.join("、")} 不在圖片區塊裡，這張圖不會顯示。`);
+    cases.push({key, title: c.title.trim(), text: c.text, img, qs});
+  });
   if (!questions.length && !abbr.length) errors.push("題庫裡沒有任何有效的題目。");
-  return {config, sk, questions, abbr, groups, chapters, images, errors, notes};
+  return {config, sk, questions, abbr, groups, cases, chapters, sets, images, errors, notes};
 }
 function showBankIssues(){
   const {errors, notes} = BANK_LOAD;
@@ -1249,6 +1708,11 @@ const BANK_LOAD = loadBank();
 const CONFIG = BANK_LOAD.config, SK = BANK_LOAD.sk;
 const Q = BANK_LOAD.questions;
 document.title = CONFIG.title;
+/* 卷別：題庫的 sets（[{key, name}]），題目的 set 已經轉成 key。沒有 sets 的練習簿 SETS 是空的，下面卷別、整套模擬考的功能都不出現。 */
+const SETS = BANK_LOAD.sets;
+const SET_BY = Object.create(null);
+SETS.forEach(c => { SET_BY[c.key] = c; });
+function setOf(q){ return q && q.set !== undefined && SET_BY[q.set] ? SET_BY[q.set] : null; }
 const IMG = BANK_LOAD.images;
 /* 題目附圖：IMG 的值可以是 data URI、相對路徑或網址；舊版練習簿的純 base64 字串視為 WebP。 */
 function imgSrc(id){
@@ -1272,6 +1736,11 @@ function imgsHTML(ids, cls, alt){
       : `<figure class="${cls}"><img src="${imgSrc(id)}" alt="${esc(alt || "題目附圖")}" loading="lazy" decoding="async"></figure>`).join("");
 }
 function optImgHTML(q, oi){ const id = q && q.oimg ? q.oimg[oi] : null; return id && IMG[id] ? `<span class="oimg"><img src="${imgSrc(id)}" alt="選項圖片" loading="lazy" decoding="async"></span>` : ""; }
+/* 選項卡片裡的圖片放在文字和「已選／正確答案」標籤的下一行、撐滿卡片寬（.withimg）：
+   圖片的寬度才不會因為有沒有標籤而不同，同一題的圖縮放比例一致。 */
+function optImgCls(q, oi){ return optHasImg(q, oi) ? " withimg" : ""; }
+/* 有選項圖片的題目：選項旁的 ○ × 改成固定高度、靠上對齊（.optwrap.hasimg），不被圖片撐高。 */
+function optWrapCls(q){ return q && Array.isArray(q.oimg) && q.oimg.some(id => id && IMG[id]) ? "optwrap hasimg" : "optwrap"; }
 function b64Blob(b64, type){ const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], {type}); }
 const QN = new Set(Q.map(q => q.n));
 
@@ -1349,15 +1818,99 @@ function initArr(s, n){
 }
 function isExtra(n){ return n > EXTRA_BASE; }
 function isBankB(n){ return n > BANK_B && n < EXTRA_BASE; }
-function dispNum(n){ return SECNUM[n] ? SECNUM[n].i : isExtra(n) ? n - EXTRA_BASE : isBankB(n) ? n - BANK_B : n; }
-function srcName(n){ return SECNUM[n] ? "補充" + SEC_NAME[SECNUM[n].s] : isExtra(n) || isBankB(n) ? "補充題" : "題庫"; }
-function qLabel(n){ const q = byN[n]; if (q && q.type === "abbr") return `縮寫題 ${q.q}`; return SECNUM[n] ? `補充${SEC_NAME[SECNUM[n].s]}第 ${SECNUM[n].i} 題` : isExtra(n) ? `補充題第 ${n - EXTRA_BASE} 題` : isBankB(n) ? `補充題第 ${n - BANK_B} 題` : `第 ${n} 題`; }
+/* 有卷別的題目：題庫地圖顯示卷內題號 no（沒填時用 n），題號寫成「A 卷第 23 題」「A 卷附加題 A4」，來源標籤用 config.setLabels。 */
+function dispNum(n){ return SECNUM[n] ? SECNUM[n].i : isExtra(n) ? n - EXTRA_BASE : isBankB(n) ? n - BANK_B : setOf(byN[n]) ? (byN[n].no || n) : n; }
+function srcName(n){ const q = byN[n]; return SECNUM[n] ? "補充" + SEC_NAME[SECNUM[n].s] : isExtra(n) || isBankB(n) ? "補充題" : q && q.unoff ? esc(CONFIG.setLabels.unoff) : setOf(q) ? esc(q.add ? CONFIG.setLabels.add : CONFIG.setLabels.set) : "題庫"; }
+function qLabel(n){ const q = byN[n]; if (q && q.type === "abbr") return `縮寫題 ${q.q}`; const st = setOf(q); if (st && n < BANK_B) return q.add ? `${st.name}附加題 ${q.no || n}` : `${st.name}第 ${q.no || n} 題`; return SECNUM[n] ? `補充${SEC_NAME[SECNUM[n].s]}第 ${SECNUM[n].i} 題` : isExtra(n) ? `補充題第 ${n - EXTRA_BASE} 題` : isBankB(n) ? `補充題第 ${n - BANK_B} 題` : `第 ${n} 題`; }
 function qimgHTML(q, cls){
   if (!q || !q.img) return "";
   if (Array.isArray(q.img)) return imgsHTML(q.img, cls);
   return q.img.src ? `<figure class="${cls || "qimg"}"><img src="${q.img.src}" alt="${esc(q.img.alt || "題目附圖")}"></figure>` : "";
 }
 function optIdx(n){ const q = byN[n]; return q && q.o ? q.o.map((_, i) => i) : []; }
+
+/* ---------- 題幹區塊（blk）、逐選項解析（oe）、學習目標標籤（lo、k、ref） ----------
+   沒有 blk 的題目，qStemHTML 輸出的和原本的 <p class="qtext">…</p> 完全一樣；沒有 oe、lo、k、ref 時其他函式都輸出空字串。 */
+function blockHTML(b){
+  if (!b) return "";
+  if (b.t === "table"){
+    const hr = b.hr || 0, hc = b.hc || 0;
+    const row = (r, head) => `<tr>${r.map((c, j) => head ? `<th scope="col">${esc(c)}</th>` : (j < hc ? `<th scope="row">${esc(c)}</th>` : `<td>${esc(c)}</td>`)).join("")}</tr>`;
+    return `<div class="qblk"><table class="qtbl">${b.cap ? `<caption>${esc(b.cap)}</caption>` : ""}${hr ? `<thead>${b.rows.slice(0, hr).map(r => row(r, true)).join("")}</thead>` : ""}<tbody>${b.rows.slice(hr).map(r => row(r, false)).join("")}</tbody></table></div>`;
+  }
+  if (b.t === "box") return `<div class="qblk"><div class="qbox">${esc(b.text)}</div></div>`;
+  if (b.t === "pre") return `<div class="qblk"><pre class="qpre">${esc(b.text)}</pre></div>`;
+  /* 圖片區塊：w 是顯示寬度（px），手機上縮到畫面寬；可以點開放大；深色模式反相（--figf），適合白底黑線的圖表。 */
+  if (b.t === "img") return IMG[b.img] ? `<div class="qblk"><span class="qfig"><button type="button" class="zoomable" data-zoom="${esc(b.img)}" title="點一下放大"><img src="${imgSrc(b.img)}" alt="${esc(b.alt || "題目附圖")}，點一下放大"${b.w ? ` width="${Math.round(b.w)}"` : ""} decoding="async"></button></span></div>` : "";
+  /* SVG 區塊：loadBank 已經擋掉 script、on* 屬性和 javascript:。用 currentColor 畫的線和字會跟著深色模式變色。 */
+  if (b.t === "svg") return `<div class="qblk"><span class="qfig" role="img" aria-label="${esc(b.alt || "題目附圖")}" style="display:block">${b.svg}</span></div>`;
+  return "";
+}
+/* 題幹：沒有 blk 時照原樣輸出一段文字（text 省略時用 q.q）；有 blk 時把 {{0}} 這類位置標記換成區塊，文字和區塊交錯排好。cls 是文字段落的 class。 */
+function qStemHTML(q, cls, text){
+  cls = cls || "qtext";
+  if (!Array.isArray(q.blk) || !q.blk.length) return `<p class="${cls}">${esc(text === undefined ? q.q : text)}</p>`;
+  let out = "";
+  String(q.q).split(/\{\{(\d+)\}\}/).forEach((p, i) => {
+    if (i % 2){ out += blockHTML(q.blk[Number(p)]); return; }
+    const t = p.replace(/^\n+|\n+$/g, "");
+    if (t) out += `<p class="${cls}">${esc(t)}</p>`;
+  });
+  return `<div class="qstem">${out}</div>`;
+}
+/* 題目的第一行（成績頁的題目摘要）：有 blk 時拿掉位置標記，取第一個有字的行。 */
+function qFirstLine(q){
+  if (!Array.isArray(q.blk) || !q.blk.length) return (q.q || DRAG_PROMPT[q.type] || "").split("\n")[0];
+  return String(q.q).replace(/\{\{\d+\}\}/g, "").split("\n").map(x => x.trim()).filter(Boolean)[0] || DRAG_PROMPT[q.type] || "";
+}
+function hasMeta(q){ return !!(q && (q.lo || q.k || q.ref)); }
+/* 解析下方的學習目標標籤：「學習目標 FL-1.1.1（K1），第 1 章 測試基礎；出處 ……」。 */
+function loTagHTML(q){
+  if (!hasMeta(q)) return "";
+  const c = (q.lo || q.k) && typeof q.ch === "string" && CH_BY[q.ch] ? CH_BY[q.ch] : null;
+  const a = q.lo ? `學習目標 ${esc(q.lo)}${q.k ? `（${esc(q.k)}）` : ""}` : q.k ? `認知層級 ${esc(q.k)}` : "";
+  return `<p class="lotag">${a}${c ? `，${esc(c.name)}` : ""}${q.ref ? `${a ? "；" : ""}出處 ${esc(q.ref)}` : ""}</p>`;
+}
+/* 逐選項解析：oe 依原始選項順序存放，畫面上依 order（打亂後的順序）標字母並標出正確選項，選項打亂後字母仍然對得上。
+   order 省略時用原始順序（考前快速瀏覽、不可作答的題目，選項本來就照原始順序列）。 */
+function oeListHTML(q, order, letters){
+  if (!q || !Array.isArray(q.oe) || !Array.isArray(q.o) || !q.oe.some(x => x && x.trim())) return "";
+  const L = letters || LETTERS;
+  const ord = Array.isArray(order) && order.length === q.o.length ? order : q.o.map((_, i) => i);
+  const right = Array.isArray(q.a) ? q.a : [q.a];
+  return `<ul class="oexp">${ord.map((oi, pos) => q.oe[oi] && q.oe[oi].trim() ? `<li${right.includes(oi) ? ' class="ok"' : ""}><span class="let" aria-hidden="true">${L[pos]}</span><span class="oet"><span class="sr-only">選項 ${L[pos]}${right.includes(oi) ? "（正確答案）" : ""}：</span>${esc(q.oe[oi])}</span></li>` : "").join("")}</ul>`;
+}
+function expHTML(q, order){ return (q && q.e ? `<p>${esc(q.e)}</p>` : "") + oeListHTML(q, order); }
+/* 複選題的提示：config.multiCount 開著時，題庫的複選題寫出要選幾個（頁面上新增的補充題不寫）。 */
+function multiHint(q, practice){
+  if (CONFIG.multiCount && q && q.n < EXTRA_BASE && Array.isArray(q.a)) return `複選題：選出 ${q.a.length} 個答案${practice ? "，再按「送出答案」" : ""}。`;
+  return practice ? "複選題：選出所有正確答案，再按「送出答案」。" : "複選題：選出所有正確答案。";
+}
+/* 給 AI 的題目文字：表格、方框和程式碼轉成文字放回原位，圖片寫成〔附圖：說明〕（img 區塊的圖另外附上）。沒有 blk 時就是 q.q。 */
+function blkImgIds(q){ return (q && Array.isArray(q.blk) ? q.blk : []).filter(b => b && b.t === "img" && IMG[b.img]).map(b => b.img); }
+function blkText(b){
+  if (!b) return "";
+  if (b.t === "table") return (b.cap ? b.cap + "\n" : "") + b.rows.map(r => r.join(" | ")).join("\n");
+  if (b.t === "box" || b.t === "pre") return b.text;
+  if (b.t === "img") return "〔附圖：" + (b.alt || "題目附圖") + "〕";
+  if (b.t === "svg") return "〔圖：" + (b.alt || "題目附圖") + "〕";
+  return "";
+}
+function qAiText(q){
+  if (!Array.isArray(q.blk) || !q.blk.length) return q.q;
+  return String(q.q).replace(/\{\{(\d+)\}\}/g, (_, i) => "\n" + blkText(q.blk[Number(i)]) + "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+/* 逐選項解析給 AI：照題庫的選項順序、用選項內容稱呼，不帶字母（作答時選項是打亂的）。 */
+function oeAiText(q){
+  if (!q || !Array.isArray(q.oe) || !Array.isArray(q.o)) return "";
+  return q.o.map((o, i) => q.oe[i] && q.oe[i].trim() ? "- 「" + o + "」：" + q.oe[i] : "").filter(Boolean).join("\n");
+}
+function metaAiText(q){
+  if (!hasMeta(q)) return "";
+  const c = (q.lo || q.k) && typeof q.ch === "string" && CH_BY[q.ch] ? CH_BY[q.ch] : null;
+  const a = q.lo ? "對應的學習目標：" + q.lo + (q.k ? "（" + q.k + "）" : "") : q.k ? "認知層級：" + q.k : "";
+  return [a + (a && c ? "，" + c.name + (c.sub ? "（" + c.sub + "）" : "") : ""), q.ref ? "出處：" + q.ref : ""].filter(Boolean).join("\n");
+}
 
 /* ---------- 縮寫題 ----------
    內建的縮寫題編號是 20000 + j；自己新增的縮寫題和補充選擇題一樣存在 state.extras（type: "abbr"）。
@@ -1425,8 +1978,13 @@ function syncChFilter(){
   chSel = v.filter((k, i) => typeof k === "string" && (k ? !!CH_BY[k] : none) && v.indexOf(k) === i);
 }
 function cssEsc(s){ return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, "\\$&"); }
-/* 每日一題、考我一題說明的結尾：有章節時講清楚它們不分章節。 */
-function chFreeNote(){ return CHAPTERS.length ? "，但不分章節，一律從全部章節抽" : ""; }
+/* 每日一題、考我一題說明的結尾：有章節或情境題組時講清楚它們不分章節、不分情境題組。 */
+function chFreeNote(){
+  const free = (SET_OPTS.length ? ["卷別"] : []).concat(CHAPTERS.length ? ["章節"] : []).concat(CASES.length && usableCases().length ? ["情境題組"] : []);
+  if (!free.length) return "";
+  if (free.length === 1 && CHAPTERS.length) return "，但不分章節，一律從全部章節抽";
+  return `，但不分${free.length > 2 ? free.slice(0, -1).join("、") + "和" + free[free.length - 1] : free.join("和")}，一律從全部題目抽`;
+}
 function chOk(n){ return !chSel.length || chSel.indexOf(chOf(n)) >= 0; }
 /* 照正式考試出題時要抽的章節：有 exam 題數、而且在勾選範圍裡的章節，依 chapters 的順序。 */
 function chQuota(){ return CHAPTERS.filter(c => c.exam > 0 && (!chSel.length || chSel.indexOf(c.key) >= 0)); }
@@ -1443,9 +2001,221 @@ function officialPick(pool, ordered){
   });
   return out;
 }
+/* ---------- 情境題組 ----------
+   題庫的 cases：一段共用的情境文字（可以附圖）底下掛好幾題。只是引用題號的外層結構，題目的題型、題號和作答紀錄都不變。
+   作答畫面在題目上方顯示情境（casePanelHTML）；同一組連續作答時 render() 直接沿用原本的情境內容區塊，不重畫。
+   出題：練習開著「整組出」（prefs.caseWhole，預設開）、範圍是全部題目／還沒做過／已標記時，抽到題組裡的題目就整組接著出（practiceCasePick）；
+   模擬考一律以題組為單位抽題、不拆開（examCasePick、officialCasePick）。錯題複習、弱點題、到期複習、考我一題、每日一題和易混淆題組一次出一題。
+   「情境題組」欄的勾選存在 prefs.cases（題組 key 的陣列，"" 代表不屬於情境題組的題目），和章節一樣經過 pools()，每日一題和考我一題不套用。
+   沒有 cases 的練習簿：CASES 是空的，下面每個函式都不會改變原本的出題、畫面或亂數的使用次數。 */
+const CASES = BANK_LOAD.cases;
+const CASE_BY = Object.create(null), CASE_OF = Object.create(null);
+CASES.forEach((c, i) => { c.i = i; CASE_BY[c.key] = c; c.qs.forEach(n => { CASE_OF[n] = c.key; }); });
+/* 題庫地圖的色條：依每組最小的題號排序後兩種顏色輪流，題號相鄰的兩組才會不同色。 */
+CASES.slice().sort((a, b) => Math.min.apply(null, a.qs) - Math.min.apply(null, b.qs)).forEach((c, j) => { c.alt = j % 2; });
+const CASE_WHOLE_SCOPES = ["all", "fresh", "marked"];
+let caseSel = [];
+function caseOf(n){ const k = CASE_OF[n]; return k !== undefined ? CASE_BY[k] : null; }
+function caseKeyOf(n){ const k = CASE_OF[n]; return k !== undefined ? k : ""; }
+function caseLive(c){ return c.qs.filter(n => byN[n] && !isVoid(n)); }
+/* 扣掉不可作答的題目後還有題目的情境題組；一題都不剩的題組不出現在任何地方。 */
+function usableCases(){ return CASES.filter(c => caseLive(c).length > 0); }
+function caseName(k){ return k ? (CASE_BY[k] ? CASE_BY[k].title : k) : "不屬於情境題組的題目"; }
+function caseHasNone(){ return ALLQ.some(q => !q.void && CASE_OF[q.n] === undefined); }
+function syncCaseFilter(){
+  const v = pref("cases");
+  if (!CASES.length || !Array.isArray(v)){ caseSel = []; return; }
+  const none = caseHasNone();
+  caseSel = v.filter((k, i) => typeof k === "string" && (k ? !!(CASE_BY[k] && caseLive(CASE_BY[k]).length) : none) && v.indexOf(k) === i);
+}
+function caseOk(n){ return !caseSel.length || caseSel.indexOf(caseKeyOf(n)) >= 0; }
+function caseFolded(c){ const f = pref("caseFold"); return !!(c && f && typeof f === "object" && f[c.key]); }
+function caseTextHTML(c){ return String(c.text).split("\n").map(x => x.trim()).filter(Boolean).map(x => `<p>${esc(x)}</p>`).join(""); }
+/* 「第 2／5 題」：在這一組可以作答的題目裡排第幾；只有一題、或這題本身不可作答時不標。 */
+function casePosText(c, n){
+  const live = caseLive(c), i = live.indexOf(n);
+  return i >= 0 && live.length > 1 ? `（第 ${i + 1}／${live.length} 題）` : "";
+}
+/* 作答畫面的情境區塊。內容區塊（#case-body）帶 data-case，render() 換畫面時同一組就沿用舊的節點：圖片不重新載入、捲動位置不變。
+   opts.fixed：考前快速瀏覽用，不能收起，內容全部展開。 */
+function casePanelHTML(n, opts){
+  const c = caseOf(n); if (!c) return "";
+  const fixed = !!(opts && opts.fixed);
+  const fold = !fixed && caseFolded(c);
+  const head = `情境：${esc(c.title)}<span class="case-pos">${casePosText(c, n)}</span>`;
+  return `<section class="case${fixed ? " static" : ""}${fold ? " folded" : ""}" aria-label="情境：${esc(c.title)}">
+    <div class="case-head"><h3 class="case-h">${head}</h3>${fixed ? "" : `<button class="btn text" data-act="case-fold" data-case="${esc(c.key)}" aria-expanded="${!fold}"${fold ? "" : ' aria-controls="case-body"'}>${fold ? "展開情境" : "收起情境"}</button>`}</div>
+    ${fold ? "" : `<div class="case-body"${fixed ? "" : ` id="case-body" data-case="${esc(c.key)}" tabindex="0" role="region" aria-label="情境內容"`}>${caseTextHTML(c)}${imgsHTML(c.img, "qimg", "情境附圖")}</div>`}
+  </section>`;
+}
+/* 這一回要不要以情境題組為單位出題：模擬考一律要；練習要開著「整組出」，而且出題範圍是全部題目、還沒做過或已標記。
+   出題範圍裡沒有任何情境題組的題目時都不用，照原本的方式出題。 */
+function caseMode(pool, exam){
+  return CASES.length > 0 && (exam || (!!pref("caseWhole") && CASE_WHOLE_SCOPES.indexOf(scope) >= 0)) && pool.some(n => CASE_OF[n] !== undefined);
+}
+/* 抽題的單位：情境題組裡的題目整組一起，組內照 qs 順序，只留符合 ok 的題目；其他題目自己一個單位。 */
+function caseUnit(n, ok){
+  const c = caseOf(n);
+  return c ? {key: "c" + c.key, ids: c.qs.filter(m => m === n || (byN[m] && ok(m)))} : {key: "q" + n, ids: [n]};
+}
+function flatUnits(units){ const out = []; units.forEach(u => u.ids.forEach(n => out.push(n))); return out; }
+/* 練習「整組出」：隨機一題一題抽，抽到題組裡的題目就整組放進來；題數到了就停，所以最後一組可能讓題數超出設定。N = Infinity 是全部。 */
+function practiceCasePick(pool, N, ok){
+  const seen = new Set(), units = []; let total = 0;
+  for (const n of shuffle(pool.slice())){
+    if (total >= N) break;
+    const u = caseUnit(n, ok);
+    if (seen.has(u.key)) continue;
+    seen.add(u.key); units.push(u); total += u.ids.length;
+  }
+  return flatUnits(units);
+}
+/* 模擬考：以題組為單位抽題、不拆開。照順序（弱點題、到期複習）或隨機一題一題看，題目所在的題組放得下就整組放進來；
+   放不下的先跳過，改抽單題或較小的題組補足。最後湊不滿時，跳過的題組裡最小的一組加進來會比較接近設定的題數，就多放這一組。
+   隨機抽的時候最多試 CASE_TRIES 種順序，用第一個剛好湊滿的；都湊不滿就用最接近的（一樣接近時取題數少的）。
+   例如一章要 14 題、有一個 12 題的題組和 7 個單題：先抽到幾個單題時題組就放不下，換個順序就能湊成 12 + 2。
+   seen：照正式考試時各章共用，記已經抽走的單位。回傳抽到的單位（還沒打亂）。 */
+const CASE_TRIES = 20;
+function examCaseTry(pool, N, ordered, ok, seen0){
+  const seen = new Set(seen0 || []), taken = [], aside = []; let total = 0;
+  for (const n of ordered ? pool.slice() : shuffle(pool.slice())){
+    if (total >= N) break;
+    const u = caseUnit(n, ok);
+    if (seen.has(u.key)) continue;
+    seen.add(u.key);
+    if (total + u.ids.length <= N){ taken.push(u); total += u.ids.length; } else aside.push(u);
+  }
+  if (total < N && aside.length){
+    const u = aside.reduce((a, b) => b.ids.length < a.ids.length ? b : a);
+    if (total + u.ids.length - N < N - total){ taken.push(u); total += u.ids.length; }
+  }
+  return {taken, total};
+}
+function examCaseUnits(pool, N, ordered, ok, seen){
+  const tries = ordered || N === Infinity ? 1 : CASE_TRIES;
+  let best = null;
+  for (let t = 0; t < tries; t++){
+    const r = examCaseTry(pool, N, ordered, ok, seen);
+    const d = Math.abs(r.total - N);
+    if (!best || d < best.d || (d === best.d && r.total < best.total)) best = {taken: r.taken, total: r.total, d};
+    if (!d) break;
+  }
+  if (seen) best.taken.forEach(u => seen.add(u.key));
+  return best.taken;
+}
+function examCasePick(pool, N, ordered, ok){ return flatUnits(shuffle(examCaseUnits(pool, N, ordered, ok))); }
+/* 照正式考試：每一章各自用上面的規則抽 exam 題。情境題組算在它第一個符合範圍的題目所在的章節，整組的題目都算進那一章。 */
+function caseHomeCh(n, ok){ const c = caseOf(n); if (!c) return chOf(n); const f = c.qs.find(m => m === n || (byN[m] && ok(m))); return chOf(f); }
+function officialCasePick(pool, ordered, ok){
+  const seen = new Set(), units = [];
+  chQuota().forEach(c => {
+    const l = pool.filter(n => caseHomeCh(n, ok) === c.key);
+    examCaseUnits(l, c.exam, ordered, ok, seen).forEach(u => units.push(u));
+  });
+  return flatUnits(shuffle(units));
+}
+/* 全部題目整組展開後的題數（題數選「全部」時按鈕上顯示的數字）。 */
+function caseExpandCount(pool, ok){
+  const seen = new Set(); let total = 0;
+  pool.forEach(n => { const u = caseUnit(n, ok); if (!seen.has(u.key)){ seen.add(u.key); total += u.ids.length; } });
+  return total;
+}
+/* 快速瀏覽和列印：同一組排在一起（放在這一組第一次出現的位置），組內照 qs 順序。 */
+function caseContig(list){
+  if (!CASES.length) return list;
+  const set = new Set(list), done = new Set(), out = [];
+  list.forEach(n => {
+    const c = caseOf(n);
+    if (!c){ out.push(n); return; }
+    if (done.has(c.key)) return;
+    done.add(c.key);
+    c.qs.forEach(m => { if (set.has(m)) out.push(m); });
+  });
+  return out;
+}
+/* 快速瀏覽的「打亂順序」：一組當成一個單位打亂，組內順序不變。 */
+function caseShuffle(list){
+  const units = [];
+  list.forEach(n => { const k = CASE_OF[n]; const last = units[units.length - 1]; if (k !== undefined && last && last.k === k) last.ids.push(n); else units.push({k, ids: [n]}); });
+  return flatUnits(shuffle(units));
+}
+/* 題號清單的簡短寫法：題庫的題號連號時寫成 312–315，補充題寫成「補充選擇題 3」。 */
+function caseNumsText(list){
+  /* 有卷別的題目寫成「D 卷 21–23」（同一卷、卷內題號連號時縮寫）；沒有卷別的題目寫完整的題號。 */
+  if (list.some(n => setOf(byN[n]))){
+    const segs = [];
+    list.forEach(n => {
+      const q = byN[n], st = setOf(q);
+      const head = st ? st.name + (q.add ? "附加題" : "") : null, last = segs[segs.length - 1];
+      if (head && last && last.head === head) last.nos.push(q.no || String(n)); else segs.push(head ? {head, nos: [q.no || String(n)]} : {head: null, n});
+    });
+    return segs.map(g => {
+      if (!g.head) return qLabel(g.n);
+      const out = [];
+      for (let i = 0; i < g.nos.length;){
+        let j = i;
+        while (j + 1 < g.nos.length && /^\d+$/.test(g.nos[j]) && /^\d+$/.test(g.nos[j + 1]) && Number(g.nos[j + 1]) === Number(g.nos[j]) + 1) j++;
+        out.push(j > i + 1 ? `${g.nos[i]}–${g.nos[j]}` : j === i + 1 ? `${g.nos[i]}、${g.nos[j]}` : g.nos[i]);
+        i = j + 1;
+      }
+      return `${g.head} ${out.join("、")}`;
+    }).join("、");
+  }
+  const out = [], bank = list.filter(n => n < BANK_B).sort((a, b) => a - b);
+  for (let i = 0; i < bank.length;){ let j = i; while (j + 1 < bank.length && bank[j + 1] === bank[j] + 1) j++; out.push(j > i + 1 ? `${bank[i]}–${bank[j]}` : j === i + 1 ? `${bank[i]}、${bank[j]}` : `${bank[i]}`); i = j + 1; }
+  list.filter(n => n >= BANK_B).forEach(n => out.push(SECNUM[n] ? `補充${SEC_NAME[SECNUM[n].s]} ${SECNUM[n].i}` : qLabel(n)));
+  return out.join("、");
+}
+/* ---------- 卷別 ----------
+   題庫有 sets 時，「開始練習」多一個「卷別」欄（單選，和題目來源一樣不記住，重新整理後回到「全部」），
+   套用在練習、模擬考、考前快速瀏覽和列印（經過 poolOk）；每日一題和考我一題不分卷別，和章節、情境題組一樣，說明裡寫明。
+   每一卷有附加題（add）時，多一個「A 卷附加題」可以選。選了某一卷時只出那一卷的題目，沒有卷別的題目、補充題和縮寫題不會出現。
+   沒有 sets 的練習簿 SET_OPTS 是空的，setFilter 一直是 "all"。 */
+let setFilter = "all";
+const SET_OPTS = [];
+SETS.forEach(c => {
+  const main = q => q.set === c.key && !q.add, add = q => q.set === c.key && !!q.add;
+  if (Q.some(q => !q.void && main(q))) SET_OPTS.push({key: "s" + c.key, label: c.name, f: main});
+  if (Q.some(q => !q.void && add(q))) SET_OPTS.push({key: "a" + c.key, label: c.name + "附加題", f: add});
+});
+function setOk(n){
+  if (setFilter === "all") return true;
+  const o = SET_OPTS.find(x => x.key === setFilter), q = byN[n];
+  return !!(o && q && n < BANK_B && o.f(q));
+}
+/* 有原創題（unoff）時，題庫地圖和整套模擬考在卷名旁標「內建」或「原創」（整卷都是原創題的標「原創」）。 */
+const SET_BADGE = Q.some(q => q.unoff && setOf(q));
+function setBadge(k){ const l = Q.filter(q => q.set === k); return !SET_BADGE || !l.length ? "" : l.every(q => q.unoff) ? "原創" : "內建"; }
+function badgeHTML(b){ return b ? `<span class="fu${b === "內建" ? " bi" : ""}">${b}</span>` : ""; }
+/* ---------- 整套模擬考 ----------
+   每一卷（附加題和不可作答的題目除外）照題號順序整卷出題：交卷後才看答案、倒數計時、及格線是 config.passLine。
+   時間是 config.fullMinutes（沒填時是這一卷的題數乘上 pace 秒）；有 config.extraTime 時可以選加時後的時間。
+   選的時間記在 prefs.fullExtra（CTFL 客製版存在 prefs.fullMin：選的分鐘數比 fullMinutes 多就當成加時），
+   每一卷上次的成績記在 prefs.fullRes：{卷別 id: {r: 答對, n: 題數, t: 時間, x: 有加時}}。這兩項跟著帳號同步。 */
+function fullIds(k){ return Q.filter(q => q.set === k && !q.add && !q.void).map(q => q.n); }
+const FULL_SETS = SETS.filter(c => fullIds(c.key).length);
+function fullBaseMs(k){ return CONFIG.fullMinutes ? CONFIG.fullMinutes * 60000 : fullIds(k).length * CONFIG.pace * 1000; }
+function fullExtraOn(){
+  if (!CONFIG.extraTime) return false;
+  const x = pref("fullExtra");
+  if (typeof x === "boolean") return x;
+  const m = pref("fullMin");
+  return typeof m === "number" && !!CONFIG.fullMinutes && m > CONFIG.fullMinutes;
+}
+function fullLimitMs(k, extra){ return Math.round(fullBaseMs(k) * (extra ? 1 + CONFIG.extraTime : 1)); }
+function fmtMinutes(ms){ const sec = Math.round(ms / 1000); return sec % 60 ? `${Math.floor(sec / 60)} 分 ${sec % 60} 秒` : `${sec / 60} 分鐘`; }
+function fullResOf(k){ const r = pref("fullRes"); const x = r && typeof r === "object" && !Array.isArray(r) ? r[k] : null; return x && Number.isInteger(x.r) && Number.isInteger(x.n) && x.n > 0 ? x : null; }
+function needCount(total){ return Math.ceil(total * CONFIG.passLine / 100 - 1e-9); }
+function startFull(k){
+  if (!SET_BY[k]) return;
+  const ids = fullIds(k);
+  if (!ids.length) return;
+  const x = fullExtraOn();
+  startSession(ids, "full", {keepOrder: true, exam: true, full: k, fullX: x, timer: {mode: "down", limit: fullLimitMs(k, x)}});
+}
 const KEY = SK.local;
 /* 和最上方說明的「引擎版本」一致，寫進匯出的備份檔。scripts/package_skill.py 會檢查兩邊有沒有對上。 */
-const ENGINE_VERSION = "2026-10-24";
+const ENGINE_VERSION = "2026-10-28b";
 /* 主頁最下方的「檢查新版」：按下才連 GitHub，讀 main 分支 repo 根目錄的 VERSION（還沒有時改讀範本最上方的引擎版本）。
    連不到（離線、逾時，或 Claude artifact 不能連外）就給連結讓使用者自己看。引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。 */
 const ENGINE_REPO = "https://github.com/HelloNiHowMa/Mock-Exam";
@@ -1454,9 +2224,19 @@ const ENGINE_VER_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/;
 const engineVer = {st: "idle", latest: ""};   // st：idle、checking、same、newer（GitHub 上較新）、ahead（這裡較新）、fail
 const STATUS_LABEL = {new:"未作答", red:"答錯待複習", amber:"複習中", green:"已掌握", master:"熟練"};
 
-const PREF_DEFAULTS = {recall:true, timerMode:"off", pace:CONFIG.pace, examMode:false, skipMastered:true, examTypes:{mcq:true, multi:true, cls:true, abbr:false, drag:true}, statRows:{orig:true, extra:false, sum:false}};
+const PREF_DEFAULTS = {recall:true, timerMode:"off", pace:CONFIG.pace, examMode:false, skipMastered:true, examTypes:{mcq:true, multi:true, cls:true, abbr:false, drag:true}, statRows:{orig:true, extra:false, sum:false}, caseWhole:true};
 function blankState(){ return {v:1, stats:{}, marks:{}, extras:{}, groups:{}, resetAt:0, prefs:{recall:true, t:0}, session:null, updatedAt:0}; }
 function pref(k){ return state.prefs && state.prefs[k] !== undefined ? state.prefs[k] : PREF_DEFAULTS[k]; }
+/* 倒計時的每題秒數。config.extraTime 有填時多一個「非母語加時」選項：pace 乘上 1 + extraTime（取到小數一位，例如 90 秒加 25% 是 112.5 秒）。
+   照 known-issues KI-003 舊的替代做法存下來的整數秒（例如 112），和加時選項差不到 1 秒時當成加時選項。沒有 extraTime 時就是 prefs.pace。 */
+function paceX(){ return CONFIG.extraTime ? Math.round(CONFIG.pace * (1 + CONFIG.extraTime) * 10) / 10 : 0; }
+function paceOpts(){ const a = Array.from(new Set([45, 60, 90, CONFIG.pace])).sort((x, y) => x - y), x = paceX(); return x && a.indexOf(x) < 0 ? a.concat([x]) : a; }
+function paceNow(){
+  const v = pref("pace");
+  if (!CONFIG.extraTime || typeof v !== "number") return v;
+  const x = paceX();
+  return paceOpts().indexOf(v) < 0 && Math.abs(v - x) < 1 ? x : v;
+}
 function setPref(k, v){ state.prefs = Object.assign({}, state.prefs, {[k]: v, t: Date.now()}); commit(); }
 function validState(s){ return s && typeof s === "object" && s.stats && typeof s.stats === "object" && typeof s.updatedAt === "number"; }
 function normalize(s){
@@ -1485,6 +2265,8 @@ if (sessOver(state.session)) state.session = null;
 sanitizeSession();
 let view = "home";
 let mapOpen = {A: true, B: false};
+/* 題庫地圖各區塊的題號格展開了沒有。卷別的區塊（key 是 s、a 加卷別 id，和 x）預設展開。 */
+function mapIsOpen(k){ return mapOpen[k] === undefined ? true : !!mapOpen[k]; }
 let scope = "all";
 let count = 10;
 let gcount = 3;
@@ -1651,11 +2433,15 @@ function weakList(){
     .sort((a, b) => b.sc - a.sc || b.w - a.w || b.t - a.t || a.n - b.n)
     .map(x => x.n);
 }
-/* 開始練習、快速瀏覽和列印的出題範圍。noCh：不套用章節（主頁算各章節題數時用）。 */
-function pools(noCh){
+/* 開始練習、快速瀏覽和列印的篩選：不可作答、題目來源、題型（模擬考看模擬考題型）、章節、情境題組、卷別。
+   noCh：不套用章節（主頁算各章節題數時用）；noCase：不套用情境題組（算各情境題組題數時用）；noSet：不套用卷別（算各卷題數時用）。出題範圍（scope）另外在 pools() 裡分。 */
+function poolOk(noCh, noCase, noSet){
   const examOnly = !!pref("examMode");
   const exT = Object.assign({}, PREF_DEFAULTS.examTypes, pref("examTypes") || {});
-  const ok = n => !isVoid(n) && srcOk(n) && (examOnly ? !!exT[examKind(n)] : typeOk(n)) && (noCh || chOk(n));
+  return n => !isVoid(n) && srcOk(n) && (examOnly ? !!exT[examKind(n)] : typeOk(n)) && (noCh || chOk(n)) && (noCase || caseOk(n)) && (noSet || setOk(n));
+}
+function pools(noCh, noCase, noSet){
+  const ok = poolOk(noCh, noCase, noSet);
   const all = ALLQ.map(q => q.n).filter(ok);
   return {
     weak: weakList().filter(ok),
@@ -1722,8 +2508,11 @@ function mergeMaps(a, b, resetAt){
   });
   return out;
 }
+/* state.v：紀錄的結構版本。1 和 2 的結構相同：2 是 ISTQB CTFL 客製版把補充題、縮寫題換成 10000 + k、20000 + j 之後標的，
+   題號已經是這個引擎的編法，所以照樣讀、不換號，寫回時保留 2（CTFL 客製版看到 2 就不會再換一次號）。 */
+function stateV(){ return state.v === 2 ? 2 : 1; }
 function body(){
-  return JSON.parse(JSON.stringify({v:1, stats: state.stats, marks: state.marks, resetAt: state.resetAt, prefs: state.prefs, extras: state.extras, groups: state.groups, session: state.session || null, updatedAt: state.updatedAt}));
+  return JSON.parse(JSON.stringify({v:stateV(), stats: state.stats, marks: state.marks, resetAt: state.resetAt, prefs: state.prefs, extras: state.extras, groups: state.groups, session: state.session || null, updatedAt: state.updatedAt}));
 }
 function mergeRemote(r, adoptNewerSession){
   const before = JSON.stringify([state.stats, state.marks, state.prefs, state.extras, state.groups]);
@@ -1743,6 +2532,7 @@ function mergeRemote(r, adoptNewerSession){
   }
   state.resetAt = resetAt;
   state.updatedAt = Math.max(state.updatedAt, rTime);
+  if (r.v === 2) state.v = 2;
   const changed = before !== JSON.stringify([state.stats, state.marks, state.prefs, state.extras, state.groups]) || sessionChanged;
   if (changed){ rebuildQ(); sanitizeSession(); }
   return {changed, sessionChanged};
@@ -1876,9 +2666,12 @@ function startSession(ids, mode, opts){
   clsSel = null;
   if (opts.gmap) state.session.gmap = opts.gmap;
   if (opts.exam){ state.session.exam = true; state.session.picks = {}; }
-  const tm = mode === "single" ? "off" : pref("timerMode");
+  if (opts.want) state.session.want = opts.want;   // 以情境題組為單位抽題時，設定的題數（成績頁和實際題數對照）
+  if (opts.full !== undefined){ state.session.full = opts.full; if (opts.fullX) state.session.fullX = true; }   // 整套模擬考：卷別 id、是否加時
+  /* 整套模擬考自己帶計時（opts.timer：一律倒數、限時固定），不看「開始練習」的計時設定。 */
+  const tm = opts.timer ? opts.timer.mode : mode === "single" ? "off" : pref("timerMode");
   if (tm === "up" || tm === "down"){
-    state.session.timer = {mode: tm, limit: tm === "down" ? list.length * pref("pace") * 1000 : 0, used: 0, since: null, sinceN: null, paused: false, alerted: false, cont: false};
+    state.session.timer = {mode: tm, limit: tm === "down" ? (opts.timer ? opts.timer.limit : list.length * paceNow() * 1000) : 0, used: 0, since: null, sinceN: null, paused: false, alerted: false, cont: false};
     state.session.qtime = {};
   }
   commit();
@@ -2193,6 +2986,12 @@ function submitExam(){
     s.answers[n] = ans;
     record(n, ok, ansVal(n, ans));
   });
+  /* 整套模擬考：記下這一卷這次的成績，主頁的按鈕上顯示「上次 r / n」。存在 prefs，跟著帳號同步。 */
+  if (s.full !== undefined && SET_BY[s.full]){
+    const f0 = pref("fullRes"), cur = Object.assign({}, f0 && typeof f0 === "object" && !Array.isArray(f0) ? f0 : {});
+    cur[s.full] = Object.assign({r: s.ids.filter(n => isRight(n, s.answers[n])).length, n: s.ids.length, t: Date.now()}, s.fullX ? {x: true} : {});
+    state.prefs = Object.assign({}, state.prefs, {fullRes: cur, t: Date.now()});
+  }
   s.submitted = true; s.done = true; s.i = 0;
   submitArmed = false;
   commit();
@@ -2210,9 +3009,9 @@ function examBodyHTML(s, n, q){
     const elim = (s.elim && s.elim[n]) || [], maybe = (s.maybe && s.maybe[n]) || [];
     const opts = order.map((oi, pos) => {
       const out = elim.includes(oi), cand = maybe.includes(oi), on = kind === "multi" ? (Array.isArray(pk) && pk.includes(oi)) : pk === oi;
-      return `<div class="optwrap"><button class="opt${on ? " picked" : ""}${out ? " elim" : ""}${cand ? " maybe" : ""}" data-opt="${oi}" ${kind === "multi" ? `role="checkbox" aria-checked="${on}"` : `aria-pressed="${on}"`} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}${optImgHTML(q, oi)}</span>${on ? `<span class="tag">已選</span>` : ""}</button><div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
+      return `<div class="${optWrapCls(q)}"><button class="opt${on ? " picked" : ""}${out ? " elim" : ""}${cand ? " maybe" : ""}${optImgCls(q, oi)}" data-opt="${oi}" ${kind === "multi" ? `role="checkbox" aria-checked="${on}"` : `aria-pressed="${on}"`} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}</span>${on ? `<span class="tag">已選</span>` : ""}${optImgHTML(q, oi)}</button><div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
     }).join("");
-    body = `<p class="qtext">${esc(q.q)}</p>${qimgHTML(q)}${kind === "multi" ? `<p class="multi-hint">複選題：選出所有正確答案。</p>` : ""}<div class="opts${kind === "multi" ? " multi" : ""}">${opts}</div>`;
+    body = `${qStemHTML(q)}${qimgHTML(q)}${kind === "multi" ? `<p class="multi-hint">${multiHint(q, false)}</p>` : ""}<div class="opts${kind === "multi" ? " multi" : ""}">${opts}</div>`;
     keys = `按 1–${order.length} 或 A–${LETTERS[order.length - 1]} ${kind === "multi" ? "勾選" : "選答案"}（可以改），← → 換題，Shift + 數字刪去、Shift + 字母標為可能，按 M 標記`;
   } else if (kind === "abbr"){
     const v = s.picks && typeof s.picks[n] === "string" ? s.picks[n] : "";
@@ -2229,13 +3028,14 @@ function examBodyHTML(s, n, q){
   const tag = kind === "multi" ? "複選" : kind === "cls" ? "拖拉題" : kind === "drag" ? (q.type === "order" ? "拖拉排序" : "拖拉配對") : "";
   const nav = s.ids.map((x, i) => {
     const d = examDone(s, x), mk = isMarked(x);
-    return `<button class="navc${d ? " done" : ""}${mk ? " marked" : ""}${i === s.i ? " cur" : ""}" data-act="exam-goto" data-i="${i}" aria-label="第 ${i + 1} 題，${d ? "已作答" : "未作答"}${mk ? "，已標記" : ""}"${i === s.i ? ' aria-current="true"' : ""}>${i + 1}</button>`;
+    const cs = caseOf(x);
+    return `<button class="navc${d ? " done" : ""}${mk ? " marked" : ""}${i === s.i ? " cur" : ""}${cs ? ` incase case-${cs.alt ? "b" : "a"}` : ""}" data-act="exam-goto" data-i="${i}" aria-label="第 ${i + 1} 題，${d ? "已作答" : "未作答"}${mk ? "，已標記" : ""}${cs ? `，情境題組：${esc(cs.title)}` : ""}"${i === s.i ? ' aria-current="true"' : ""}>${i + 1}</button>`;
   }).join("");
   const left = total - done;
   return `
   <div class="pbar" aria-hidden="true"><span style="width:${Math.round(done / total * 100)}%"></span></div>
-  <p class="gtag">模擬考：交卷後才會看到答案（已作答 ${done} / ${total} 題）</p>
-  <div class="qhead"><h2 id="qh" tabindex="-1">${kind === "abbr" ? "縮寫題" : qLabel(n)}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span>${tag ? `<span class="src">${tag}</span>` : ""}${q.from ? `<span class="src">變化自${esc(qLabel(q.from))}</span>` : ""}<button class="markbtn" id="markbtn" data-act="mark" aria-pressed="${isMarked(n)}"><svg viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5h10v13l-5-3.6-5 3.6z"/></svg>${isMarked(n) ? "已標記" : "標記待檢查"}</button></div>
+  <p class="gtag">${s.full !== undefined && SET_BY[s.full] ? `${esc(SET_BY[s.full].name)}整套模擬考` : "模擬考"}：交卷後才會看到答案（已作答 ${done} / ${total} 題）</p>${casePanelHTML(n)}
+  <div class="qhead"><h2 id="qh" tabindex="-1">${kind === "abbr" ? "縮寫題" : esc(qLabel(n))}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span>${tag ? `<span class="src">${tag}</span>` : ""}${q.from ? `<span class="src">變化自${esc(qLabel(q.from))}</span>` : ""}<button class="markbtn" id="markbtn" data-act="mark" aria-pressed="${isMarked(n)}"><svg viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5h10v13l-5-3.6-5 3.6z"/></svg>${isMarked(n) ? "已標記" : "標記待檢查"}</button></div>
   ${body}
   <div class="exam-nav">
     <button class="btn ghost" data-act="exam-prev" ${s.i === 0 ? "disabled" : ""}>上一題</button>
@@ -2245,7 +3045,7 @@ function examBodyHTML(s, n, q){
   <p class="keys" style="margin-top:10px">${keys}</p>
   <h3 class="subgrid-title">題目導覽</h3>
   <div class="navgrid">${nav}</div>
-  <p class="note">深色是已作答，右上角三角形是標記待檢查的題目。</p>`;
+  <p class="note">深色是已作答，右上角三角形是標記待檢查的題目。${s.ids.some(x => CASE_OF[x] !== undefined) ? "底部有色條的是情境題組的題目，同一組連在一起。" : ""}</p>`;
 }
 /* 交卷後檢討時，沒作答的縮寫題、拖拉題、複選題直接列出正確答案。 */
 function reviewMissHTML(s, n, q){
@@ -2254,11 +3054,11 @@ function reviewMissHTML(s, n, q){
   else if (q.type === "order") ansHTML = `<p>正確順序：</p><ol>${q.items.map(x => `<li>${esc(x)}</li>`).join("")}</ol>`;
   else if (q.type === "match") ansHTML = `<p>正確配對：</p><ul>${q.pairs.map(p => `<li>${esc(p[0])} → ${esc(p[1])}</li>`).join("")}</ul>`;
   else if (q.type === "cls") ansHTML = clsKeyHTML(q) + clsOrigHTML(q);
-  else if (q.type === "multi") ansHTML = `<p>正確答案：</p><ul>${q.a.map(i => `<li>${esc(q.o[i])}</li>`).join("")}</ul>`;
+  else if (q.type === "multi") ansHTML = `<p>正確答案：</p><ul>${q.a.map(i => `<li>${esc(q.o[i])}${optImgHTML(q, i)}</li>`).join("")}</ul>`;
   const nextLabel = s.i === s.ids.length - 1 ? "看這回結果" : "下一題";
-  return `<div class="qhead"><h2 id="qh" tabindex="-1">${esc(qLabel(n))}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span></div>
-    <p class="qtext">${esc(q.type === "abbr" ? "寫出這個縮寫的英文全名" : (q.q || DRAG_PROMPT[q.type] || ""))}</p>
-    <div class="fb bad"><h3 id="fbh" tabindex="-1">沒有作答</h3>${ansHTML}${q.e ? `<p>${esc(q.e)}</p>` : ""}</div>
+  return `${casePanelHTML(n)}<div class="qhead"><h2 id="qh" tabindex="-1">${esc(qLabel(n))}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span></div>
+    ${q.type === "abbr" ? `<p class="qtext">${esc("寫出這個縮寫的英文全名")}</p>` : qStemHTML(q, "qtext", q.q || DRAG_PROMPT[q.type] || "")}
+    <div class="fb bad"><h3 id="fbh" tabindex="-1">沒有作答</h3>${ansHTML}${expHTML(q, s.orders && s.orders[n])}${loTagHTML(q)}</div>
     <div class="nextrow">${s.i > 0 ? `<button class="btn ghost" data-act="review-prev">上一題</button>` : ""}<button class="btn primary big" data-act="next">${nextLabel}</button></div>`;
 }
 function moveItem(from, to){
@@ -2307,7 +3107,7 @@ function dragBodyHTML(s, n, q, answered, noSubmit){
       ${tail}
     </li>`;
   }).join("");
-  return `<p class="qtext">${esc(q.q || DRAG_PROMPT[q.type])}</p>
+  return `${qStemHTML(q, "qtext", q.q || DRAG_PROMPT[q.type])}
   ${answered ? "" : `<p class="dhint">${isOrder ? "拖曳把手，或用 ↑ ↓ 調整順序。" : "拖曳右欄的把手，或用 ↑ ↓ 交換位置，讓右欄對到左欄。"}</p>`}
   <ol class="dnd" id="dnd" data-mode="${q.type}">${rows}</ol>
   ${answered || noSubmit ? "" : `<div class="dsubmit"><button class="btn primary big" data-act="drag-submit">送出答案</button></div>`}`;
@@ -2704,7 +3504,7 @@ function clsBodyHTML(s, n, q, answered, noSubmit){
     return `<section class="cls-group">${grp.t ? `<h3 class="cls-title">${esc(grp.t)}${unordered && !answered ? `<span class="cls-any">順序不拘</span>` : ""}</h3>` : ""}<ul class="cls-slots">${rows}</ul>${gWrong ? `<p class="cls-fix">這一類應該放：${mine.filter(x => !x.l).map(x => esc(q.items[x.a])).join("、")}</p>` : ""}</section>`;
   }).join("");
   const hint = answered ? "" : `<p class="dhint">${sel ? (sel.i !== undefined ? "選好了項目，再點要放的格子。" : "選好了已放的項目，點另一格交換位置，或按「放回項目區」。") : "先點一個項目，再點要放的格子；點已放好的項目可以移到別格。"}</p>`;
-  return `<p class="qtext">${esc(q.q)}</p>${imgsHTML(q.img, "qimg", "題目附圖")}
+  return `${qStemHTML(q)}${imgsHTML(q.img, "qimg", "題目附圖")}
   ${hint}
   <div class="cls${answered ? " done" : ""}">${bank}<div class="cls-groups">${groups}</div></div>
   ${answered || noSubmit ? "" : `<div class="dsubmit cls-actions"><button class="btn primary big" data-act="cls-submit" ${filled ? "" : "disabled"}>送出答案${filled < slots.length ? `（還有 ${slots.length - filled} 格空著）` : ""}</button>${filled ? `<button class="btn ghost" data-act="cls-reset">全部清空</button>` : ""}</div>`}`;
@@ -2827,28 +3627,37 @@ async function saveAiRemote(n){
     await ref.set({notes: cur});
   } catch(e){}
 }
-function optHasImg(q, i){ return !!(q && q.oimg && q.oimg[i] && IMG[q.oimg[i]]); }
+function optHasImg(q, i){ return !!(q && Array.isArray(q.oimg) && q.oimg[i] && IMG[q.oimg[i]]); }
 /* sentOpt：圖片真的有附給 AI 的選項索引（aiImagesFor 的 optIdx）；沒傳就當作都沒有附上。 */
 function aiPromptFor(q, sentOpt){
   const multi = q.type === "multi";
   const ans = multi ? q.a : [q.a];
   const sent = sentOpt || [];
   const parts = [AI_RULES + (multi ? "這是一題複選題，必須全部選對才算對。" : "這是一題單選題。") + "請用 3 到 6 句話，先說明為什麼正確答案是對的，再點出最容易混淆的選項錯在哪裡。" + AI_NO_LABEL];
-  parts.push("題目：\n" + q.q);
+  /* 情境題組：題目只寫這題要問的事，背景在情境文字裡，一定要一起給 AI。 */
+  const cs = caseOf(q.n);
+  if (cs) parts.push("這題屬於一個情境題組，下面的情境是同一組題目共用的背景；解析只要說明這一題用到的部分。\n情境：" + cs.title + "\n" + String(cs.text).trim());
+  parts.push("題目：\n" + qAiText(q));
+  const meta = metaAiText(q);
+  if (meta) parts.push(meta);
   parts.push(AI_OPT_HEAD + q.o.map((x, i) => {
     const pic = optHasImg(q, i);
     return aiOptLine(x || (pic ? "（這個選項只有圖片，沒有文字）" : ""), ans.includes(i), pic ? (sent.includes(i) ? " 〔這個選項有附圖〕" : " 〔這個選項有圖片，但沒有附上〕") : "");
   }).join("\n"));
-  if (q.e) parts.push("題庫附的解析（僅供參考）：\n" + q.e);
+  const oeT = oeAiText(q);
+  if (q.e || oeT) parts.push("題庫附的解析（僅供參考）：\n" + [q.e || "", oeT ? "逐項說明：\n" + oeT : ""].filter(Boolean).join("\n"));
   return parts.join("\n\n");
 }
 /* 附給 AI 的圖：先是題目的 exhibit，再是圖片選項（依選項索引排序，也就是提示詞裡選項清單由上到下的順序）。
    SVG、外部檔案和超過張數上限的圖不會送，所以另外回傳實際附上的 exhibit 張數（nExhibit）和選項索引（optIdx），
    提示詞才能標出哪些選項的圖真的附上了。 */
 async function aiImagesFor(q){
-  const items = (Array.isArray(q.img) ? q.img : []).map(id => ({id, oi: -1}))
-    .concat(q.oimg ? Object.keys(q.oimg).sort().map(k => ({id: q.oimg[k], oi: Number(k)})) : []).filter(x => IMG[x.id]);
-  const out = {has: items.length > 0, blobs: [], nExhibit: 0, optIdx: []};
+  /* 情境題組的附圖排在最前面（oi = -2），再來是題目的 exhibit（oi = -1），最後是圖片選項。 */
+  const cs = caseOf(q.n);
+  /* 題幹區塊（blk）裡的圖接在題目附圖後面，一樣算題目的 exhibit。 */
+  const items = (cs ? cs.img : []).map(id => ({id, oi: -2})).concat((Array.isArray(q.img) ? q.img : []).concat(blkImgIds(q)).map(id => ({id, oi: -1})))
+    .concat(Array.isArray(q.oimg) ? q.oimg.map((id, oi) => ({id, oi})) : []).filter(x => x.id && IMG[x.id]);
+  const out = {has: items.length > 0, caseHas: items.some(x => x.oi === -2), ownHas: items.some(x => x.oi !== -2), blobs: [], nCase: 0, nExhibit: 0, optIdx: []};
   if (!items.length || !sampleApi || typeof sampleApi.limits !== "function") return out;
   let lim = null;
   try { lim = await sampleApi.limits(); } catch(e){ lim = null; }
@@ -2857,7 +3666,8 @@ async function aiImagesFor(q){
   const sent = items.map(x => ({oi: x.oi, im: imgInline(x.id)})).filter(x => x.im && okTypes.includes(x.im.type))
     .slice(0, Math.max(0, lim.images.maxCount || 0));
   out.blobs = sent.map(x => b64Blob(x.im.b64, x.im.type));
-  out.nExhibit = sent.filter(x => x.oi < 0).length;
+  out.nCase = sent.filter(x => x.oi === -2).length;
+  out.nExhibit = sent.filter(x => x.oi === -1).length;
   out.optIdx = sent.filter(x => x.oi >= 0).map(x => x.oi);
   return out;
 }
@@ -2883,15 +3693,20 @@ async function qaiRun(){
   const ctl = new AbortController();
   qai = {n, busy: true, ctl, text: "", msg: ""};
   render();
-  let im = {has: false, blobs: [], nExhibit: 0, optIdx: []};
+  let im = {has: false, caseHas: false, ownHas: false, blobs: [], nCase: 0, nExhibit: 0, optIdx: []};
   try { im = await aiImagesFor(q); } catch(e){}
   const nOpt = im.optIdx.length;
   const optMissing = q.o.some((_, i) => optHasImg(q, i) && !im.optIdx.includes(i));
-  const SEEN = "\n\n" + (nOpt
-    ? "圖片已經附上，共 " + im.blobs.length + " 張：" + (im.nExhibit ? "前 " + im.nExhibit + " 張是題目的 exhibit，後 " + nOpt + " 張是圖片選項的圖。" : "全部是圖片選項的圖。") + "圖片選項的圖照上面選項清單由上到下的順序排，一張對應一個標有〔這個選項有附圖〕的選項。請根據圖中的內容說明；提到圖片選項時，用圖裡的內容來描述是哪一個選項，不要說是第幾張圖，也不要用代號或序號。"
+  const OPT_TAIL = "圖片選項的圖照上面選項清單由上到下的順序排，一張對應一個標有〔這個選項有附圖〕的選項。請根據圖中的內容說明；提到圖片選項時，用圖裡的內容來描述是哪一個選項，不要說是第幾張圖，也不要用代號或序號。";
+  /* 有情境附圖時，說明附圖的順序：先情境附圖，再題目的 exhibit，最後是圖片選項。沒有情境附圖時和之前的說法相同。 */
+  const SEEN = "\n\n" + (im.nCase
+    ? "圖片已經附上，共 " + im.blobs.length + " 張：" + ["前 " + im.nCase + " 張是情境附圖"].concat(im.nExhibit ? ["接著 " + im.nExhibit + " 張是題目的 exhibit"] : [], nOpt ? ["後 " + nOpt + " 張是圖片選項的圖"] : []).join("，") + "。" + (nOpt ? OPT_TAIL : "請根據圖中的內容說明。")
+    : nOpt
+    ? "圖片已經附上，共 " + im.blobs.length + " 張：" + (im.nExhibit ? "前 " + im.nExhibit + " 張是題目的 exhibit，後 " + nOpt + " 張是圖片選項的圖。" : "全部是圖片選項的圖。") + OPT_TAIL
     : "題目附圖已經附上（依序是題目的 exhibit），請根據圖中的內容說明。")
+    + (im.caseHas && !im.nCase ? "情境也有附圖，但沒有附上，解析需要時請根據情境文字合理推論。" : "")
     + (optMissing ? "標有〔這個選項有圖片，但沒有附上〕的選項你看不到圖，解析需要時請根據題目和其他資訊合理推論，並說明你是怎麼推論的。" : "");
-  const UNSEEN = "\n\n這題有附圖，但你看不到圖。如果解析需要圖中的資訊，請根據題目、選項和正確答案合理推論，並說明你是怎麼推論的。";
+  const UNSEEN = "\n\n" + (im.caseHas && !im.ownHas ? "這題的情境有附圖" : "這題有附圖") + "，但你看不到圖。如果解析需要圖中的資訊，請根據題目、選項和正確答案合理推論，並說明你是怎麼推論的。";
   const call = withImg => sampleApi(aiPromptFor(q, withImg ? im.optIdx : []) + (im.has ? (withImg ? SEEN : UNSEEN) : ""), Object.assign({signal: ctl.signal, cache: false, modelTier: "default",
     onText: ({text}) => { if (qai.n === n && qai.busy){ qai.text = text; const el = document.getElementById("qai-text"); if (el) el.textContent = text; } }},
     withImg ? {images: im.blobs} : {}));
@@ -3220,7 +4035,9 @@ function renderEdit(){
 }
 
 /* ---------- 列印：用目前的出題範圍產生練習卷或複習講義 ---------- */
-const PRINT_CSS = ".printdoc{background:#fff;color:#111;border:1.5px solid var(--line);border-radius:8px;padding:28px 28px 32px;margin-top:22px;font-family:\"Source Serif 4\",Georgia,\"Noto Serif TC\",serif;line-height:1.6}\n.printdoc h1{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:1.4rem;margin:0 0 4px;color:#111}\n.phead p{margin:2px 0;color:#444;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.phead .pname{margin-top:12px;color:#111}\n.plist{list-style:none;padding:0;margin:22px 0 0}\n.pq{margin:0 0 18px;break-inside:avoid;page-break-inside:avoid}\n.pref{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-weight:700;font-size:.92rem;margin:0 0 4px}\n.pstem{white-space:pre-line;margin:0 0 6px}\n.pimg{margin:4px 0 8px}\n.pimg img{max-width:100%;height:auto;border:1px solid #ccc}\n.popts{margin:0 0 4px;padding-left:1.9em}\n.popts li{margin:2px 0}\n.pline{margin:8px 0 0;border-bottom:1px solid #999;min-height:1.7em;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pmatch{display:grid;grid-template-columns:1fr 1fr;gap:16px}\n.pmatch ol{margin:0;padding-left:1.9em}\n.pans{margin-top:8px;padding:8px 12px;border-left:3px solid #999;background:#f4f4f4;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pans p{margin:2px 0}\n.pkey{margin-top:28px;border-top:1.5px solid #999;padding-top:12px;break-before:page;page-break-before:always;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif}\n.pkey h2{font-size:1.1rem;margin:0 0 8px}\n.pkey ol{columns:2;column-gap:28px;padding-left:2.2em;margin:0;font-size:.9rem}\n.pkey li{break-inside:avoid;margin:2px 0}";
+const PRINT_CSS = ".printdoc{background:#fff;color:#111;border:1.5px solid var(--line);border-radius:8px;padding:28px 28px 32px;margin-top:22px;font-family:\"Source Serif 4\",Georgia,\"Noto Serif TC\",serif;line-height:1.6}\n.printdoc h1{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:1.4rem;margin:0 0 4px;color:#111}\n.phead p{margin:2px 0;color:#444;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.phead .pname{margin-top:12px;color:#111}\n.plist{list-style:none;padding:0;margin:22px 0 0}\n.pq{margin:0 0 18px;break-inside:avoid;page-break-inside:avoid}\n.pref{font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-weight:700;font-size:.92rem;margin:0 0 4px}\n.pstem{white-space:pre-line;margin:0 0 6px}\n.pimg{margin:4px 0 8px}\n.pimg img{max-width:100%;height:auto;border:1px solid #ccc}\n.popts{margin:0 0 4px;padding-left:1.9em}\n.popts li{margin:2px 0}\n.pline{margin:8px 0 0;border-bottom:1px solid #999;min-height:1.7em;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pmatch{display:grid;grid-template-columns:1fr 1fr;gap:16px}\n.pmatch ol{margin:0;padding-left:1.9em}\n.pans{margin-top:8px;padding:8px 12px;border-left:3px solid #999;background:#f4f4f4;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif;font-size:.9rem}\n.pans p{margin:2px 0}\n.pkey{margin-top:28px;border-top:1.5px solid #999;padding-top:12px;break-before:page;page-break-before:always;font-family:\"Noto Sans TC\",\"PingFang TC\",\"Microsoft JhengHei\",sans-serif}\n.pkey h2{font-size:1.1rem;margin:0 0 8px}\n.pkey ol{columns:2;column-gap:28px;padding-left:2.2em;margin:0;font-size:.9rem}\n.pkey li{break-inside:avoid;margin:2px 0}\n.oimg{display:block;margin:4px 0 6px}\n.oimg img{display:block;box-sizing:border-box;max-width:100%;height:auto;border:1px solid #ccc;background:#fff}\n.pcase{margin:0 0 14px;padding:10px 12px;border:1px solid #999;border-left:4px solid #555}\n.pcase .pref{margin-bottom:6px}\n.popts li{white-space:pre-line}"
+  /* 題幹區塊、逐選項解析和列印最後一行的說明：題庫有用到時才加進下載的列印檔。 */
+  + (Q.some(q => (Array.isArray(q.blk) && q.blk.length) || Array.isArray(q.oe)) || CONFIG.printNotice || CONFIG.printNoticeUnoff ? "\n.qstem{margin:0 0 6px}.qstem .pstem{margin:0 0 6px}.qblk{margin:0 0 8px;max-width:100%}.qtbl{border-collapse:collapse;font-size:.88rem}.qtbl th,.qtbl td{border:1px solid #999;padding:.25em .55em;text-align:center;vertical-align:top}.qtbl th{background:#f0f0f0}.qtbl tbody th,.qtbl td:first-child{text-align:left}.qtbl caption{text-align:left;font-size:.82rem;color:#555;padding:0 0 4px}.qbox{border:1px solid #999;border-left:3px solid #666;border-radius:6px;padding:8px 10px;white-space:pre-line;font-size:.95rem}.qpre{border:1px solid #999;border-radius:6px;padding:8px 10px;margin:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.74rem;white-space:pre-wrap}.qfig{border:1px solid #999;border-radius:6px;padding:8px;display:inline-block;max-width:100%}.qfig .zoomable{display:block;padding:0;margin:0;border:0;background:none}.qfig img{display:block;max-width:100%;max-height:260px;width:auto;height:auto}.qfig svg{display:block;max-width:100%;height:auto;color:#111}.oexp{list-style:none;padding:0;margin:4px 0 0}.oexp li{display:flex;gap:8px;margin:2px 0}.oexp .let{flex:none;width:1.5em;height:1.5em;border:1px solid #333;border-radius:50%;display:inline-grid;place-items:center;font-size:.72rem;font-weight:700}.oexp li.ok .let{background:#333;color:#fff}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.pnotice{margin-top:18px;font-size:.78rem;color:#555;font-family:sans-serif;white-space:pre-line}" : "");
 const SCOPE_NAME = {all:"全部題目", review:"錯題複習", weak:"弱點題", due:"到期複習", fresh:"還沒做過", marked:"已標記"};
 const TYPE_NAME = {mcq:CONFIG.mainLabel, abbr:"縮寫題", drag:"拖拉題", all:"全部題型"};
 const SRC_NAME = {orig:"只有題庫", extra:"只有補充題", variant:"只有變化題"};
@@ -3239,15 +4056,19 @@ function seededOrder(len, seed, keepSame){
 function printRef(n){
   const q = byN[n];
   if (q.type === "abbr") return "縮寫題";
-  if (!isExtra(n)) return qLabel(n) + (q.type === "imgdd" || q.type === "cls" ? "（拖拉題）" : q.type === "order" ? "（排序題）" : q.type === "match" ? "（配對題）" : q.type === "multi" ? "（複選）" : "");
+  const kind = q.type === "imgdd" || q.type === "cls" ? "拖拉題" : q.type === "order" ? "排序題" : q.type === "match" ? "配對題" : q.type === "multi" ? "複選" : "";
+  /* 有學習目標或認知層級的題目：「A 卷第 23 題（FL-4.2.4，K3，複選）」。 */
+  if (!isExtra(n) && (q.lo || q.k)) return `${qLabel(n)}（${[q.lo, q.k, kind].filter(Boolean).join("，")}）`;
+  if (!isExtra(n)) return qLabel(n) + (kind ? `（${kind}）` : "");
   if (q.from) return `${qLabel(n)}（變化自${qLabel(q.from)}）`;
   if (q.type === "order") return `${qLabel(n)}（排序）`;
   if (q.type === "match") return `${qLabel(n)}（配對）`;
   return qLabel(n) + (q.type === "multi" ? "（複選）" : "");
 }
 function openPrint(){
-  const ids = pools()[scope].slice();
-  const desc = [SCOPE_NAME[scope] || "全部題目", TYPE_NAME[typeFilter], srcFilter !== "all" ? SRC_NAME[srcFilter] : "", chSel.length ? chSel.map(chName).join("、") : ""].filter(Boolean).join("、");
+  const ids = caseContig(pools()[scope].slice());   // 同一個情境題組排在一起，情境只印一次
+  const so = SET_OPTS.find(x => x.key === setFilter);
+  const desc = [SCOPE_NAME[scope] || "全部題目", TYPE_NAME[typeFilter], srcFilter !== "all" ? SRC_NAME[srcFilter] : "", so ? so.label : "", chSel.length ? chSel.map(chName).join("、") : "", caseSel.length ? caseSel.map(caseName).join("、") : ""].filter(Boolean).join("、");
   printCfg = {ids, desc, fmt: printCfg ? printCfg.fmt : "sheet"};
   printMsg = "";
   view = "print";
@@ -3258,44 +4079,57 @@ function printDocHTML(c){
   const d = new Date();
   const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const keys = [];
-  const items = c.ids.filter(n => byN[n]).map((n, idx) => {
+  const pids = c.ids.filter(n => byN[n]);
+  const items = pids.map((n, idx) => {
     const q = byN[n], no = idx + 1;
-    let body = "", ans = "";
+    /* 情境題組：這一組的第一題前面先印情境（文字和附圖），標出它是第幾到第幾題共用的；同一組的題目在 openPrint 已經排在一起。 */
+    const cs = caseOf(n);
+    let caseHead = "";
+    if (cs && (!idx || caseOf(pids[idx - 1]) !== cs)){
+      let end = idx; while (end + 1 < pids.length && caseOf(pids[end + 1]) === cs) end++;
+      caseHead = `<li class="pcase"><p class="pref">情境：${esc(cs.title)}（${end > idx ? `第 ${no}–${end + 1} 題共用` : `第 ${no} 題`}）</p>${String(cs.text).split("\n").map(x => x.trim()).filter(Boolean).map(x => `<p class="pstem">${esc(x)}</p>`).join("")}${imgsHTML(cs.img, "pimg", "情境附圖")}</li>`;
+    }
+    let body = "", ans = "", pord = null;   // pord：單選、複選印出來的選項順序，逐選項解析的字母跟著它標
     if (q.type === "abbr"){
       body = `<p class="pstem">寫出這個縮寫的英文全名：<strong>${esc(q.q)}</strong></p><p class="pline">答：</p>`;
       ans = esc(q.ans) + (q.alts && q.alts.length ? `（也接受：${esc(q.alts.join("、"))}）` : "");
     } else if (q.type === "order"){
       const ord = seededOrder(q.items.length, n);
-      body = `<p class="pstem">${esc(q.q || DRAG_PROMPT.order)}</p><ol class="popts" type="A">${ord.map(i => `<li>${esc(q.items[i])}</li>`).join("")}</ol><p class="pline">正確順序：</p>`;
+      body = `${qStemHTML(q, "pstem", q.q || DRAG_PROMPT.order)}<ol class="popts" type="A">${ord.map(i => `<li>${esc(q.items[i])}</li>`).join("")}</ol><p class="pline">正確順序：</p>`;
       ans = q.items.map((_, i) => PLETTERS[ord.indexOf(i)]).join(" → ");
     } else if (q.type === "match"){
       const ord = seededOrder(q.pairs.length, n);
-      body = `<p class="pstem">${esc(q.q || DRAG_PROMPT.match)}</p><div class="pmatch"><ol>${q.pairs.map(p => `<li>${esc(p[0])}</li>`).join("")}</ol><ol type="A">${ord.map(i => `<li>${esc(q.pairs[i][1])}</li>`).join("")}</ol></div><p class="pline">配對：</p>`;
+      body = `${qStemHTML(q, "pstem", q.q || DRAG_PROMPT.match)}<div class="pmatch"><ol>${q.pairs.map(p => `<li>${esc(p[0])}</li>`).join("")}</ol><ol type="A">${ord.map(i => `<li>${esc(q.pairs[i][1])}</li>`).join("")}</ol></div><p class="pline">配對：</p>`;
       ans = q.pairs.map((_, i) => `${i + 1}–${PLETTERS[ord.indexOf(i)]}`).join("、");
     } else if (q.type === "imgdd"){
       body = `<p class="pstem">${esc(q.q)}</p>${imgsHTML(q.img, "pimg", "拖拉題題目")}`;
       ans = `<span class="pdd">${imgsHTML(q.ans, "pimg", "拖拉題正確答案")}</span>`;
     } else if (q.type === "cls"){
       const ord = seededOrder(q.items.length, n);
-      body = `<p class="pstem">${esc(q.q)}</p>${imgsHTML(q.img, "pimg", "題目附圖")}<ol class="popts" type="A">${ord.map(i => `<li>${esc(q.items[i])}</li>`).join("")}</ol><div class="pcls">${q.groups.map(g => `${g.t ? `<h4>${esc(g.t)}</h4>` : ""}${g.s.map(x => `<p class="pslot">${x.l ? esc(x.l) + "：" : ""}＿＿＿＿＿</p>`).join("")}`).join("")}</div>`;
+      body = `${qStemHTML(q, "pstem")}${imgsHTML(q.img, "pimg", "題目附圖")}<ol class="popts" type="A">${ord.map(i => `<li>${esc(q.items[i])}</li>`).join("")}</ol><div class="pcls">${q.groups.map(g => `${g.t ? `<h4>${esc(g.t)}</h4>` : ""}${g.s.map(x => `<p class="pslot">${x.l ? esc(x.l) + "：" : ""}＿＿＿＿＿</p>`).join("")}`).join("")}</div>`;
       ans = q.groups.map(g => (g.t ? esc(g.t) + "：" : "") + g.s.map(x => (x.l ? esc(x.l) + " → " : "") + PLETTERS[ord.indexOf(x.a)]).join("、")).join("；");
     } else if (q.type === "multi"){
-      const ord = seededOrder(q.o.length, n, true);
-      body = `<p class="pstem">${esc(q.q)}</p>${qimgHTML(q, "pimg")}<p class="pref" style="font-weight:500">（複選：選出所有正確答案）</p><ol class="popts" type="A">${ord.map(i => `<li>${esc(q.o[i])}${optImgHTML(q, i)}</li>`).join("")}</ol>`;
+      const ord = pord = seededOrder(q.o.length, n, true);
+      body = `${qStemHTML(q, "pstem")}${qimgHTML(q, "pimg")}<p class="pref" style="font-weight:500">${CONFIG.multiCount && n < EXTRA_BASE ? `（複選：選出 ${q.a.length} 個答案）` : "（複選：選出所有正確答案）"}</p><ol class="popts" type="A">${ord.map(i => `<li>${esc(q.o[i])}${optImgHTML(q, i)}</li>`).join("")}</ol>`;
       ans = q.a.map(i => ord.indexOf(i)).sort((x, y) => x - y).map(j => `${PLETTERS[j]}. ${esc(q.o[ord[j]])}`).join("；");
     } else {
-      const ord = seededOrder(q.o.length, n, true);
-      body = `<p class="pstem">${esc(q.q)}</p>${qimgHTML(q, "pimg")}<ol class="popts" type="A">${ord.map(i => `<li>${esc(q.o[i])}${optImgHTML(q, i)}</li>`).join("")}</ol>`;
+      const ord = pord = seededOrder(q.o.length, n, true);
+      body = `${qStemHTML(q, "pstem")}${qimgHTML(q, "pimg")}<ol class="popts" type="A">${ord.map(i => `<li>${esc(q.o[i])}${optImgHTML(q, i)}</li>`).join("")}</ol>`;
       ans = `${PLETTERS[ord.indexOf(q.a)]}. ${esc(q.o[q.a])}`;
     }
     keys.push(ans);
-    return `<li class="pq"><p class="pref">${no}. ${esc(printRef(n))}${q.flag ? "（爭議題）" : ""}</p>${body}${notes ? `<div class="pans"><p><strong>答案：</strong>${ans}</p>${q.e ? `<p><strong>解析：</strong>${esc(q.e)}</p>` : ""}${imgsHTML(q.eimg, "pimg", "解析附圖")}${aiNotes[n] ? `<p><strong>AI 解析：</strong>${esc(aiNotes[n].text)}</p>` : ""}</div>` : ""}</li>`;
+    return caseHead + `<li class="pq"><p class="pref">${no}. ${esc(printRef(n))}${q.flag ? "（爭議題）" : ""}</p>${body}${notes ? `<div class="pans"><p><strong>答案：</strong>${ans}</p>${q.e ? `<p><strong>解析：</strong>${esc(q.e)}</p>` : ""}${oeListHTML(q, pord, PLETTERS)}${imgsHTML(q.eimg, "pimg", "解析附圖")}${aiNotes[n] ? `<p><strong>AI 解析：</strong>${esc(aiNotes[n].text)}</p>` : ""}</div>` : ""}</li>`;
   }).join("");
   return `<article class="printdoc">
     <header class="phead"><h1>${esc(CONFIG.printTitle)} ${notes ? "複習講義" : "練習卷"}</h1><p>${esc(c.desc)}，共 ${keys.length} 題。產生日期 ${ds}</p>${notes ? "" : `<p class="pname">姓名：＿＿＿＿＿＿＿＿　得分：＿＿＿＿＿＿</p>`}</header>
-    <ol class="plist">${items}</ol>
+    <ol class="plist">${items}</ol>${printNoticeHTML(pids)}
     ${notes ? "" : `<section class="pkey"><h2>答案</h2><ol>${keys.map(k => `<li>${k}</li>`).join("")}</ol></section>`}
   </article>`;
+}
+/* 列印最後一行的說明（例如題目的著作權）：config.printNotice 一律印，config.printNoticeUnoff 在印出的題目有原創題時接在後面。都沒填時不印。 */
+function printNoticeHTML(ids){
+  const t = [CONFIG.printNotice, ids.some(n => byN[n] && byN[n].unoff) ? CONFIG.printNoticeUnoff : ""].filter(Boolean).join("");
+  return t ? `<p class="pnotice">${esc(t)}</p>` : "";
 }
 function renderPrint(){
   const c = printCfg;
@@ -3398,7 +4232,7 @@ function confusionHTML(){
 let browse = null;
 function openBrowse(){
   const p = pools();
-  const ids = (scope === "pairs" ? [] : p[scope] || []).filter(n => byN[n]);
+  const ids = caseContig((scope === "pairs" ? [] : p[scope] || []).filter(n => byN[n]));
   if (!ids.length) return;
   browse = {ids, base: ids.slice(), i: 0, shuffled: false, showE: browse ? browse.showE : true};
   view = "browse";
@@ -3414,15 +4248,21 @@ function browseGo(i){
 }
 function browseBody(n){
   const q = byN[n];
-  const optList = (marks) => `<div class="bopts">${q.o.map((o, i) => `<div class="bopt${marks.includes(i) ? " ok" : ""}"><span class="let" aria-hidden="true">${LETTERS[i]}</span><span class="otext">${esc(o)}${optImgHTML(q, i)}</span>${marks.includes(i) ? `<span class="tag">正確答案</span>` : ""}</div>`).join("")}</div>`;
+  const optList = (marks) => `<div class="bopts">${q.o.map((o, i) => `<div class="bopt${marks.includes(i) ? " ok" : ""}${optImgCls(q, i)}"><span class="let" aria-hidden="true">${LETTERS[i]}</span><span class="otext">${esc(o)}</span>${marks.includes(i) ? `<span class="tag">正確答案</span>` : ""}${optImgHTML(q, i)}</div>`).join("")}</div>`;
   if (q.type === "abbr") return `<p class="abbr" lang="en">${esc(q.q)}</p><p class="bans">${esc(q.ans)}</p>${q.alts && q.alts.length ? `<p class="nextrev">也接受：${esc(q.alts.join("、"))}</p>` : ""}<p class="abbr-cat">類別：${esc(q.cat || "自訂")}</p>`;
-  const stem = `<p class="qtext">${esc(q.q || DRAG_PROMPT[q.type] || "")}</p>${qimgHTML(q)}`;
+  const stem = `${qStemHTML(q, "qtext", q.q || DRAG_PROMPT[q.type] || "")}${qimgHTML(q)}`;
   if (q.type === "order") return `${stem}<ol class="blist">${q.items.map(x => `<li>${esc(x)}</li>`).join("")}</ol>`;
   if (q.type === "match") return `${stem}<ul class="blist bpairs">${q.pairs.map(p => `<li><span>${esc(p[0])}</span><span aria-hidden="true">→</span><span>${esc(p[1])}</span></li>`).join("")}</ul>`;
   if (q.type === "cls") return `${stem}${clsKeyHTML(q)}`;
   if (q.type === "imgdd") return `<p class="qtext">${esc(q.q)}</p>${imgsHTML(q.img, "qimg", "拖拉題題目")}${imgsHTML(q.ans, "qimg", "拖拉題正確答案")}`;
   if (q.type === "multi") return `${stem}<p class="multi-hint">複選題，正確答案共 ${q.a.length} 個</p>${optList(q.a)}`;
   return `${stem}${optList([q.a])}`;
+}
+/* 快速瀏覽的情境：同一組排在一起，這一組的第一題顯示完整的情境；後面幾題只標出是哪一組的第幾題，要再看情境可以展開。 */
+function browseCaseHTML(b, n){
+  const c = caseOf(n); if (!c) return "";
+  if (!b.i || caseOf(b.ids[b.i - 1]) !== c) return casePanelHTML(n, {fixed: true});
+  return `<details class="case-mini"><summary><strong>情境：${esc(c.title)}</strong>${casePosText(c, n)}・再看一次情境</summary><div class="case-body">${caseTextHTML(c)}${imgsHTML(c.img, "qimg", "情境附圖")}</div></details>`;
 }
 function renderBrowse(){
   const b = browse, total = b.ids.length;
@@ -3435,12 +4275,12 @@ function renderBrowse(){
   return `
   <div class="qbar"><button class="btn text" data-act="go-home">結束瀏覽</button><span class="prog">${b.i + 1} / ${total}</span></div>
   <div class="pbar" aria-hidden="true"><span style="width:${Math.round((b.i + 1) / total * 100)}%"></span></div>
-  <p class="gtag">考前快速瀏覽：答案直接顯示，不會記錄作答</p>
-  <div class="qhead"><h2 id="qh" tabindex="-1">${q.type === "abbr" ? "縮寫題" : esc(qLabel(n))}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span>${tag ? `<span class="src">${tag}</span>` : ""}${q.from ? `<span class="src">變化自第 ${q.from} 題</span>` : ""}${boxesHTML(n)}<button class="markbtn" id="markbtn" data-act="b-mark" aria-pressed="${isMarked(n)}"><svg viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5h10v13l-5-3.6-5 3.6z"/></svg>${isMarked(n) ? "已標記" : "標記這題"}</button></div>
+  <p class="gtag">考前快速瀏覽：答案直接顯示，不會記錄作答</p>${browseCaseHTML(b, n)}
+  <div class="qhead"><h2 id="qh" tabindex="-1">${q.type === "abbr" ? "縮寫題" : esc(qLabel(n))}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span>${tag ? `<span class="src">${tag}</span>` : ""}${q.from ? `<span class="src">變化自${setOf(byN[q.from]) ? esc(qLabel(q.from)) : `第 ${q.from} 題`}</span>` : ""}${boxesHTML(n)}<button class="markbtn" id="markbtn" data-act="b-mark" aria-pressed="${isMarked(n)}"><svg viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5h10v13l-5-3.6-5 3.6z"/></svg>${isMarked(n) ? "已標記" : "標記這題"}</button></div>
   <div class="bcard" id="bcard">
     ${q.flag ? `<span class="flag">爭議題</span>` : ""}
     ${browseBody(n)}
-    ${b.showE && (q.e || (q.eimg && q.eimg.length)) ? `<div class="bexp">${q.e ? `<p>${esc(q.e)}</p>` : ""}${imgsHTML(q.eimg, "qimg", "解析附圖")}</div>` : ""}
+    ${b.showE && (q.e || oeListHTML(q) || hasMeta(q) || (q.eimg && q.eimg.length)) ? `<div class="bexp">${expHTML(q)}${imgsHTML(q.eimg, "qimg", "解析附圖")}${loTagHTML(q)}</div>` : ""}
   </div>
   <div class="nextrow">
     <span class="keys">← → 換題，E 顯示或隱藏解析，M 標記</span>
@@ -3543,7 +4383,7 @@ function bkParse(text){
       engine: typeof o.engine === "string" ? o.engine : ""};
   }
   if (!isPlainObj(s) || !validState(s) || !isPlainObj(s.stats)) return {err: "找不到作答紀錄。請選「匯出」產生的備份檔，或貼上它的完整內容。"};
-  if (typeof s.v === "number" && s.v > 1) return {err: "這份紀錄是比較新版的練習簿存的，這份練習簿讀不懂。請先把練習簿更新到新版引擎再匯入。"};
+  if (typeof s.v === "number" && s.v > 2) return {err: "這份紀錄是比較新版的練習簿存的，這份練習簿讀不懂。請先把練習簿更新到新版引擎再匯入。"};
   const r = normalize(clone(s));
   const objs = (m, ok) => { const out = {}; if (isPlainObj(m)) Object.keys(m).forEach(k => { if (isPlainObj(m[k]) && (!ok || ok(m[k]))) out[k] = m[k]; }); return out; };
   r.stats = objs(r.stats);
@@ -3663,7 +4503,7 @@ function bkPreviewHTML(p){
   if (P.ex.add + P.ex.upd) other.push(`補充題 ${P.ex.add + P.ex.upd} 筆`);
   if (P.gr.add + P.gr.upd) other.push(`自訂題組 ${P.gr.add + P.gr.upd} 筆`);
   if (other.length) items.push(`另外會加入或更新：${other.join("、")}。`);
-  if (P.prefs) items.push(`設定（題型${CHAPTERS.length ? "、章節" : ""}、作答方式、計時等）改用備份裡的，因為備份的比較新。`);
+  if (P.prefs) items.push(`設定（題型${CHAPTERS.length ? "、章節" : ""}${CASES.length ? "、情境題組" : ""}、作答方式、計時等）改用備份裡的，因為備份的比較新。`);
   if (P.sess) items.push(`備份裡有一回還沒做完的練習（${p.r.session.ids.length} 題），匯入後可以接著做。`);
   if (P.newReset && !P.st.lost && !P.mk.lost) items.push(`備份記錄你在 ${bkStamp(P.resetAt)} 清除過所有進度；匯入後這裡也以這個時間為準，比它早的紀錄之後都不會再收下。`);
   const src = m.wrapped
@@ -3762,8 +4602,12 @@ function renderHome(){
   const quota = exam0 && CHAPTERS.length ? chQuota() : [];
   if (count === -1 && !quota.length) count = 10;
   const offPlan = count === -1 && !isGroups ? officialPlan(pool) : null;
+  /* 情境題組：這一回以題組為單位出題時，題數選「全部」就是整組展開後的題數；其他題數要抽了才知道，按鈕上寫「約」。 */
+  const byCase = !isGroups && caseMode(pool, exam0);
   const n = isGroups ? (gcount === 0 ? UG.length : Math.min(gcount, UG.length))
+                     : byCase && count === 0 ? caseExpandCount(pool, poolOk())
                      : offPlan ? offPlan.total : (count === 0 ? pool.length : Math.min(count, pool.length));
+  const nApprox = byCase && count !== 0;
   /* 各章節的題數：目前的題型、題目來源和出題範圍裡、不管勾了哪些章節，每一章有幾題。 */
   const chBase = CHAPTERS.length && !isGroups ? (pools(true)[scope] || []) : [];
   const chCnt = k => chBase.filter(x => chOf(x) === k).length;
@@ -3775,33 +4619,41 @@ function renderHome(){
 
   const cell = q => {
     if (q.void){
-      const vl = `${qLabel(q.n)}，題目有問題，不可作答，點一下看答案`;
+      const vl = `${esc(qLabel(q.n))}，題目有問題，不可作答，點一下看答案`;
       return `<button class="cell s-void" data-q="${q.n}" aria-label="${vl}" title="${vl}">${dispNum(q.n)}</button>`;
     }
     const st = status(q.n);
     const mk = isMarked(q.n);
     const sub = q.type === "order" ? "排序" : q.type === "match" ? "配對" : q.type === "imgdd" ? "看圖" : q.type === "cls" ? "拖拉" : q.type === "multi" ? "複選" : q.from ? `原 ${dispNum(q.from)}` : "";
-    const label = `${qLabel(q.n)}${q.type === "order" || q.type === "match" ? `（拖拉${sub}）` : q.type === "imgdd" ? "（拖拉題，看圖自評）" : q.type === "cls" ? "（拖拉題）" : q.from ? `（變化自${qLabel(q.from)}）` : ""}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}${q.flag ? "，爭議題" : ""}`;
+    const cs = caseOf(q.n);
+    const label = `${esc(qLabel(q.n))}${q.type === "order" || q.type === "match" ? `（拖拉${sub}）` : q.type === "imgdd" ? "（拖拉題，看圖自評）" : q.type === "cls" ? "（拖拉題）" : q.from ? `（變化自${esc(qLabel(q.from))}）` : ""}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}${q.flag ? "，爭議題" : ""}${cs ? `，情境題組：${esc(cs.title)}` : ""}`;
     const tn = totalNote(q.n);
     const tip = `${label}\n最近作答 ${boxesText(q.n)}${tn ? "\n" + tn : ""}`;
     const num = dispNum(q.n);
-    return `<button class="cell s-${st}${mk ? " marked" : ""}${q.flag ? " flagged" : ""}${sub ? " has-sub" : ""}" data-q="${q.n}" aria-label="${label}，${boxesLabel(q.n)}" title="${tip}">${q.flag ? `<span class="cflag" aria-hidden="true">!</span>` : ""}${sub ? `<span class="cnum">${num}</span><span class="csub" aria-hidden="true">${sub}</span>` : num}</button>`;
+    return `<button class="cell s-${st}${mk ? " marked" : ""}${q.flag ? " flagged" : ""}${sub ? " has-sub" : ""}${cs ? ` incase case-${cs.alt ? "b" : "a"}` : ""}" data-q="${q.n}" aria-label="${label}，${boxesLabel(q.n)}" title="${tip}">${q.flag ? `<span class="cflag" aria-hidden="true">!</span>` : ""}${sub ? `<span class="cnum">${num}</span><span class="csub" aria-hidden="true">${sub}</span>` : num}</button>`;
   };
-  const bankBlock = (key, title, list) => {
+  /* badge：卷名旁的「內建」「原創」；compact：有卷別時用比較緊密的題號格（.g10）。沒有卷別的練習簿兩個都不用。 */
+  const bankBlock = (key, title, list, badge, compact) => {
     const lv = list.filter(live);
     const t = tally(lv);
     const c = {red: 0, amber: 0, green: 0, master: 0};
     lv.forEach(q => { const st = status(q.n); if (c[st] !== undefined) c[st]++; });
     c.green += c.master;
     const w = k => lv.length ? (c[k] * 100 / lv.length).toFixed(2) : 0;
-    const open = !!mapOpen[key];
+    const open = mapIsOpen(key);
     return `<div class="bank">
-      <div class="bank-head"><h3 class="subgrid-title">${title}</h3><span class="stat">已作答 ${t.done} / ${t.total} 題${t.acc !== null ? `，累計正確率 ${t.acc}%` : ""}</span>
-        <button class="btn text" data-act="map-toggle" data-bank="${key}" aria-expanded="${open}">${open ? "收起題號格" : "展開題號格"}</button></div>
+      <div class="bank-head"><h3 class="subgrid-title">${title}${badgeHTML(badge)}</h3><span class="stat">已作答 ${t.done} / ${t.total} 題${t.acc !== null ? `，累計正確率 ${t.acc}%` : ""}</span>
+        <button class="btn text" data-act="map-toggle" data-bank="${esc(key)}" aria-expanded="${open}">${open ? "收起題號格" : "展開題號格"}</button></div>
       <div class="bankbar" role="img" aria-label="${title}：答錯待複習 ${c.red} 題、複習中 ${c.amber} 題、已掌握 ${c.green} 題${c.master ? `（其中熟練 ${c.master} 題）` : ""}"><span class="b-red" style="width:${w("red")}%"></span><span class="b-amber" style="width:${w("amber")}%"></span><span class="b-green" style="width:${w("green")}%"></span></div>
-      ${open ? `<div class="grid">${list.map(cell).join("")}</div>` : ""}
+      ${open ? `<div class="grid${compact ? " g10" : ""}">${list.map(cell).join("")}</div>` : ""}
     </div>`;
   };
+  /* 有卷別時，題庫地圖依卷別分組（附加題自成一組），沒有卷別的題庫題目放在最後的「其他題庫題目」。 */
+  const mapBlocks = !SETS.length ? bankBlock("A", "題庫", bankA) : SETS.map(c => {
+    const main = bankA.filter(q => q.set === c.key && !q.add), add = bankA.filter(q => q.set === c.key && q.add), b = setBadge(c.key);
+    return (main.length ? bankBlock("s" + c.key, `${esc(c.name)}（${main.filter(live).length} 題）`, main, b, true) : "")
+      + (add.length ? bankBlock("a" + c.key, `${esc(c.name)}附加題（${add.filter(live).length} 題）`, add, b, true) : "");
+  }).join("") + (bankA.some(q => !setOf(q)) ? bankBlock("x", "其他題庫題目", bankA.filter(q => !setOf(q))) : "");
   const extraVariant = extraMcq.filter(q => (q.type === "mcq" || q.type === "multi") && q.from);
   const variantCount = extraVariant.length;
   if (!variantCount && srcFilter === "variant") srcFilter = "all";
@@ -3857,16 +4709,100 @@ function renderHome(){
       </div>
       <p class="note">${chSel.length ? `目前只出勾選的 ${chSel.length} 個章節。<button class="btn text inl" data-act="ch-all">改回全部章節</button>` : "沒有勾選時出全部章節。"}章節後面的數字是目前的題型和出題範圍裡、這一章的題數。章節只套用在這裡的練習、模擬考、考前快速瀏覽和列印；最上方的每日一題和考我一題不分章節，一律從全部章節抽。</p>
     </div>`;
+  /* 情境題組：題庫地圖下方的「各情境題組的掌握情況」，和開始練習裡可以複選的「情境題組」欄、「整組出」。沒有 cases 的練習簿都不出現。 */
+  const UC = usableCases();
+  const caseNone = UC.length ? caseHasNone() : false;
+  const caseKeysAll = UC.map(c => c.key).concat(caseNone ? [""] : []);
+  const caseBase = UC.length && !isGroups ? (pools(false, true)[scope] || []) : [];
+  const caseCnt = k => caseBase.filter(x => caseKeyOf(x) === k).length;
+  const caseTable = !UC.length ? "" : `<h3 class="subgrid-title" id="case-title">各情境題組的掌握情況</h3>
+    <div class="chwrap"><table class="chtbl" aria-labelledby="case-title">
+      <thead><tr><th scope="col">情境題組（點一下只練這一組）</th><th scope="col" class="num">已作答</th><th scope="col" class="num">正確率</th></tr></thead>
+      <tbody>${UC.map(c => {
+        const live = caseLive(c), t = tally(live.map(x => byN[x]));
+        return `<tr><td><button class="btn text" data-caseone="${esc(c.key)}">${esc(c.title)}</button><span class="cnums">題號：${esc(caseNumsText(live))}</span></td><td class="num">${t.done} / ${t.total}</td><td class="num">${t.acc !== null ? t.acc + "%" : "–"}</td></tr>`;
+      }).join("")}</tbody>
+    </table></div>`;
+  const caseWholeNote = !pref("caseWhole") ? "沒有勾選時每題獨立抽，題目上方一樣會顯示所屬的情境。"
+    : CASE_WHOLE_SCOPES.indexOf(scope) >= 0 ? "抽到情境題組裡的題目時，同一組符合目前題型、章節和勾選的題目會照順序接著出完；題數夠了就停，所以最後一組可能讓這回比設定的題數多幾題。"
+    : "錯題複習、弱點題和到期複習一次出一題，不整組出；題目上方一樣會顯示所屬的情境。";
+  const caseField = !UC.length || isGroups ? "" : `<div class="field" id="fld-case">
+      <span class="flabel" id="lab-case">情境題組（可以複選）</span>
+      <div class="chpick" role="group" aria-labelledby="lab-case">
+        ${caseKeysAll.map(k => `<label class="chk"><input type="checkbox" data-casesel="${esc(k)}" ${caseSel.indexOf(k) >= 0 ? "checked" : ""}><span class="chn">${esc(caseName(k))}</span><span class="n">${caseCnt(k)}</span></label>`).join("")}
+      </div>
+      <p class="note">${caseSel.length ? `目前只出勾選的 ${caseSel.length} 項。<button class="btn text inl" data-act="case-all">改回全部</button>` : "沒有勾選時全部都出。"}後面的數字是目前的題型、章節和出題範圍裡的題數。這裡的勾選只套用在練習、模擬考、考前快速瀏覽和列印；最上方的每日一題和考我一題不分情境題組。</p>
+      ${exam0 ? "" : `<label class="chk"><input type="checkbox" data-casewhole="1" ${pref("caseWhole") ? "checked" : ""}>情境題組整組出</label>
+      <p class="note">${caseWholeNote}</p>`}
+    </div>`;
+  const caseCountNote = !byCase || !exam0 ? ""
+    : count === 0 ? (n > pool.length ? `<p class="note">情境題組整組出，同一組裡不在這個出題範圍的題目也會一起出，這回共 ${n} 題。</p>` : "")
+    : `<p class="note">這個範圍有情境題組。模擬考以題組為單位抽題，同一組的題目一起出、不拆開：放不下的題組先跳過，改抽單題或較小的題組補足；怎麼抽都湊不到剛好的題數時，用最接近的抽法。${count === -1 ? "照正式考試時每一章各自這樣抽，情境題組算在它第一題所在的章節。" : ""}所以實際題數可能比設定的多或少幾題，開始後畫面上和成績頁都會寫出實際題數${pref("timerMode") === "down" ? "，倒計時也依實際題數計算" : ""}。</p>`;
   const offNote = !offPlan ? "" : (() => {
     const short = offPlan.rows.filter(r => r.take < r.want);
     const skipped = (chSel.length ? chSel : chKeysAll).filter(k => !(CH_BY[k] && CH_BY[k].exam > 0));
     return `<p class="note">照正式考試各章的題數抽題：${offPlan.rows.map(r => `${esc(chName(r.c.key))} ${r.want} 題`).join("、")}，共 ${offPlan.want} 題。${short.length ? `目前的出題範圍裡${short.map(r => `${esc(chName(r.c.key))}只有 ${r.take} 題`).join("、")}，這回共 ${offPlan.total} 題。` : ""}${chSel.length ? "只抽勾選的章節。" : ""}${skipped.length ? `${skipped.map(k => esc(chName(k))).join("、")}沒有正式考試的題數，不會抽到。` : ""}</p>`;
   })();
+  /* 卷別：開始練習的「卷別」欄。後面的數字是目前的題型、章節、情境題組和出題範圍裡、這一卷的題數。沒有 sets 的練習簿不出現。 */
+  if (setFilter !== "all" && !SET_OPTS.some(o => o.key === setFilter)) setFilter = "all";
+  const setBase = SET_OPTS.length && !isGroups ? (pools(false, false, true)[scope] || []) : [];
+  const setField = !SET_OPTS.length || isGroups ? "" : `<div class="field" id="fld-set">
+      <span class="flabel" id="lab-set">卷別</span>
+      <div class="seg" role="radiogroup" aria-labelledby="lab-set">
+        <button role="radio" aria-checked="${setFilter === "all"}" data-setf="all">全部</button>
+        ${SET_OPTS.map(o => `<button role="radio" aria-checked="${setFilter === o.key}" data-setf="${esc(o.key)}">${esc(o.label)}<span class="n">${setBase.filter(x => x < BANK_B && o.f(byN[x])).length}</span></button>`).join("")}
+      </div>
+      <p class="note">${setFilter !== "all" ? "選了某一卷時，只會出這一卷的題目，沒有卷別的題目、自己加的補充題和縮寫題不會出現。" : "不選就是全部題目。"}卷別只套用在這裡的練習、模擬考、考前快速瀏覽和列印；最上方的每日一題和考我一題不分卷別。${FULL_SETS.length ? "要照原卷順序考一整卷，用上面的「整套模擬考」。" : ""}</p>
+    </div>`;
+  /* 整套模擬考：每一卷一個按鈕，寫上次的成績；有 config.extraTime 時可以選加時後的時間。 */
+  const fullHTML = !FULL_SETS.length ? "" : (() => {
+    const sizes = FULL_SETS.map(c => fullIds(c.key).length), same = sizes.every(x => x === sizes[0]);
+    const bases = FULL_SETS.map(c => fullBaseMs(c.key)), sameT = bases.every(x => x === bases[0]);
+    const xOn = fullExtraOn();
+    const tTxt = CONFIG.extraTime ? "限時" : sameT ? `限時 ${fmtMinutes(bases[0])}` : `限時依題數計算（每題 ${CONFIG.pace} 秒）`;
+    const addSets = SETS.filter(c => Q.some(q => q.set === c.key && q.add && !q.void));
+    const note = `照正式考試的規格考一整卷：${same ? `${sizes[0]} 題、` : ""}${tTxt}、交卷後才看答案，${CONFIG.passLine}%${same ? `（${needCount(sizes[0])} 題）` : ""}及格。題目照原卷順序，選項順序會打亂。${addSets.length ? `${addSets.map(c => esc(c.name)).join("、")}的附加題不在整套模擬考裡。` : ""}${CONFIG.fullNote ? esc(CONFIG.fullNote) : ""}`;
+    const tLabel = x => sameT ? fmtMinutes(Math.round(bases[0] * (x ? 1 + CONFIG.extraTime : 1))) : `每題 ${Math.round(CONFIG.pace * (x ? 1 + CONFIG.extraTime : 1) * 10) / 10} 秒`;
+    const timeField = !CONFIG.extraTime ? "" : `<div class="field">
+      <span class="flabel" id="lab-fullx">考試時間</span>
+      <div class="seg" role="radiogroup" aria-labelledby="lab-fullx">
+        <button role="radio" aria-checked="${!xOn}" data-fullx="0">${tLabel(false)}</button>
+        <button role="radio" aria-checked="${xOn}" data-fullx="1">${tLabel(true)}（非母語加時 ${Math.round(CONFIG.extraTime * 100)}%）</button>
+      </div>
+    </div>`;
+    const btns = FULL_SETS.map(c => {
+      const r = fullResOf(c.key), b = setBadge(c.key);
+      return `<button class="fullbtn" data-full="${esc(c.key)}" aria-label="開始${esc(c.name)}整套模擬考${b ? `（${b}）` : ""}${r ? `，上次 ${r.r} / ${r.n}` : ""}"><span class="fs">${esc(c.name)}${badgeHTML(b)}</span><span class="fn">${r ? `上次 ${r.r} / ${r.n}（${Math.round(r.r * 100 / r.n)}%，${r.r >= needCount(r.n) ? "及格" : "未及格"}）` : "還沒考過"}</span></button>`;
+    }).join("");
+    return `<section class="fullexam" aria-labelledby="full-title">
+    <h2 id="full-title">整套模擬考</h2>
+    <p class="note">${note}</p>
+    ${timeField}
+    <div class="fullgrid">${btns}</div>
+  </section>`;
+  })();
+  /* 題數的第三個按鈕：有整套模擬考時改成最常見的一卷題數（例如 40 題），沒有時是 50 題。 */
+  const midCount = (() => {
+    if (!FULL_SETS.length) return 50;
+    const f = {}; FULL_SETS.forEach(c => { const k = fullIds(c.key).length; f[k] = (f[k] || 0) + 1; });
+    const best = Object.keys(f).map(Number).sort((a, b) => f[b] - f[a] || b - a)[0];
+    return best === 10 || best === 20 ? 50 : best;
+  })();
+  /* 主頁副標題的題數：有卷別時依來源分開算（config.setLabels 的說法），沒有時是「題庫 N 題」。 */
+  const bankCountText = !SETS.length ? `題庫 ${bankALive.length} 題` : (() => {
+    const L = CONFIG.setLabels, g = [];
+    const put = (label, k) => { if (!k) return; const x = g.find(y => y[0] === label); if (x) x[1] += k; else g.push([label, k]); };
+    put(L.set, bankALive.filter(q => setOf(q) && !q.add && !q.unoff).length);
+    put(L.add, bankALive.filter(q => setOf(q) && q.add && !q.unoff).length);
+    put(L.unoff, bankALive.filter(q => q.unoff).length);
+    put("其他題庫題目", bankALive.filter(q => !setOf(q) && !q.unoff).length);
+    return g.map(x => `${esc(x[0])} ${x[1]} 題`).join("、") || "題庫 0 題";
+  })();
 
   return `
   <header class="top">
     <h1>${esc(CONFIG.title)}</h1>
-    <p class="sub">${CONFIG.subtitle ? esc(CONFIG.subtitle) + " " : ""}題庫 ${bankALive.length} 題${extraMcq.length + bankBLive.length ? `、補充題 ${extraMcq.length + bankBLive.length} 題` : ""}${abbrLive.length ? `、縮寫題 ${abbrLive.length} 題` : ""}</p>
+    <p class="sub">${CONFIG.subtitle ? esc(CONFIG.subtitle) + " " : ""}${bankCountText}${extraMcq.length + bankBLive.length ? `、補充題 ${extraMcq.length + bankBLive.length} 題` : ""}${abbrLive.length ? `、縮寫題 ${abbrLive.length} 題` : ""}</p>
   </header>
   ${dailyHomeHTML()}
   ${(() => {
@@ -3876,7 +4812,7 @@ function renderHome(){
   ${sess ? `<section class="resume" aria-label="${sessFin ? "還沒看結果的練習" : "未完成的練習"}">
     <p>${sessFin ? `上次的練習已經做完，答對 ${sessCnt.filter(n => isRight(n, sess.answers[n])).length} / ${sessCnt.length} 題，還沒看這回的結果。作答紀錄都已經存好了。` : sess.exam ? `上次的模擬考還沒交卷，已作答 ${sess.ids.filter(x => examDone(sess, x)).length} / ${sess.ids.length} 題。` : `上次的練習做到第 ${sess.i + 1} / ${sess.ids.length} 題。`}</p>
     <div class="row">${sessFin ? `<button class="btn primary" data-act="resume-summary">看這回結果</button><button class="btn ghost" data-act="discard">關閉</button>` : `<button class="btn primary" data-act="resume">繼續練習</button><button class="btn ghost" data-act="discard">放棄這回</button>`}</div>
-  </section>` : ""}
+  </section>` : ""}${fullHTML}
   <section aria-labelledby="map-title">
     <div class="map-head">
       <h2 id="map-title">題庫地圖</h2>
@@ -3892,7 +4828,7 @@ function renderHome(){
       ${tExtra.total && sRows.extra ? statRow("補充題", tExtra) : ""}
       ${tExtra.total && sRows.sum ? statRow("合計", tAll, "sum") : ""}
     </dl>
-    ${bankBlock("A", "題庫", bankA)}
+    ${mapBlocks}
     ${extraChoice.length ? `<h3 class="subgrid-title">補充題：選擇題</h3><div class="grid">${extraCells}</div>` : ""}
     ${variantCount ? `<h3 class="subgrid-title">補充題：變化題</h3><div class="grid">${variantCells}</div>` : ""}
     ${extraDrag.length ? `<h3 class="subgrid-title">補充題：拖拉題</h3><div class="grid">${dragCells}</div>` : ""}
@@ -3904,10 +4840,10 @@ function renderHome(){
       <li><span class="sw s-green"></span>已掌握 ${counts.green}</li>
       <li><span class="sw s-master"></span>熟練 ${counts.master}</li>
       <li><span class="sw sw-mark"></span>已標記 ${p.marked.length}</li>
-      ${flagCount ? `<li><span class="sw sw-flag" aria-hidden="true">!</span>爭議題 ${flagCount}</li>` : ""}${voidCount ? `<li><span class="sw s-void"></span>不可作答 ${voidCount}</li>` : ""}
+      ${flagCount ? `<li><span class="sw sw-flag" aria-hidden="true">!</span>爭議題 ${flagCount}</li>` : ""}${voidCount ? `<li><span class="sw s-void"></span>不可作答 ${voidCount}</li>` : ""}${UC.length ? `<li><span class="sw sw-case"></span>情境題組 ${UC.length} 組</li>` : ""}
     </ul>
-    <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。補充題的選擇題、變化題、拖拉題各有自己的題號。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。${flagCount ? "左上角有紫色驚嘆號、外圈加粗的是爭議題，爭議的地方寫在解析裡。" : ""}${voidCount ? "灰色、畫刪除線的是題目有問題、不可作答的題目，不計入題數和統計，點進去可以看原本的答案和問題說明。" : ""}題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
-    ${chTable}
+    <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。補充題的選擇題、變化題、拖拉題各有自己的題號。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。${flagCount ? "左上角有紫色驚嘆號、外圈加粗的是爭議題，爭議的地方寫在解析裡。" : ""}${voidCount ? "灰色、畫刪除線的是題目有問題、不可作答的題目，不計入題數和統計，點進去可以看原本的答案和問題說明。" : ""}${UC.length ? "底部有色條的是情境題組的題目，題號相鄰的兩組用不同顏色；題組名稱和題號列在下方「各情境題組的掌握情況」。" : ""}題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
+    ${chTable}${caseTable}
     <div class="row extra-actions">
       <button class="btn ghost" data-act="new-extra">新增補充題</button>
       ${EXTRA.length ? `<button class="btn ghost" data-act="extras">管理補充題（${EXTRA.length} 題）</button>` : ""}
@@ -3922,7 +4858,7 @@ function renderHome(){
         <button role="radio" aria-checked="${!exam}" data-exam="0">練習：每題看解答</button>
         <button role="radio" aria-checked="${exam}" data-exam="1">模擬考：交卷後才看答案</button>
       </div>
-      ${exam ? `<p class="note">作答時不顯示對錯，可以改答案、跳題和標記待檢查，交卷後才一次記錄成績並逐題檢討。想模擬正式測驗，可以搭配倒計時。</p>` : ""}
+      ${exam ? `<p class="note">作答時不顯示對錯，可以改答案、跳題和標記待檢查，交卷後才一次記錄成績並逐題檢討。${FULL_SETS.length ? `要照正式考試的規格考一整卷，用上面的「整套模擬考」比較方便；這裡適合自己挑範圍、${SET_OPTS.length ? "卷別、" : ""}${CHAPTERS.length ? "章節、" : ""}題型和題數。` : "想模擬正式測驗，可以搭配倒計時。"}</p>` : ""}
     </div>
     ${exam ? `<div class="field">
       <span class="flabel" id="lab-extypes">模擬考題型（可以複選）</span>
@@ -3942,7 +4878,7 @@ function renderHome(){
       </div>
       ${typeFilter === "drag" ? `<p class="note">拖拉題：分類題先點項目再點格子，每一格都放對才算答對，同一類裡沒有標籤的格子不計順序；排序題和配對題拖曳把手，或用 ↑ ↓ 調整。</p>` : typeFilter === "abbr" ? `<p class="note">縮寫題是輔助練習，幫你把專有名詞記熟。</p>` : ""}
     </div>` : ""}
-    ${chField}
+    ${setField}${chField}${caseField}
     <div class="field">
       <span class="flabel" id="lab-scope">出題範圍</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-scope">
@@ -3971,7 +4907,7 @@ function renderHome(){
       const shown = top.slice(0, 20);
       return `<div class="weak-preview">
         <p class="note">依最近五次作答排序：答錯越多、錯得越近的越前面。這回會出這 ${top.length} 題：</p>
-        <ul class="wkl">${shown.map(k => `<li>${qLabel(k)}${boxesHTML(k)}</li>`).join("")}</ul>
+        <ul class="wkl">${shown.map(k => `<li>${esc(qLabel(k))}${boxesHTML(k)}</li>`).join("")}</ul>
         ${top.length > shown.length ? `<p class="note">另外還有 ${top.length - shown.length} 題。</p>` : ""}
       </div>`;
     })() : ""}
@@ -3984,9 +4920,9 @@ function renderHome(){
       <span class="flabel" id="lab-count">${isGroups ? "題組數" : "題數"}</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-count">
         ${isGroups ? gcountBtn(3,"3 組") + gcountBtn(5,"5 組") + gcountBtn(0,"全部")
-                   : countBtn(10,"10 題") + countBtn(20,"20 題") + countBtn(50,"50 題") + countBtn(0,"全部") + (quota.length ? `<button role="radio" aria-checked="${count === -1}" data-count="-1">照正式考試<span class="n">${quota.reduce((s, c) => s + c.exam, 0)}</span></button>` : "")}
+                   : countBtn(10,"10 題") + countBtn(20,"20 題") + countBtn(midCount,`${midCount} 題`) + countBtn(0,"全部") + (quota.length ? `<button role="radio" aria-checked="${count === -1}" data-count="-1">照正式考試<span class="n">${quota.reduce((s, c) => s + c.exam, 0)}</span></button>` : "")}
       </div>
-      ${offNote}
+      ${offNote}${caseCountNote}
     </div>
     ${exam ? "" : `<div class="field">
       <span class="flabel" id="lab-mode">作答方式</span>
@@ -4007,12 +4943,12 @@ function renderHome(){
     ${pref("timerMode") === "down" ? `<div class="field">
       <span class="flabel" id="lab-pace">每題時間</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-pace">
-        ${Array.from(new Set([45, 60, 90, CONFIG.pace])).sort((x, y) => x - y).map(v => `<button role="radio" aria-checked="${pref("pace") === v}" data-pace="${v}">${v} 秒${v === CONFIG.pace ? "（建議）" : ""}</button>`).join("")}
+        ${paceOpts().map(v => `<button role="radio" aria-checked="${paceNow() === v}" data-pace="${v}">${v} 秒${v === CONFIG.pace ? "（建議）" : ""}${v === paceX() ? `（非母語加時 ${Math.round(CONFIG.extraTime * 100)}%）` : ""}</button>`).join("")}
       </div>
-      <p class="note">${CONFIG.examNote ? esc(CONFIG.examNote) : `預設每題 ${CONFIG.pace} 秒，可以依熟悉程度調整。`}${isGroups ? "限時會依抽到的題數計算。" : n ? `這回限時 ${fmtClock(n * pref("pace") * 1000)}。` : ""}</p>
+      <p class="note">${CONFIG.examNote ? esc(CONFIG.examNote) : `預設每題 ${CONFIG.pace} 秒，可以依熟悉程度調整。`}${isGroups ? "限時會依抽到的題數計算。" : n && nApprox ? `這回限時依實際題數計算，大約 ${fmtClock(n * paceNow() * 1000)}。` : n ? `這回限時 ${fmtClock(n * paceNow() * 1000)}。` : ""}</p>
     </div>` : ""}
     ${!isGroups && p[scope] && p[scope].length ? `<p class="note" style="margin:-4px 0 0;display:flex;flex-wrap:wrap;gap:4px 18px"><button class="btn text" data-act="browse-open">考前快速瀏覽這個範圍（${p[scope].length} 題）</button>${pool.length ? `<button class="btn text" data-act="print-setup">列印這個範圍的題目（${pool.length} 題）</button>` : ""}</p>` : ""}
-    <button class="btn primary big go" data-act="start" ${n ? "" : "disabled"}>${isGroups ? `開始練習（${gcount === 0 ? "全部" : "隨機"} ${n} 組）` : exam ? `開始模擬考（${n} 題）` : `開始練習（${n} 題）`}</button>
+    <button class="btn primary big go" data-act="start" ${n ? "" : "disabled"}>${isGroups ? `開始練習（${gcount === 0 ? "全部" : "隨機"} ${n} 組）` : exam ? `開始模擬考（${nApprox ? "約 " : ""}${n} 題）` : `開始練習（${nApprox ? "約 " : ""}${n} 題）`}</button>
   </section>
   <footer class="foot">
     <p class="sync" id="sync">${SYNC_TEXT[remote.mode]}</p>
@@ -4022,7 +4958,7 @@ function renderHome(){
     </div>
   </footer>
   ${bk.open ? bkHTML() : ""}
-  ${verHTML()}`;
+  ${verHTML()}${CONFIG.notice ? `<p class="ack">${esc(CONFIG.notice)}</p>` : ""}`;
 }
 
 function verBtnText(){ return engineVer.st === "idle" ? "檢查新版" : engineVer.st === "checking" ? "檢查中…" : "再檢查一次"; }
@@ -4066,15 +5002,17 @@ async function verCheck(){
 }
 
 /* 不可作答的題目：不能作答，直接顯示原本的答案、解析和問題說明。沒有作答元件、標記和 AI 解析，不計時，也不寫入任何紀錄。 */
+/* 作答畫面的題號：有卷別的題目寫「A 卷第 23 題」，其他照原本的「第 N 題」。 */
+function headLabel(n){ return setOf(byN[n]) ? esc(qLabel(n)) : `第 ${dispNum(n)} 題`; }
 function voidQuizHTML(s, n, q){
   const nextLabel = s.ids.length === 1 ? "回到總覽" : (s.i === s.ids.length - 1 ? "看這回結果" : "下一題");
-  const hasExp = q.e || (q.eimg && q.eimg.length);
+  const hasExp = q.e || oeListHTML(q) || hasMeta(q) || (q.eimg && q.eimg.length);
   return `
   <div class="qbar"><button class="btn text" data-act="quit">結束練習</button><div class="qright"><span class="prog">${s.i + 1} / ${s.ids.length}</span></div></div>
-  <div class="pbar" aria-hidden="true"><span style="width:${Math.round((s.i + 1) / s.ids.length * 100)}%"></span></div>
-  <div class="qhead"><h2 id="qh" tabindex="-1">${q.type === "abbr" ? "縮寫題" : `第 ${dispNum(n)} 題`}</h2><span class="src src-void">不可作答</span></div>
+  <div class="pbar" aria-hidden="true"><span style="width:${Math.round((s.i + 1) / s.ids.length * 100)}%"></span></div>${casePanelHTML(n)}
+  <div class="qhead"><h2 id="qh" tabindex="-1">${q.type === "abbr" ? "縮寫題" : headLabel(n)}</h2><span class="src src-void">不可作答</span></div>
   <div class="fb void" role="note"><h3>這題題目有問題，不列入作答</h3>${q.voidNote && q.voidNote.trim() ? `<p class="pre">${esc(q.voidNote.trim())}</p>` : ""}<p>下面直接顯示原本的答案，僅供參考。這題不會記錄作答，練習、模擬考、考我一題、每日一題和複習都不會出到它。</p></div>
-  <div class="bcard voidcard">${browseBody(n)}${hasExp ? `<div class="bexp">${q.e ? `<p>${esc(q.e)}</p>` : ""}${imgsHTML(q.eimg, "qimg", "解析附圖")}</div>` : ""}</div>
+  <div class="bcard voidcard">${browseBody(n)}${hasExp ? `<div class="bexp">${expHTML(q)}${imgsHTML(q.eimg, "qimg", "解析附圖")}${loTagHTML(q)}</div>` : ""}</div>
   <div class="nextrow"><span class="keys">按 Enter 繼續</span><button class="btn primary big" data-act="next">${nextLabel}</button></div>`;
 }
 function renderQuiz(){
@@ -4116,8 +5054,8 @@ function renderQuiz(){
       if (mq && msel.includes(oi)) cls += " picked";
     }
     const mOn = mq && !answered && msel.includes(oi);
-    const optBtn = `<button class="opt ${cls}" data-opt="${oi}" ${answered || reviewMiss ? "disabled" : ""}${mq && !answered ? ` role="checkbox" aria-checked="${mOn}"` : ""} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}${optImgHTML(q, oi)}</span>${tag}</button>`;
-    return answered || reviewMiss ? optBtn : `<div class="optwrap">${optBtn}<div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
+    const optBtn = `<button class="opt ${cls}${optImgCls(q, oi)}" data-opt="${oi}" ${answered || reviewMiss ? "disabled" : ""}${mq && !answered ? ` role="checkbox" aria-checked="${mOn}"` : ""} aria-label="選項 ${LETTERS[pos]}：${esc(q.o[oi])}${out ? "（已刪去）" : cand ? "（標為可能）" : ""}"><span class="let" aria-hidden="true">${LETTERS[pos]}</span><span class="otext">${esc(q.o[oi])}</span>${tag}${optImgHTML(q, oi)}</button>`;
+    return answered || reviewMiss ? optBtn : `<div class="${optWrapCls(q)}">${optBtn}<div class="marks"><button class="xbtn obtn" data-act="maybe" data-oi="${oi}" aria-pressed="${cand}" aria-label="${cand ? "取消標記" : "標為可能"}選項 ${LETTERS[pos]}" title="${cand ? "取消標記" : "暫時標記這個可能是答案"}">○</button><button class="xbtn" data-act="elim" data-oi="${oi}" aria-pressed="${out}" aria-label="${out ? "取消刪去" : "刪去"}選項 ${LETTERS[pos]}" title="${out ? "取消刪去" : "暫時標記這個不是答案"}">×</button></div></div>`;
   }).join("");
 
   const nextLabel = s.mode === "lucky" ? "再來一題" : s.ids.length === 1 ? "回到總覽" : (s.i === s.ids.length - 1 ? "看這回結果" : "下一題");
@@ -4136,7 +5074,8 @@ function renderQuiz(){
   const drill = abbr && answered && !s.exam ? drillOf(n, ok) : null;
   const cover = drillCovered(drill);
 
-  const fb = answered || reviewMiss ? `
+  /* 沒作答的複選、縮寫、拖拉題交卷後由 reviewMissHTML 顯示（見下方），這裡不組 fb，否則會讀到 undefined 的作答內容。 */
+  const fb = answered || (reviewMiss && examKind(n) === "mcq") ? `
     <div class="fb ${ok ? "ok" : "bad"}" aria-live="polite">
       <h3 id="fbh" tabindex="-1">${idd ? (ok ? "自評：全部放對" : "自評：有放錯，記為答錯") : cq ? (ok ? "答對了" : `答錯了，有 ${clsGrade(q, (chosen && chosen.place) || []).wrong} 格不對`) : mq ? (ok ? "答對了" : `答錯了，正確答案是 ${q.a.map(i => LETTERS[order.indexOf(i)]).sort().join("、")}`) : reviewMiss ? `沒有作答，正確答案是 ${LETTERS[order.indexOf(q.a)]}` : drag ? (ok ? "答對了" : `答錯了，有 ${chosen.arr.filter((x, i) => x !== i).length} 個位置不對`) : abbr ? (ok ? (chosen.override ? "已改判為答對" : "答對了") : chosen.gaveUp ? "已直接看答案（記為答錯）" : "答錯了") : ok ? "答對了" : `答錯了，正確答案是 ${LETTERS[order.indexOf(q.a)]}`}</h3>
       ${excluded ? `<p class="excl-tag">不列入紀錄</p>` : ""}
@@ -4156,7 +5095,7 @@ function renderQuiz(){
       ${drill ? drillHTML(n, q, drill) : ""}
       ${idd ? imgsHTML(q.ans, "qimg", "拖拉題正確答案") : ""}
       ${cq ? (ok ? "" : clsKeyHTML(q)) + clsOrigHTML(q) : ""}
-      ${cover ? (q.e || (q.eimg && q.eimg.length) ? `<p class="nextrev">解析先遮住，打完這一次就會顯示。</p>` : "") : `${q.e ? (isExtra(n) ? `<p>${esc(q.e)}</p>` : `<p class="pre"><span class="srclbl">${isBankB(n) ? "解析" : "題庫解析"}</span>${esc(q.e)}</p>`) : ""}${imgsHTML(q.eimg, "qimg", "解析附圖")}`}
+      ${cover ? (q.e || (q.eimg && q.eimg.length) ? `<p class="nextrev">解析先遮住，打完這一次就會顯示。</p>` : "") : `${q.e ? (isExtra(n) ? `<p>${esc(q.e)}</p>` : `<p class="pre"><span class="srclbl">${isBankB(n) ? "解析" : "題庫解析"}</span>${esc(q.e)}</p>`) : ""}${oeListHTML(q, order)}${imgsHTML(q.eimg, "qimg", "解析附圖")}${loTagHTML(q)}`}
       ${qaiHTML(n, q)}
       ${grp ? `<div class="gkey"><h4>分辨關鍵</h4><p>${esc(grp.key)}</p></div>` : ""}
       ${answered && !excluded && !cover ? pastPicksHTML(n, q) : ""}
@@ -4205,8 +5144,8 @@ function renderQuiz(){
   if (reviewMiss && examKind(n) !== "mcq") return bar + reviewMissHTML(s, n, q);
   return bar + `
   <div class="pbar" aria-hidden="true"><span style="width:${pct}%"></span></div>
-  ${gtag}
-  <div class="qhead"><h2 id="qh" tabindex="-1">${abbr ? "縮寫題" : `第 ${dispNum(n)} 題`}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span>${drag ? `<span class="src">${q.type === "order" ? "拖拉排序" : "拖拉配對"}</span>` : ""}${idd ? `<span class="src">拖拉題・看圖自評</span>` : ""}${cq ? `<span class="src">拖拉題</span>` : ""}${q.from ? `<span class="src">變化自${esc(qLabel(q.from))}</span>` : ""}${mq ? `<span class="src">複選</span>` : ""}${boxesHTML(n, answered && !excluded && canExclude(n))}${pill}<button class="markbtn" id="markbtn" data-act="mark" aria-pressed="${isMarked(n)}"><svg viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5h10v13l-5-3.6-5 3.6z"/></svg>${isMarked(n) ? "已標記" : "標記這題"}</button></div>
+  ${gtag}${casePanelHTML(n)}
+  <div class="qhead"><h2 id="qh" tabindex="-1">${abbr ? "縮寫題" : headLabel(n)}</h2><span class="src${isExtra(n) ? " src-extra" : ""}">${srcName(n)}</span>${drag ? `<span class="src">${q.type === "order" ? "拖拉排序" : "拖拉配對"}</span>` : ""}${idd ? `<span class="src">拖拉題・看圖自評</span>` : ""}${cq ? `<span class="src">拖拉題</span>` : ""}${q.from ? `<span class="src">變化自${esc(qLabel(q.from))}</span>` : ""}${mq ? `<span class="src">複選</span>` : ""}${boxesHTML(n, answered && !excluded && canExclude(n))}${pill}<button class="markbtn" id="markbtn" data-act="mark" aria-pressed="${isMarked(n)}"><svg viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5h10v13l-5-3.6-5 3.6z"/></svg>${isMarked(n) ? "已標記" : "標記這題"}</button></div>
   ${idd ? ddBodyHTML(s, n, q, answered) : cq ? clsBodyHTML(s, n, q, answered) : drag ? dragBodyHTML(s, n, q, answered) : abbr ? `<p class="abbr-prompt">寫出這個縮寫的英文全名</p>
   <p class="abbr" lang="en">${esc(q.q)}</p>
   <p class="abbr-cat">類別：${esc(q.cat || "自訂")}</p>
@@ -4215,13 +5154,13 @@ function renderQuiz(){
     <div class="row"><input id="abbr-in" class="recall-input" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" value="${esc(drafts[n] || "")}"><button class="btn primary" data-act="abbr-submit">送出</button></div>
     <p class="fhint">大小寫、標點、連字號和單複數都不影響判定。</p>
     <div><button class="btn ghost" data-act="abbr-giveup">想不起來，直接看答案</button></div>
-  </div>`}` : `<p class="qtext">${esc(q.q)}</p>${qimgHTML(q)}
+  </div>`}` : `${qStemHTML(q)}${qimgHTML(q)}
   ${hidden ? `<div class="recall">
     <p class="recall-lead">先想想答案是什麼，想好再看選項。</p>
     <label class="recall-label" for="guess">你想到的答案（可以不寫）</label>
     <input id="guess" class="recall-input" type="text" maxlength="200" autocomplete="off" spellcheck="false" value="${esc(guessVal)}">
     <button class="btn primary big" data-act="reveal">顯示選項</button>
-  </div>` : `${note ? `<p class="yourguess">你想到的答案：<span>${esc(note)}</span></p>` : ""}${mq && !answered ? `<p class="multi-hint">複選題：選出所有正確答案，再按「送出答案」。</p>` : ""}<div class="opts${mq ? " multi" : ""}">${opts}</div>${mq && !answered ? `<div class="dsubmit"><button class="btn primary big" data-act="multi-submit" ${msel.length ? "" : "disabled"}>送出答案${msel.length ? `（已選 ${msel.length} 個）` : ""}</button></div>` : ""}`}`}
+  </div>` : `${note ? `<p class="yourguess">你想到的答案：<span>${esc(note)}</span></p>` : ""}${mq && !answered ? `<p class="multi-hint">${multiHint(q, true)}</p>` : ""}<div class="opts${mq ? " multi" : ""}">${opts}</div>${mq && !answered ? `<div class="dsubmit"><button class="btn primary big" data-act="multi-submit" ${msel.length ? "" : "disabled"}>送出答案${msel.length ? `（已選 ${msel.length} 個）` : ""}</button></div>` : ""}`}`}
   ${fb}`;
 }
 
@@ -4232,7 +5171,7 @@ function renderSummary(){
   const res = all.filter(r => !r.ex);
   const right = res.filter(r => r.ok).length;
   const wrong = res.filter(r => s.exam ? !r.ok : (r.answered && !r.ok));
-  const snippet = n => { const q = byN[n]; const t = q.type === "abbr" ? q.ans : (q.q || DRAG_PROMPT[q.type] || "").split("\n")[0]; return t.length > 90 ? t.slice(0, 90) + "…" : t; };
+  const snippet = n => { const q = byN[n]; const t = q.type === "abbr" ? q.ans : qFirstLine(q); return t.length > 90 ? t.slice(0, 90) + "…" : t; };
   const unanswered = res.filter(r => !r.answered).length;
   const again = s.exam ? wrong.length : wrong.length + unanswered;
   let timeBlock = "";
@@ -4244,25 +5183,36 @@ function renderSummary(){
     const slow = Object.keys(s.qtime || {}).map(Number).filter(n => s.answers[n] !== undefined)
       .sort((a, b) => s.qtime[b] - s.qtime[a]).slice(0, 3);
     timeBlock = `<div class="tstats">${lines.map(l => `<p>${l}。</p>`).join("")}</div>
-    ${slow.length > 1 ? `<h2 class="slowh">最花時間的題目</h2><ul class="slow">${slow.map(n => `<li><button data-q="${n}">${qLabel(n)}<span class="st">${fmtClock(s.qtime[n])}</span></button></li>`).join("")}</ul>` : ""}`;
+    ${slow.length > 1 ? `<h2 class="slowh">最花時間的題目</h2><ul class="slow">${slow.map(n => `<li><button data-q="${n}">${esc(qLabel(n))}<span class="st">${fmtClock(s.qtime[n])}</span></button></li>`).join("")}</ul>` : ""}`;
   }
   const pct = res.length ? Math.round(right * 100 / res.length) : 0;
+  /* 整套模擬考，或 config.passCount 開著的模擬考：及格線後面寫出這回要答對幾題，及不及格也照題數判斷。 */
+  const fullSet = s.full !== undefined && SET_BY[s.full] ? SET_BY[s.full] : null;
+  const showNeed = !!(s.exam && res.length && (fullSet || CONFIG.passCount));
+  const needN = needCount(res.length);
   /* 這一回出到兩個以上的章節時，列出各章節答對幾題（模擬考的沒作答算答錯，和上面的總分一致）。 */
   const chRes = !CHAPTERS.length ? [] : CHAPTERS.map(c => c.key).concat([""])
     .map(k => { const l = res.filter(r => chOf(r.n) === k); return {k, total: l.length, right: l.filter(r => r.ok).length}; }).filter(x => x.total);
   const chBlock = chRes.length < 2 ? "" : `<h2 class="slowh" id="chres-title">各章節的結果</h2>
     <div class="chwrap"><table class="chtbl" aria-labelledby="chres-title"><thead><tr><th scope="col">章節</th><th scope="col" class="num">答對</th><th scope="col" class="num">正確率</th></tr></thead>
     <tbody>${chRes.map(x => `<tr><td>${esc(chName(x.k))}</td><td class="num">${x.right} / ${x.total}</td><td class="num">${Math.round(x.right * 100 / x.total)}%</td></tr>`).join("")}</tbody></table></div>`;
+  /* 這一回出到情境題組時，列出各情境題組答對幾題，算法和各章節一樣。 */
+  const caseRes = !CASES.length ? [] : CASES.map(c => { const l = res.filter(r => CASE_OF[r.n] === c.key); return {c, total: l.length, right: l.filter(r => r.ok).length}; }).filter(x => x.total);
+  const caseBlock = !caseRes.length ? "" : `<h2 class="slowh" id="caseres-title">各情境題組的結果</h2>
+    <div class="chwrap"><table class="chtbl" aria-labelledby="caseres-title"><thead><tr><th scope="col">情境題組</th><th scope="col" class="num">答對</th><th scope="col" class="num">正確率</th></tr></thead>
+    <tbody>${caseRes.map(x => `<tr><td>${esc(x.c.title)}</td><td class="num">${x.right} / ${x.total}</td><td class="num">${Math.round(x.right * 100 / x.total)}%</td></tr>`).join("")}</tbody></table></div>`;
+  /* 以情境題組為單位抽題時，實際題數可能和設定的不同，寫出來。 */
+  const wantNote = s.want && s.want !== s.ids.length ? `<p class="sub">這回實際出了 ${s.ids.length} 題（設定 ${s.want} 題）：情境題組整組出、不拆開，所以題數和設定的不同。</p>` : "";
   return `
   <header class="top">
-    <h1>${s.exam ? "模擬考成績：" : "這回"}答對 ${right} / ${res.length} 題</h1>
-    ${s.exam ? `<p class="score">得分 <strong>${pct}%</strong>，${pct >= CONFIG.passLine ? "達到" : "未達"}參考及格線 ${CONFIG.passLine}%${CONFIG.passNote ? `（${esc(CONFIG.passNote)}）` : ""}。${unanswered ? `有 ${unanswered} 題沒作答，算作答錯。` : ""}</p>
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="exam-review" data-i="0">逐題檢討</button></div>` : ""}
+    <h1>${s.exam ? (fullSet ? `${esc(fullSet.name)}模擬考成績：` : "模擬考成績：") : "這回"}答對 ${right} / ${res.length} 題</h1>
+    ${s.exam ? `<p class="score">得分 <strong>${pct}%</strong>，${showNeed ? (right >= needN ? "達到" : "未達") : pct >= CONFIG.passLine ? "達到" : "未達"}參考及格線 ${CONFIG.passLine}%${showNeed ? `（這回要答對 ${needN} 題${CONFIG.passNote ? "；" + esc(CONFIG.passNote) : ""}）` : CONFIG.passNote ? `（${esc(CONFIG.passNote)}）` : ""}。${unanswered ? `有 ${unanswered} 題沒作答，算作答錯。` : ""}</p>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="exam-review" data-i="0">逐題檢討</button></div>` : ""}${wantNote}
     <p class="sub">${exCount ? `另有 ${exCount} 題不列入紀錄。` : ""}${wrong.length ? (s.exam ? "下面是答錯和沒作答的題目，點一題可以直接看那題的檢討。" : "下面是這回答錯的題目，點一題可以再練一次。") : unanswered ? "作答過的題目全部答對。" : res.length ? "這回全部答對。" : ""}</p>
     ${timeBlock}
-    ${chBlock}
+    ${chBlock}${caseBlock}
   </header>
-  ${wrong.length ? `<ol class="wl">${wrong.map(r => `<li><button class="wrow" ${s.exam ? `data-act="exam-review" data-i="${s.ids.indexOf(r.n)}"` : `data-q="${r.n}"`}><span class="wn">${qLabel(r.n)}</span>${boxesHTML(r.n)}<span class="wt">${esc(snippet(r.n))}</span>${!r.answered ? `<span class="wm">沒作答</span>` : ""}${isMarked(r.n) ? `<span class="wm">已標記</span>` : ""}</button></li>`).join("")}</ol>` : `<p class="allright">答錯過的題目已經從題庫地圖上標出來，之後可以用「錯題複習」再練。</p>`}
+  ${wrong.length ? `<ol class="wl">${wrong.map(r => `<li><button class="wrow" ${s.exam ? `data-act="exam-review" data-i="${s.ids.indexOf(r.n)}"` : `data-q="${r.n}"`}><span class="wn">${esc(qLabel(r.n))}</span>${boxesHTML(r.n)}<span class="wt">${esc(snippet(r.n))}</span>${!r.answered ? `<span class="wm">沒作答</span>` : ""}${isMarked(r.n) ? `<span class="wm">已標記</span>` : ""}</button></li>`).join("")}</ol>` : `<p class="allright">答錯過的題目已經從題庫地圖上標出來，之後可以用「錯題複習」再練。</p>`}
   <div class="row">
     ${again ? `<button class="btn primary big" data-act="retry-wrong">${unanswered ? `再練答錯和沒作答的 ${again} 題` : `再練這回答錯的 ${again} 題`}</button>` : ""}
     <button class="btn ghost" data-act="home">回到總覽</button>
@@ -4288,8 +5238,12 @@ function render(scrollTop){
   if (view === "edit" && !form) view = "extras";
   syncTypeFilter();
   syncChFilter();
+  syncCaseFilter();
+  /* 同一個情境題組連續作答時，沿用原本的情境內容區塊（同一個 DOM 節點）：圖片不重新載入、不閃動，區塊裡捲到哪裡也不變。 */
+  const caseBody0 = document.getElementById("case-body"), caseScroll0 = caseBody0 ? caseBody0.scrollTop : 0;
   $app.innerHTML = view === "quiz" ? renderQuiz() : view === "summary" ? renderSummary()
     : view === "extras" ? renderExtras() : view === "edit" ? renderEdit() : view === "print" && printCfg ? renderPrint() : view === "browse" && browse ? renderBrowse() : renderHome();
+  if (caseBody0){ const nb = document.getElementById("case-body"); if (nb && nb.dataset.case === caseBody0.dataset.case){ nb.replaceWith(caseBody0); caseBody0.scrollTop = caseScroll0; } }
   if (bkSel){ const el = document.getElementById("bk-paste"); if (el){ el.focus({preventScroll: true}); try { el.setSelectionRange(bkSel[0], bkSel[1]); } catch(e){} } }
   if (scrollTop){
     window.scrollTo(0, 0);
@@ -4369,6 +5323,17 @@ $app.addEventListener("change", e => {
     const el = document.querySelector(`[data-chsel="${cssEsc(k)}"]`); if (el) el.focus();
     return;
   }
+  if (t && t.dataset && t.dataset.casesel !== undefined){
+    const k = t.dataset.casesel;
+    const cur = caseSel.filter(x => x !== k);
+    if (t.checked) cur.push(k);
+    const order = CASES.map(c => c.key).concat([""]);
+    setPref("cases", cur.sort((x, y) => order.indexOf(x) - order.indexOf(y)));
+    render();
+    const el = document.querySelector(`[data-casesel="${cssEsc(k)}"]`); if (el) el.focus();
+    return;
+  }
+  if (t && t.dataset && t.dataset.casewhole){ setPref("caseWhole", t.checked); render(); const el = document.querySelector("[data-casewhole]"); if (el) el.focus(); return; }
   if (t && t.dataset && t.dataset.extype){
     const cur = Object.assign({}, PREF_DEFAULTS.examTypes, pref("examTypes") || {});
     cur[t.dataset.extype] = t.checked;
@@ -4392,6 +5357,15 @@ $app.addEventListener("click", e => {
   if (b.dataset.q){ startSession([Number(b.dataset.q)], "single"); return; }
   if (b.dataset.scope){ scope = b.dataset.scope; render(); return; }
   if (b.dataset.src){ srcFilter = b.dataset.src; render(); return; }
+  if (b.dataset.setf !== undefined){ setFilter = b.dataset.setf; render(); const el = document.querySelector(`[data-setf="${cssEsc(setFilter)}"]`); if (el) el.focus(); return; }
+  if (b.dataset.fullx !== undefined){
+    state.prefs = Object.assign({}, state.prefs, {fullExtra: b.dataset.fullx === "1", t: Date.now()});
+    delete state.prefs.fullMin;   // CTFL 客製版存的分鐘數，改用 fullExtra 之後不再需要
+    commit(); render();
+    const el = document.querySelector(`[data-fullx="${b.dataset.fullx}"]`); if (el) el.focus();
+    return;
+  }
+  if (b.dataset.full !== undefined){ startFull(b.dataset.full); return; }
   if (b.dataset.cf !== undefined){ const c = cfCache[Number(b.dataset.cf)]; if (c && c.qs.length) startSession(c.qs.filter(x => byN[x] && !isVoid(x)), "confuse"); return; }
   if (b.dataset.qtype){ setPref("qtype", b.dataset.qtype); render(); return; }
   if (b.dataset.mmode){
@@ -4413,6 +5387,15 @@ $app.addEventListener("click", e => {
     const el = document.querySelector(`[data-chsel="${cssEsc(k)}"]`); if (el) el.focus({preventScroll: true});
     return;
   }
+  if (b.dataset.caseone !== undefined){
+    const k = b.dataset.caseone;
+    setPref("cases", [k]);
+    if (scope === "pairs") scope = "all";
+    render();
+    const f = document.getElementById("fld-case"); if (f && f.scrollIntoView) f.scrollIntoView({block: "center"});
+    const el = document.querySelector(`[data-casesel="${cssEsc(k)}"]`); if (el) el.focus({preventScroll: true});
+    return;
+  }
   if (b.dataset.pfmt){ if (printCfg){ printCfg.fmt = b.dataset.pfmt; render(); } return; }
   if (b.dataset.exam !== undefined){ setPref("examMode", b.dataset.exam === "1"); render(); return; }
   if (b.dataset.recall !== undefined){ setPref("recall", b.dataset.recall === "1"); render(); return; }
@@ -4422,6 +5405,17 @@ $app.addEventListener("click", e => {
   if (b.dataset.group !== undefined){ startGroups([Number(b.dataset.group)]); return; }
   const act = b.dataset.act;
   if (act === "ch-all"){ setPref("chapters", []); render(); const el = document.querySelector("[data-chsel]"); if (el) el.focus(); return; }
+  if (act === "case-all"){ setPref("cases", []); render(); const el = document.querySelector("[data-casesel]"); if (el) el.focus(); return; }
+  /* 收起或展開情境：每一組各自記住（prefs.caseFold），新的一組一律先展開。 */
+  if (act === "case-fold"){
+    const k = b.dataset.case; if (!CASE_BY[k]) return;
+    const f0 = pref("caseFold"), cur = Object.assign({}, f0 && typeof f0 === "object" && !Array.isArray(f0) ? f0 : {});
+    if (cur[k]) delete cur[k]; else cur[k] = true;
+    setPref("caseFold", cur);
+    render();
+    const nb = document.querySelector(`[data-act="case-fold"][data-case="${cssEsc(k)}"]`); if (nb) nb.focus();
+    return;
+  }
   if (act === "print-setup"){ openPrint(); return; }
   if (act === "print-now"){ try { window.print(); } catch(err){} return; }
   if (act === "print-dl"){ downloadPrint(); return; }
@@ -4470,8 +5464,8 @@ $app.addEventListener("click", e => {
   if (act === "qai"){ qaiRun(); return; }
   if (act === "qai-stop"){ if (qai.ctl) qai.ctl.abort(); return; }
   if (act === "map-toggle"){
-    const k = b.dataset.bank; mapOpen[k] = !mapOpen[k]; render();
-    const t = document.querySelector(`[data-act="map-toggle"][data-bank="${k}"]`); if (t) t.focus();
+    const k = b.dataset.bank; mapOpen[k] = !mapIsOpen(k); render();
+    const t = document.querySelector(`[data-act="map-toggle"][data-bank="${cssEsc(k)}"]`); if (t) t.focus();
     return;
   }
   if (act === "bk-toggle"){
@@ -4506,7 +5500,7 @@ $app.addEventListener("click", e => {
   if (act === "b-next"){ if (browse) browseGo(browse.i + 1); return; }
   if (act === "b-restart"){ if (browse){ browse.done = false; browse.i = 0; render(true); } return; }
   if (act === "b-mark"){ if (browse){ toggleMark(browse.ids[browse.i]); render(); const mb = document.getElementById("markbtn"); if (mb) mb.focus(); } return; }
-  if (act === "b-shuffle"){ if (browse){ browse.shuffled = !browse.shuffled; browse.ids = browse.shuffled ? shuffle(browse.base.slice()) : browse.base.slice(); browse.i = 0; browse.done = false; render(true); } return; }
+  if (act === "b-shuffle"){ if (browse){ browse.shuffled = !browse.shuffled; browse.ids = browse.shuffled ? (browse.base.some(x => CASE_OF[x] !== undefined) ? caseShuffle(browse.base) : shuffle(browse.base.slice())) : browse.base.slice(); browse.i = 0; browse.done = false; render(true); } return; }
   if (act === "go-prev"){ const s = state.session; if (s) goTo(s.i - 1); return; }
   if (act === "skip-next"){ skipNext(); return; }
   if (act === "exam-prev"){ examGo(state.session.i - 1); return; }
@@ -4553,6 +5547,14 @@ $app.addEventListener("click", e => {
     const pool = scope === "all" && !asExam0 && pref("skipMastered") ? pools()[scope].filter(x => !isMastered(x)) : pools()[scope];
     const take = count === 0 ? pool.length : count === -1 ? (asExam0 ? 0 : 10) : count;
     const ordered = scope === "weak" || scope === "due";
+    /* 情境題組：模擬考、或練習開著「整組出」時以題組為單位出題（見 caseMode）；範圍裡沒有情境題組的題目時照舊。 */
+    if (caseMode(pool, asExam0)){
+      const ok = poolOk(), N = count === 0 ? Infinity : count === -1 ? 10 : count;
+      const list = !asExam0 ? practiceCasePick(pool, N, ok) : count === -1 ? officialCasePick(pool, ordered, ok) : examCasePick(pool, N, ordered, ok);
+      const want = count === -1 && asExam0 ? chQuota().reduce((s, c) => s + c.exam, 0) : N === Infinity ? 0 : N;
+      if (list.length) startSession(list, scope, Object.assign({keepOrder: true}, want ? {want} : {}, asExam0 ? {exam: true} : {}));
+      return;
+    }
     const picked = count === -1 && asExam0 ? officialPick(pool, ordered) : ordered ? pool.slice(0, take) : shuffle(pool.slice()).slice(0, take);
     const asExam = !!pref("examMode") && scope !== "pairs";
     const list = picked;
@@ -4574,8 +5576,9 @@ $app.addEventListener("click", e => {
       resetTimer = setTimeout(() => { resetArmed = false; if (view === "home") render(); }, 4000);
     } else {
       resetArmed = false; clearTimeout(resetTimer);
-      const keepExtras = state.extras, keepGroups = state.groups;
+      const keepExtras = state.extras, keepGroups = state.groups, keepV = stateV();
       state = blankState();
+      if (keepV === 2) state.v = 2;
       state.extras = keepExtras;
       state.groups = keepGroups;
       state.resetAt = Date.now();
