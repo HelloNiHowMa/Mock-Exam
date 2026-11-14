@@ -152,4 +152,4 @@ A 裝置按了「換一題」，B 裝置的頁面開著、手上還是換掉前�
 
 ### 看圖自評的拖拉題（`imgdd`）
 
-- 範本裡有完整的畫面（`ddBodyHTML`、`ddReveal`、`ddSelf`、列印、題庫地圖的「看圖」標籤），但 `loadBank` 的 `TYPES` 和 `build.py` 都只接受 `mcq`、`multi`、`cls`、`order`、`match`，從初版起就沒有路徑能產生這種題目。下次改版可以移除。
+- 範本裡有完整的畫面（`ddBodyHTML`、`ddReveal`、`ddSelf`、列印、題庫地圖的「看圖」標籤），但 `loadBank` 的 `TYPES` 和 `build.py` 都只接受 `mcq`、`multi`、`cls`、`order`、`match`、`fill`（`fill` 是引擎版本 2026-11-14 加的），從初版起就沒有路徑能產生這種題目。下次改版可以移除。
