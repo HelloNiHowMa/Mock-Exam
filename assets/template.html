@@ -11,7 +11,16 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-11-14（新增填空題：題庫格式多一種題型 type: "fill"。沒有填空題的練習簿，畫面和行為都和上一版相同。
+  引擎版本：2026-11-15（填空題補上兩項：題目頁的「AI 解析」按鈕，和補充題表單新增填空題。題庫格式沒有變，沒有填空題的練習簿畫面和行為都和上一版相同。
+  1. 填空題的 AI 解析：題庫裡的填空題（含 1001 以上的內建補充題）作答後，下方和單選、複選題一樣有「請 AI 解析這題」（要有 sample 能力）。
+  提示詞給題目、標準答案、也接受的寫法和這題分不分大小寫，請 AI 說明答案的由來和容易寫錯的地方；情境題組的情境和附圖照樣帶上。
+  題目指紋（aiFp）對填空題改算 ans、alts、cmp，改了這三項，舊的解析會標出可能已經過時；其他題型的指紋算法沒有動。
+  「遮住再打」第 2、3 次遮住答案時，AI 解析和題庫解析一樣先不顯示。複習講義照常印出填空題存下來的 AI 解析。
+  2. 補充題表單新增填空題：題型多一個「填空題」，補充題頁多「新增填空題」。欄位是題目、標準答案（1 到 80 個字）、大小寫（不分／要相同，
+  預設用 config.fillCmp）、其他也算對的寫法（一行一個，最多 10 個）、解析（有「請 AI 幫忙寫」）和爭議題。判定和題庫裡的填空題完全相同。
+  存在 state.extras：{k, type: "fill", q, ans, alts, cmp, e, flag, t}，題號 10000 + k，顯示成「補充填空題第 N 題」，排在題庫地圖的
+  「補充題：填空題」。題目匯入收件匣放同樣格式的題目也讀得到。2026-11-14 以前的引擎讀到這種補充題會略過（不顯示、不出錯，紀錄留著）。）
+  上一版 2026-11-14：新增填空題：題庫格式多一種題型 type: "fill"。沒有填空題的練習簿，畫面和行為都和上一版相同。
   1. 填空題：題目文字下方一個輸入框，學員自己把答案打出來。寫在 questions 裡、用一般題號，所以能放進情境題組、易混淆題組、章節和卷別。
   欄位：q（題目）、ans（標準答案，1 到 80 個字）、alts（其他也算對的寫法，最多 10 個）、cmp（這題分不分大小寫：exact 要相同、nocase 不分；
   沒寫就用 config.fillCmp，config 也沒寫就是 nocase）。
@@ -24,8 +33,8 @@
   （prefs.qtype 多一個值 "fill"）。模擬考題型多一個「填空題」，預設勾選（prefs.examTypes.fill）；模擬考裡輸入框可以改，交卷才判分。
   5. 題庫地圖的題號格標「填空」，1001 以上的內建補充題另成一區「補充題：填空題」；考前快速瀏覽、列印（作答線「答：」和答案表）、成績頁、
   不可作答和交卷後檢討都認得填空題。這一版頁面上不能新增填空題，填空題也沒有 AI 解析按鈕。
-  作答紀錄（stats）的結構沒有變：填空題的 p 存輸入的文字（最多 80 個字），直接看答案存 null。）
-  上一版 2026-10-29b：練習時每種題型都能「不會，直接看答案」。題庫格式沒有變。
+  作答紀錄（stats）的結構沒有變：填空題的 p 存輸入的文字（最多 80 個字），直接看答案存 null。
+  更早 2026-10-29b：練習時每種題型都能「不會，直接看答案」。題庫格式沒有變。
   1. 練習時（模擬考和整套模擬考沒有），單選、複選、分類、排序、配對題在送出鈕旁多一個「不會，直接看答案」；單選題沒有送出鈕，放在選項下方。
   縮寫題原本的「想不起來，直接看答案」改成同樣的字，位置不變。「先回想再看選項」時，按「顯示選項」之後才有這個按鈕。
   2. 按下等於這次答錯：記一次答錯（錯題複習、到期複習、弱點題和每日一題的錯題排程都照答錯處理），作答內容記 null，
@@ -1836,6 +1845,8 @@ const QN = new Set(Q.map(q => q.n));
 /* ---------- 補充題 ----------
    在頁面上新增的題目存在 state.extras（跟著帳號同步），格式：
    {k: 編號, q: 題目, o: [2 到 6 個選項], a: 正確選項位置, e: 解析, flag: 是否爭議題, t: 最後修改時間}
+   填空題：{k, type: "fill", q: 題目, ans: 標準答案（1 到 80 個字）, alts: [其他也算對的寫法，最多 10 個], cmp: "exact" 或 "nocase", e, flag, t}
+   （引擎版本 2026-11-15 起。更早的引擎讀到 type: "fill" 的補充題會略過，不顯示也不出錯，紀錄留著。）
    刪除的題目留下 {k, del: true, t} 作為標記，避免其他裝置同步時又把它加回來。
    補充題的內部編號是 10000 + k，進度紀錄和原題分開。 */
 const BANK_B = 1000;
@@ -1860,6 +1871,7 @@ function rebuildQ(){
       x.type === "abbr" ? (x.q && typeof x.ans === "string" && x.ans)
       : x.type === "order" ? (Array.isArray(x.items) && x.items.length >= 2)
       : x.type === "match" ? (Array.isArray(x.pairs) && x.pairs.length >= 2 && x.pairs.every(p => Array.isArray(p) && p.length === 2))
+      : x.type === "fill" ? (x.q && typeof x.ans === "string" && x.ans.trim() && x.ans.trim().length <= 80)
       : x.type === "multi" ? (x.q && Array.isArray(x.o) && x.o.length >= 2 && Array.isArray(x.a) && x.a.length >= 1 && x.a.every(i => Number.isInteger(i) && i >= 0 && i < x.o.length))
       : (x.q && Array.isArray(x.o) && x.o.length >= 2 && x.a >= 0 && x.a < x.o.length)))
     .sort((x, y) => x.k - y.k)
@@ -1867,6 +1879,8 @@ function rebuildQ(){
       ? {n: EXTRA_BASE + x.k, k: x.k, type: "abbr", cat: typeof x.cat === "string" && x.cat ? x.cat : "自訂", q: x.q, ans: x.ans, alts: Array.isArray(x.alts) ? x.alts.slice() : [], e: x.e || ""}
       : x.type === "order" ? {n: EXTRA_BASE + x.k, k: x.k, type: "order", q: x.q, items: x.items.slice(), e: x.e || "", flag: !!x.flag}
       : x.type === "match" ? {n: EXTRA_BASE + x.k, k: x.k, type: "match", q: x.q, pairs: x.pairs.map(p => p.slice()), e: x.e || "", flag: !!x.flag}
+      : x.type === "fill" ? {n: EXTRA_BASE + x.k, k: x.k, type: "fill", q: x.q, ans: x.ans.trim(), alts: (Array.isArray(x.alts) ? x.alts : []).filter(a => typeof a === "string" && a.trim() && a.trim().length <= 80).map(a => a.trim()).slice(0, 10),
+         cmp: x.cmp === "exact" || x.cmp === "nocase" ? x.cmp : CONFIG.fillCmp, e: x.e || "", flag: !!x.flag}
       : x.type === "multi" ? {n: EXTRA_BASE + x.k, k: x.k, type: "multi", q: x.q, o: x.o.slice(), a: Array.from(new Set(x.a)).sort((p, q2) => p - q2), e: x.e || "", flag: !!x.flag}
       : {n: EXTRA_BASE + x.k, k: x.k, type: "mcq", q: x.q, o: x.o.slice(), a: x.a, e: x.e || "", flag: !!x.flag,
          from: Number.isInteger(x.from) && QN.has(x.from) ? x.from : null});
@@ -2370,7 +2384,7 @@ function startFull(k){
 }
 const KEY = SK.local;
 /* 和最上方說明的「引擎版本」一致，寫進匯出的備份檔。scripts/package_skill.py 會檢查兩邊有沒有對上。 */
-const ENGINE_VERSION = "2026-11-14";
+const ENGINE_VERSION = "2026-11-15";
 /* 主頁最下方的「檢查新版」：按下才連 GitHub，讀 main 分支 repo 根目錄的 VERSION（還沒有時改讀範本最上方的引擎版本）。
    連不到（離線、逾時，或 Claude artifact 不能連外）就給連結讓使用者自己看。引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。 */
 const ENGINE_REPO = "https://github.com/HelloNiHowMa/Mock-Exam";
@@ -3742,6 +3756,14 @@ function buildAiPrompt(f){
     if (!ab || !ans) return {ok: false, msg: "要先填好縮寫和英文全名，AI 才能寫說明。"};
     return {ok: true, text: AI_RULES + "請用 1 到 3 句話說明這個縮寫是什麼、在" + CONFIG.abbrScope + "中會出現在什麼情境，以及容易和哪個相似的縮寫或概念混淆。\n\n縮寫：" + ab + "\n英文全名：" + ans};
   }
+  if (f.type === "fill"){
+    const fq = f.q.trim(), fa = f.fans.trim();
+    if (!fq || !fa) return {ok: false, msg: "要先填好題目和標準答案，AI 才能寫解析。"};
+    const exact = f.cmp === "exact";
+    const al = f.falts.split("\n").map(x => x.trim()).filter(Boolean);
+    return {ok: true, text: AI_RULES + "這是一題填空題，學員要自己把答案打出來。" + (exact ? "大小寫、符號和單複數都要和標準答案完全相同才算對。" : "符號和單複數要和標準答案完全相同才算對，大小寫不影響判定。")
+      + "請用 2 到 4 句話先說明為什麼答案是這個，再點出最容易寫錯的地方（例如名稱相近的其他寫法，或容易打錯的符號" + (exact ? "、大小寫" : "") + "和單複數）。提到答案時照標準答案的寫法原樣寫出來。\n\n題目：\n" + fq + "\n\n標準答案：" + fa + (al.length ? "\n也接受的寫法（每行一個）：\n" + al.map(x => "- " + x).join("\n") : "")};
+  }
   if (f.type === "drag"){
     if (f.dtype === "order"){
       const items = f.items.map(x => x.trim()).filter(Boolean);
@@ -3816,7 +3838,10 @@ function saveAiLocal(){ try { localStorage.setItem(AIKEY, JSON.stringify(aiNotes
    解析 e、oe、章節、卷別、學習目標不算在內，改這些不會讓解析變成過時。引擎版本 2026-10-29 以前存的解析沒有 h，沒辦法判斷，照常顯示。 */
 function aiFp(q){
   const cs = caseOf(q.n);
-  const s = JSON.stringify([q.type || "mcq", q.q || "", q.o || null, q.a === undefined ? null : q.a, q.blk || null, q.img || null, q.oimg || null, cs ? [cs.title, cs.text, cs.img || null] : null]);
+  /* 填空題沒有選項，指紋改算標準答案、也接受的寫法和大小寫規則。其他題型的算法不動，已存的指紋才對得上。 */
+  const s = q.type === "fill"
+    ? JSON.stringify(["fill", q.q || "", q.ans || "", q.alts || [], q.cmp || "", q.blk || null, q.img || null, cs ? [cs.title, cs.text, cs.img || null] : null])
+    : JSON.stringify([q.type || "mcq", q.q || "", q.o || null, q.a === undefined ? null : q.a, q.blk || null, q.img || null, q.oimg || null, cs ? [cs.title, cs.text, cs.img || null] : null]);
   let h = 0x811c9dc5;   // FNV-1a 32 位元，只用來比對是否改過，不用防碰撞
   for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
   return (h >>> 0).toString(16).padStart(8, "0");
@@ -3854,9 +3879,12 @@ async function saveAiRemote(n){
     await ref.set({notes: cur});
   } catch(e){}
 }
+/* 題目頁有「AI 解析」的題型：題庫（含 1001 以上的內建補充題）裡的單選、複選和填空題。頁面上新增的補充題在編輯表單裡請 AI 寫。 */
+function aiCan(n, q){ return !!q && !isExtra(n) && q.type !== "imgdd" && (!!q.o || q.type === "fill"); }
 function optHasImg(q, i){ return !!(q && Array.isArray(q.oimg) && q.oimg[i] && IMG[q.oimg[i]]); }
 /* sentOpt：圖片真的有附給 AI 的選項索引（aiImagesFor 的 optIdx）；沒傳就當作都沒有附上。 */
 function aiPromptFor(q, sentOpt){
+  if (q.type === "fill") return aiPromptFill(q);
   const multi = q.type === "multi";
   const ans = multi ? q.a : [q.a];
   const sent = sentOpt || [];
@@ -3873,6 +3901,20 @@ function aiPromptFor(q, sentOpt){
   }).join("\n"));
   const oeT = oeAiText(q);
   if (q.e || oeT) parts.push("題庫附的解析（僅供參考）：\n" + [q.e || "", oeT ? "逐項說明：\n" + oeT : ""].filter(Boolean).join("\n"));
+  return parts.join("\n\n");
+}
+/* 填空題的提示詞：沒有選項，給標準答案、也接受的寫法和這題的判定規則，請 AI 說明答案的由來和容易寫錯的地方。 */
+function aiPromptFill(q){
+  const exact = q.cmp === "exact";
+  const parts = [AI_RULES + "這是一題填空題，學員要自己把答案打出來。" + (exact ? "大小寫、符號和單複數都要和標準答案完全相同才算對。" : "符號和單複數要和標準答案完全相同才算對，大小寫不影響判定。")
+    + "請用 3 到 6 句話，先說明為什麼答案是這個、實際上會用在哪裡，再點出最容易寫錯的地方（例如名稱相近的其他寫法，或容易打錯的符號" + (exact ? "、大小寫" : "") + "和單複數）。提到答案時照標準答案的寫法原樣寫出來。"];
+  const cs = caseOf(q.n);
+  if (cs) parts.push("這題屬於一個情境題組，下面的情境是同一組題目共用的背景；解析只要說明這一題用到的部分。\n情境：" + cs.title + "\n" + String(cs.text).trim());
+  parts.push("題目：\n" + qAiText(q));
+  const meta = metaAiText(q);
+  if (meta) parts.push(meta);
+  parts.push("標準答案：" + q.ans + (q.alts && q.alts.length ? "\n題庫也接受的寫法（每行一個）：\n" + q.alts.map(x => "- " + x).join("\n") : ""));
+  if (q.e) parts.push("題庫附的解析（僅供參考）：\n" + q.e);
   return parts.join("\n\n");
 }
 /* 附給 AI 的圖：先是題目的 exhibit，再是圖片選項（依選項索引排序，也就是提示詞裡選項清單由上到下的順序）。
@@ -3898,8 +3940,9 @@ async function aiImagesFor(q){
   out.optIdx = sent.filter(x => x.oi >= 0).map(x => x.oi);
   return out;
 }
-function qaiHTML(n, q){
-  if (isExtra(n) || !q || q.type === "imgdd" || !q.o) return "";
+/* cover：填空題「遮住再打」第 2、3 次時，AI 解析會露出答案，和題庫解析一樣先不顯示。 */
+function qaiHTML(n, q, cover){
+  if (!aiCan(n, q) || cover) return "";
   if (!aiNotes[n] && aiRemote.db && !aiRemote.loaded[Math.floor(n / 100)]) setTimeout(() => loadAiBucket(n), 0);
   const busy = qai.busy && qai.n === n;
   const note = aiNotes[n];
@@ -3918,14 +3961,14 @@ function qaiHTML(n, q){
 }
 async function qaiRun(){
   const n = currentN(); const q = n !== null ? byN[n] : null;
-  if (!sampleApi || qai.busy || !q || isExtra(n) || q.type === "imgdd" || !q.o) return;
+  if (!sampleApi || qai.busy || !aiCan(n, q)) return;
   const ctl = new AbortController();
   qai = {n, busy: true, ctl, text: "", msg: ""};
   render();
   let im = {has: false, caseHas: false, ownHas: false, blobs: [], nCase: 0, nExhibit: 0, optIdx: []};
   try { im = await aiImagesFor(q); } catch(e){}
   const nOpt = im.optIdx.length;
-  const optMissing = q.o.some((_, i) => optHasImg(q, i) && !im.optIdx.includes(i));
+  const optMissing = (q.o || []).some((_, i) => optHasImg(q, i) && !im.optIdx.includes(i));
   const OPT_TAIL = "圖片選項的圖照上面選項清單由上到下的順序排，一張對應一個標有〔這個選項有附圖〕的選項。請根據圖中的內容說明；提到圖片選項時，用圖裡的內容來描述是哪一個選項，不要說是第幾張圖，也不要用代號或序號。";
   /* 有情境附圖時，說明附圖的順序：先情境附圖，再題目的 exhibit，最後是圖片選項。沒有情境附圖時和之前的說法相同。 */
   const SEEN = "\n\n" + (im.nCase
@@ -3935,7 +3978,7 @@ async function qaiRun(){
     : "題目附圖已經附上（依序是題目的 exhibit），請根據圖中的內容說明。")
     + (im.caseHas && !im.nCase ? "情境也有附圖，但沒有附上，解析需要時請根據情境文字合理推論。" : "")
     + (optMissing ? "標有〔這個選項有圖片，但沒有附上〕的選項你看不到圖，解析需要時請根據題目和其他資訊合理推論，並說明你是怎麼推論的。" : "");
-  const UNSEEN = "\n\n" + (im.caseHas && !im.ownHas ? "這題的情境有附圖" : "這題有附圖") + "，但你看不到圖。如果解析需要圖中的資訊，請根據題目、選項和正確答案合理推論，並說明你是怎麼推論的。";
+  const UNSEEN = "\n\n" + (im.caseHas && !im.ownHas ? "這題的情境有附圖" : "這題有附圖") + "，但你看不到圖。如果解析需要圖中的資訊，請根據" + (q.type === "fill" ? "題目和標準答案" : "題目、選項和正確答案") + "合理推論，並說明你是怎麼推論的。";
   const call = withImg => sampleApi(aiPromptFor(q, withImg ? im.optIdx : []) + (im.has ? (withImg ? SEEN : UNSEEN) : ""), Object.assign({signal: ctl.signal, cache: false, modelTier: "default",
     onText: ({text}) => { if (qai.n === n && qai.busy){ qai.text = text; const el = document.getElementById("qai-text"); if (el) el.textContent = text; } }},
     withImg ? {images: im.blobs} : {}));
@@ -3973,10 +4016,12 @@ function nextK(){ const ks = Object.keys(state.extras || {}).map(Number).filter(
 function openForm(k, type, dtype){
   aiReset();
   const x = k ? state.extras[k] : null;
-  const blank = {k: null, type: type || "mcq", q: "", o: ["", "", "", ""], a: -1, multi: false, am: [], e: "", flag: false, abbr: "", ans: "", alts: "",
+  const blank = {k: null, type: type || "mcq", q: "", o: ["", "", "", ""], a: -1, multi: false, am: [], e: "", flag: false, abbr: "", ans: "", alts: "", fans: "", falts: "", cmp: lastFillCmp || CONFIG.fillCmp,
     dtype: dtype || "order", items: ["", "", "", ""], pairs: [["", ""], ["", ""], ["", ""]]};
   if (x && !x.del && (x.type === "order" || x.type === "match")) form = Object.assign(blank, {k: x.k, type: "drag", dtype: x.type, q: x.q || "",
     items: x.type === "order" ? x.items.slice() : blank.items, pairs: x.type === "match" ? x.pairs.map(p => p.slice()) : blank.pairs, e: x.e || ""});
+  else if (x && !x.del && x.type === "fill") form = Object.assign(blank, {k: x.k, type: "fill", q: x.q, fans: x.ans, falts: (Array.isArray(x.alts) ? x.alts : []).join("\n"),
+    cmp: x.cmp === "exact" || x.cmp === "nocase" ? x.cmp : CONFIG.fillCmp, e: x.e || "", flag: !!x.flag});
   else if (x && !x.del && x.type === "abbr") form = Object.assign(blank, {k: x.k, type: "abbr", abbr: x.q, ans: x.ans, alts: (x.alts || []).join("\n"), e: x.e || ""});
   else if (x && !x.del && x.type === "multi") form = Object.assign(blank, {k: x.k, type: "mcq", multi: true, q: x.q, o: x.o.slice(), am: x.a.slice(), a: -1, e: x.e || "", flag: !!x.flag});
   else if (x && !x.del) form = Object.assign(blank, {k: x.k, type: "mcq", q: x.q, o: x.o.slice(), a: x.a, e: x.e || "", flag: !!x.flag});
@@ -4006,7 +4051,16 @@ function collectForm(){
     form.e = document.getElementById("f-e").value;
     return;
   }
-  if (!document.getElementById("f-q")) return;
+  if (form.type === "fill"){
+    const fa = document.getElementById("f-fans"); if (!fa) return;
+    form.q = document.getElementById("f-q").value;
+    form.fans = fa.value;
+    form.falts = document.getElementById("f-falts").value;
+    form.e = document.getElementById("f-e").value;
+    form.flag = document.getElementById("f-flag").checked;
+    return;
+  }
+  if (!document.getElementById("f-q") || !document.getElementById("f-flag") || document.getElementById("f-fans")) return;
   form.q = document.getElementById("f-q").value;
   form.o = Array.from(document.querySelectorAll(".f-opt")).map(i => i.value);
   if (form.multi) form.am = Array.from(document.querySelectorAll(".f-cm:checked")).map(x => Number(x.value));
@@ -4019,6 +4073,7 @@ function saveForm(andNew){
   collectForm();
   if (form.type === "abbr") return saveAbbrForm(andNew);
   if (form.type === "drag") return saveDragForm(andNew);
+  if (form.type === "fill") return saveFillForm(andNew);
   const errs = [];
   const q = form.q.trim();
   if (!q) errs.push("請填寫題目。");
@@ -4146,6 +4201,75 @@ function saveAbbrForm(andNew){
   view = editReturn === "quiz" && state.session ? "quiz" : "extras";
   render(true);
 }
+/* 填空題：欄位和判定規則跟題庫裡的填空題相同（ans 1 到 80 個字，alts 最多 10 個、每個最多 80 個字）。
+   cmp 一律存下來，之後 config.fillCmp 改了，自己新增的題目判定不會跟著變。 */
+let lastFillCmp = null;   // 這次開頁面最後一次儲存填空題時選的大小寫規則，連續新增時沿用
+function saveFillForm(andNew){
+  const errs = [];
+  const q = form.q.trim(), ans = form.fans.trim();
+  const cmp = form.cmp === "exact" ? "exact" : "nocase";
+  if (!q) errs.push("請填寫題目。");
+  if (!ans) errs.push("請填寫標準答案。");
+  else if (ans.length > 80) errs.push("標準答案最多 80 個字。填空題適合很短的答案：一個名稱、一個數字或一個路徑。");
+  const raw = form.falts.split("\n").map(x => x.trim()).filter(Boolean);
+  if (raw.some(x => x.length > 80)) errs.push("其他也算對的寫法，每個最多 80 個字。");
+  /* 和標準答案或前面的寫法判定起來一樣的（例如不分大小寫時只差大小寫），不用存。 */
+  const seen = new Set([fillNorm(ans, cmp)]), alts = [];
+  raw.forEach(x => { const t = fillNorm(x, cmp); if (!seen.has(t)){ seen.add(t); alts.push(x); } });
+  if (alts.length > 10) errs.push("其他也算對的寫法最多 10 個。列不完的話，這題比較適合出成選擇題。");
+  formErrors = errs;
+  if (errs.length){ render(); const el = document.getElementById("f-errs"); if (el) el.focus(); return; }
+  const isNew = !form.k;
+  const k = form.k || nextK();
+  state.extras[k] = {k, type: "fill", q, ans, alts, cmp, e: form.e.trim(), flag: form.flag, t: Date.now()};
+  commit(); rebuildQ(); sanitizeSession();
+  flashMsg = isNew ? `已新增${qLabel(EXTRA_BASE + k)}。` : `已更新${qLabel(EXTRA_BASE + k)}。`;
+  lastFillCmp = cmp;
+  if (andNew){ openForm(null, "fill"); return; }
+  form = null;
+  view = editReturn === "quiz" && state.session ? "quiz" : "extras";
+  render(true);
+}
+function fillFormEditHTML(f){
+  const exact = f.cmp === "exact";
+  return `<div class="form" id="f-fill">
+    <div>
+      <label class="fl" for="f-q">題目</label>
+      <textarea id="f-q" rows="4" maxlength="4000">${esc(f.q)}</textarea>
+      <p class="fhint">把答案的形式講清楚，例如「只寫數字」「只寫 cmdlet 名稱，不含參數」。</p>
+    </div>
+    <div>
+      <label class="fl" for="f-fans">標準答案</label>
+      <input type="text" id="f-fans" class="fmono" value="${esc(f.fans)}" maxlength="80" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <p class="fhint">照正式的寫法填，最多 80 個字。作答時符號、空白和字尾的 s 都要和這裡完全相同才算對。</p>
+    </div>
+    <div class="field">
+      <span class="flabel" id="lab-fcmp">大小寫</span>
+      <div class="seg" role="radiogroup" aria-labelledby="lab-fcmp">
+        <button role="radio" aria-checked="${!exact}" data-fcmp="nocase">不分大小寫</button>
+        <button role="radio" aria-checked="${exact}" data-fcmp="exact">大小寫要相同</button>
+      </div>
+      <p class="fhint">照真實系統來選：打錯大小寫在實際環境會出錯的（例如 Linux 路徑、YAML 的 key、變數名），選「大小寫要相同」。</p>
+    </div>
+    <div>
+      <label class="fl" for="f-falts">其他也算對的寫法（一行一個，可以不寫）</label>
+      <textarea id="f-falts" class="fmono" rows="3" maxlength="900" autocapitalize="off" spellcheck="false">${esc(f.falts)}</textarea>
+      <p class="fhint">只列真的等價的寫法，最多 10 個。${exact ? "" : "只差大小寫的不用列。"}</p>
+    </div>
+    <div>
+      <label class="fl" for="f-e">解析（可以不寫）</label>
+      <textarea id="f-e" rows="4" maxlength="4000" ${aiBusy ? "readonly" : ""}>${esc(f.e)}</textarea>
+      ${aiRowHTML(f)}
+    </div>
+    <label class="chk"><input type="checkbox" id="f-flag" ${f.flag ? "checked" : ""}>標為爭議題</label>
+    <div class="row">
+      <button class="btn primary big" data-act="save-extra" ${aiBusy ? "disabled" : ""}>${f.k ? "儲存修改" : "儲存"}</button>
+      ${!f.k ? `<button class="btn ghost" data-act="save-extra-next" ${aiBusy ? "disabled" : ""}>儲存並新增下一題</button>` : ""}
+      <button class="btn ghost" data-act="cancel-extra">取消</button>
+      ${f.k ? `<button class="btn text danger" data-act="del-extra">${delArmed ? "再按一次確認刪除" : "刪除這題"}</button>` : ""}
+    </div>
+  </div>`;
+}
 function deleteExtra(k){
   const label = qLabel(EXTRA_BASE + k);
   state.extras[k] = {k, del: true, t: Date.now()};
@@ -4170,12 +4294,12 @@ function renderExtras(){
   <p class="backlink"><button class="btn text" data-act="go-home">回到總覽</button></p>
   <header class="top">
     <h1>補充題</h1>
-    <p class="sub">自己新增的選擇題、縮寫題和拖拉題都在這裡，練習方式和題庫的題目一樣，進度分開記錄，並跟著帳號同步。</p>
+    <p class="sub">自己新增的選擇題、縮寫題、拖拉題和填空題都在這裡，練習方式和題庫的題目一樣，進度分開記錄，並跟著帳號同步。</p>
   </header>
   ${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ""}
-  <div class="row"><button class="btn primary big" data-act="new-extra">新增選擇題</button><button class="btn ghost" data-act="new-abbr">新增縮寫題</button><button class="btn ghost" data-act="new-drag">新增拖拉題</button></div>
+  <div class="row"><button class="btn primary big" data-act="new-extra">新增選擇題</button><button class="btn ghost" data-act="new-abbr">新增縮寫題</button><button class="btn ghost" data-act="new-drag">新增拖拉題</button><button class="btn ghost" data-act="new-fill">新增填空題</button></div>
   ${EXTRA.length ? `<ul class="xlist">${EXTRA.map(q => `<li class="xrow">
-      <div class="xhead">${esc(qLabel(q.n))}${q.from ? `<span class="src">變化自${esc(qLabel(q.from))}</span>` : ""}${q.type === "multi" ? `<span class="src">複選</span>` : ""}${q.type === "order" || q.type === "match" ? `<span class="src">${q.type === "order" ? "拖拉排序" : "拖拉配對"}</span>` : ""}${boxesHTML(q.n)}${q.flag ? `<span class="pill s-amber">爭議題</span>` : ""}</div>
+      <div class="xhead">${esc(qLabel(q.n))}${q.from ? `<span class="src">變化自${esc(qLabel(q.from))}</span>` : ""}${q.type === "multi" ? `<span class="src">複選</span>` : ""}${q.type === "order" || q.type === "match" ? `<span class="src">${q.type === "order" ? "拖拉排序" : "拖拉配對"}</span>` : ""}${q.type === "fill" ? `<span class="src">填空</span>` : ""}${boxesHTML(q.n)}${q.flag ? `<span class="pill s-amber">爭議題</span>` : ""}</div>
       <span class="xt">${esc(snippet(q.n))}</span>
       <div class="xact"><button class="btn ghost" data-q="${q.n}">練習</button><button class="btn ghost" data-act="edit-extra" data-k="${q.k}">編輯</button></div>
     </li>`).join("")}</ul>` : `<p class="empty">還沒有自己新增的題目。按上面的按鈕建立第一題。</p>`}`;
@@ -4194,7 +4318,7 @@ function renderEdit(){
     </div>`).join("");
   return `
   <p class="backlink"><button class="btn text" data-act="cancel-extra">${editReturn === "quiz" ? "返回練習" : "返回補充題列表"}</button></p>
-  <header class="top"><h1>${f.k ? (f.type === "abbr" ? `編輯縮寫題 ${esc(f.abbr)}` : `編輯${esc(qLabel(EXTRA_BASE + f.k))}`) : (f.type === "abbr" ? "新增縮寫題" : f.type === "drag" ? "新增拖拉題" : "新增補充題")}</h1></header>
+  <header class="top"><h1>${f.k ? (f.type === "abbr" ? `編輯縮寫題 ${esc(f.abbr)}` : `編輯${esc(qLabel(EXTRA_BASE + f.k))}`) : (f.type === "abbr" ? "新增縮寫題" : f.type === "drag" ? "新增拖拉題" : f.type === "fill" ? "新增填空題" : "新增補充題")}</h1></header>
   ${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ""}
   ${formErrors.length ? `<div class="errs" id="f-errs" tabindex="-1" role="alert">${formErrors.map(x => `<p>${esc(x)}</p>`).join("")}</div>` : ""}
   ${!f.k ? `<div class="field">
@@ -4203,9 +4327,10 @@ function renderEdit(){
       <button role="radio" aria-checked="${f.type === "mcq"}" data-ftype="mcq">選擇題</button>
       <button role="radio" aria-checked="${f.type === "abbr"}" data-ftype="abbr">縮寫題</button>
       <button role="radio" aria-checked="${f.type === "drag"}" data-ftype="drag">拖拉題</button>
+      <button role="radio" aria-checked="${f.type === "fill"}" data-ftype="fill">填空題</button>
     </div>
   </div>` : ""}
-  ${f.type === "drag" ? dragFormHTML(f) : f.type === "abbr" ? `<div class="form">
+  ${f.type === "drag" ? dragFormHTML(f) : f.type === "fill" ? fillFormEditHTML(f) : f.type === "abbr" ? `<div class="form">
     <div>
       <label class="fl" for="f-abbr">縮寫</label>
       <input type="text" id="f-abbr" value="${esc(f.abbr)}" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" lang="en">
@@ -4897,7 +5022,7 @@ function renderHome(){
     .concat(bankB.filter(q => !q.type || q.type === "mcq" || q.type === "multi")).sort((x, y) => dispNum(x.n) - dispNum(y.n));
   const extraDrag = extraMcq.filter(q => q.type === "order" || q.type === "match")
     .concat(bankB.filter(q => q.type === "order" || q.type === "match" || q.type === "cls" || q.type === "imgdd")).sort((x, y) => dispNum(x.n) - dispNum(y.n));
-  const extraFill = bankB.filter(q => q.type === "fill").sort((x, y) => dispNum(x.n) - dispNum(y.n));
+  const extraFill = extraMcq.filter(q => q.type === "fill").concat(bankB.filter(q => q.type === "fill")).sort((x, y) => dispNum(x.n) - dispNum(y.n));
   const extraCells = extraChoice.map(cell).join("");
   const fillCells = extraFill.map(cell).join("");
   const dragCells = extraDrag.map(cell).join("");
@@ -5084,7 +5209,7 @@ function renderHome(){
       <li><span class="sw sw-mark"></span>已標記 ${p.marked.length}</li>
       ${flagCount ? `<li><span class="sw sw-flag" aria-hidden="true">!</span>爭議題 ${flagCount}</li>` : ""}${voidCount ? `<li><span class="sw s-void"></span>不可作答 ${voidCount}</li>` : ""}${UC.length ? `<li><span class="sw sw-case"></span>情境題組 ${UC.length} 組</li>` : ""}
     </ul>
-    <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。補充題的選擇題、變化題、拖拉題各有自己的題號。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。${flagCount ? "左上角有紫色驚嘆號、外圈加粗的是爭議題，爭議的地方寫在解析裡。" : ""}${voidCount ? "灰色、畫刪除線的是題目有問題、不可作答的題目，不計入題數和統計，點進去可以看原本的答案和問題說明。" : ""}${UC.length ? "底部有色條的是情境題組的題目，題號相鄰的兩組用不同顏色；題組名稱和題號列在下方「各情境題組的掌握情況」。" : ""}題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
+    <p class="note">題號格顯示每一題的狀態，點任一格可以單獨練那一題。補充題的選擇題、變化題、拖拉題、填空題各有自己的題號。答錯過的題目要連續答對兩次才算掌握。練習時可以標記題目，右上角有三角形的就是標記過的題。${flagCount ? "左上角有紫色驚嘆號、外圈加粗的是爭議題，爭議的地方寫在解析裡。" : ""}${voidCount ? "灰色、畫刪除線的是題目有問題、不可作答的題目，不計入題數和統計，點進去可以看原本的答案和問題說明。" : ""}${UC.length ? "底部有色條的是情境題組的題目，題號相鄰的兩組用不同顏色；題組名稱和題號列在下方「各情境題組的掌握情況」。" : ""}題號旁的五個方框是最近 5 次作答：☑ 答對、☒ 答錯、☐ 還沒作答，由左到右是由早到晚；做超過五次時前面會標出總次數。最近五次全對、複習間隔拉長到 14 天以上，而且連續答對橫跨一週以上的題目算「熟練」。</p>
     ${chTable}${caseTable}
     <div class="row extra-actions">
       <button class="btn ghost" data-act="new-extra">新增補充題</button>
@@ -5342,7 +5467,7 @@ function renderQuiz(){
       ${idd ? imgsHTML(q.ans, "qimg", "拖拉題正確答案") : ""}
       ${cq ? (ok ? "" : gave ? clsUnusedHTML(q) : clsKeyHTML(q)) + clsOrigHTML(q) : ""}
       ${cover ? (q.e || (q.eimg && q.eimg.length) ? `<p class="nextrev">解析先遮住，打完這一次就會顯示。</p>` : "") : `${q.e ? (isExtra(n) ? `<p>${esc(q.e)}</p>` : `<p class="pre"><span class="srclbl">${isBankB(n) ? "解析" : "題庫解析"}</span>${esc(q.e)}</p>`) : ""}${oeListHTML(q, order)}${imgsHTML(q.eimg, "qimg", "解析附圖")}${loTagHTML(q)}`}
-      ${qaiHTML(n, q)}
+      ${qaiHTML(n, q, cover)}
       ${grp ? `<div class="gkey"><h4>分辨關鍵</h4><p>${esc(grp.key)}</p></div>` : ""}
       ${answered && !excluded && !cover ? pastPicksHTML(n, q) : ""}
       ${sr ? `<p class="nextrev">下次複習：${fmtDur(Math.max(sr.due - Date.now(), 60e3))}後</p>` : ""}
@@ -5623,6 +5748,7 @@ $app.addEventListener("click", e => {
     if (!toMulti && form.multi && form.a < 0 && form.am.length) form.a = form.am[0];
     form.multi = toMulti; formErrors = []; skipCollectOnce = true; render(); return;
   }
+  if (b.dataset.fcmp){ collectForm(); form.cmp = b.dataset.fcmp === "exact" ? "exact" : "nocase"; skipCollectOnce = true; render(); const el = document.querySelector(`[data-fcmp="${form.cmp}"]`); if (el) el.focus(); return; }
   if (b.dataset.dtype){ collectForm(); form.dtype = b.dataset.dtype; formErrors = []; skipCollectOnce = true; render(); return; }
   if (b.dataset.ftype){ collectForm(); form.type = b.dataset.ftype; formErrors = []; skipCollectOnce = true; render(); const f = document.getElementById(form.type === "abbr" ? "f-abbr" : "f-q"); if (f) f.focus(); return; }
   if (b.dataset.count !== undefined){ count = Number(b.dataset.count); render(); return; }
@@ -5672,6 +5798,7 @@ $app.addEventListener("click", e => {
   if (act === "new-extra"){ openForm(null); return; }
   if (act === "new-abbr"){ openForm(null, "abbr"); return; }
   if (act === "new-drag"){ openForm(null, "drag"); return; }
+  if (act === "new-fill"){ openForm(null, "fill"); return; }
   if (act === "item-add" || act === "pair-add"){
     collectForm();
     if (act === "item-add" && form.items.length < 10) form.items.push("");
