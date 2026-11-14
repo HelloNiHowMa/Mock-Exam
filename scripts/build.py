@@ -822,10 +822,42 @@ def quality(qs, case_of=None, multi_count=False):
     return out
 
 
+def read_text(path, what):
+    """讀文字檔。找不到、是資料夾、不是 UTF-8 時給一句看得懂的話，不丟 traceback。
+    用 utf-8-sig：Windows 記事本存的 UTF-8 檔開頭有 BOM，JSON 解析會把它當成錯誤。"""
+    p = Path(path)
+    if not p.exists():
+        sys.exit(f"找不到{what}：{path}")
+    if p.is_dir():
+        sys.exit(f"{what}要是一個檔案，{path} 是資料夾。")
+    try:
+        return p.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        sys.exit(f"{what} {path} 不是 UTF-8 編碼。請用 UTF-8 重新存檔（記事本：另存新檔，編碼選 UTF-8）。")
+    except OSError as e:
+        sys.exit(f"讀不到{what} {path}：{e.strerror or e}")
+
+
+def read_json(path, what):
+    text = read_text(path, what)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        sys.exit(f"{what}不是合法的 JSON：第 {e.lineno} 行第 {e.colno} 字，{e.msg}")
+
+
+def as_list(bank, key):
+    """題庫裡某個陣列欄位；不是陣列時當成空的（格式錯誤由 validate 回報）。"""
+    v = bank.get(key)
+    return v if isinstance(v, list) else []
+
+
 def load_images(folder, wanted):
     imgs, notes = {}, []
     if not folder:
         return imgs, notes
+    if not Path(folder).is_dir():
+        sys.exit(f"找不到圖片資料夾：{folder}")
     try:
         from PIL import Image
     except Exception:
@@ -922,7 +954,7 @@ def _decode_after(t, marker):
 
 def extract(html_path, dump_dir):
     """從練習簿 HTML 取出題庫。新版讀資料區塊；舊版（題目寫在程式裡）盡量轉成新格式並沿用作答紀錄的 key。"""
-    t = Path(html_path).read_text(encoding="utf-8")
+    t = read_text(html_path, "練習簿")
     out = Path(dump_dir)
     out.mkdir(parents=True, exist_ok=True)
     m = re.search(r'<script type="application/json" id="bank">\n(.*?)\n</script>', t, re.S)
@@ -954,11 +986,13 @@ def extract(html_path, dump_dir):
         abbr = [{"cat": r[0], "abbr": r[1], "full": r[2], "alts": r[3], "e": r[4]} if isinstance(r, list) else r for r in abbr_raw]
         bank = {"config": config, "questions": q, "abbr": abbr, "groups": groups}
         kind = "舊版"
+    if not isinstance(bank, dict):
+        sys.exit("這份練習簿的題庫資料區塊不是 { } 物件，取不出題庫。")
     (out / "bank.json").write_text(json.dumps(bank, ensure_ascii=False, indent=2), encoding="utf-8")
     (out / "images.json").write_text(json.dumps(imgs, ensure_ascii=False), encoding="utf-8")
     nc = len(bank["cases"]) if isinstance(bank.get("cases"), list) else 0
     ns = len(bank["sets"]) if isinstance(bank.get("sets"), list) else 0
-    print(f"已從{kind}練習簿取出 {len(bank.get('questions', []))} 題、縮寫 {len(bank.get('abbr', []))} 個{f'、情境題組 {nc} 組' if nc else ''}{f'、卷別 {ns} 卷' if ns else ''}、圖片 {len(imgs)} 張到 {out}/")
+    print(f"已從{kind}練習簿取出 {len(as_list(bank, 'questions'))} 題、縮寫 {len(as_list(bank, 'abbr'))} 個{f'、情境題組 {nc} 組' if nc else ''}{f'、卷別 {ns} 卷' if ns else ''}、圖片 {len(imgs)} 張到 {out}/")
     if kind == "舊版":
         print("提醒：config 是從舊程式推測的，請檢查 title、subtitle、aiRole 等欄位；storageKeys 沿用舊的作答紀錄，不要刪。")
     for line in fig_report(t, bank):
@@ -1023,20 +1057,22 @@ def main():
     if not args.bank:
         sys.exit("要指定 --bank 題庫檔（或用 --extract 取出現有練習簿的題庫）。")
 
-    try:
-        bank = json.loads(Path(args.bank).read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
-        sys.exit(f"題庫不是合法的 JSON：第 {e.lineno} 行第 {e.colno} 字，{e.msg}")
+    bank = read_json(args.bank, "題庫")
+    if not isinstance(bank, dict):
+        # 最外層不是物件時沒有東西可以檢查，--force 也產生不了能用的練習簿
+        sys.exit("錯誤：題庫最外層要是一個 { } 物件，裡面放 config、questions、abbr、groups。")
     # 題目附圖 img、解析附圖 eimg、選項圖片 oimg、題幹區塊 blk 裡的 img 區塊、情境題組的附圖 img 用到的代號；只有這些圖會放進練習簿
-    wanted = {k for q in bank.get("questions", []) if isinstance(q, dict) for f in ("img", "eimg", "oimg")
+    wanted = {k for q in as_list(bank, "questions") if isinstance(q, dict) for f in ("img", "eimg", "oimg")
               for k in (q.get(f) if isinstance(q.get(f), list) else []) if isinstance(k, str)}
-    wanted |= {b["img"] for q in bank.get("questions", []) if isinstance(q, dict) for b in (q.get("blk") if isinstance(q.get("blk"), list) else [])
+    wanted |= {b["img"] for q in as_list(bank, "questions") if isinstance(q, dict) for b in (q.get("blk") if isinstance(q.get("blk"), list) else [])
                if isinstance(b, dict) and b.get("t") == "img" and isinstance(b.get("img"), str)}
     wanted |= {k for c in (bank.get("cases") if isinstance(bank.get("cases"), list) else []) if isinstance(c, dict)
                for k in (c.get("img") if isinstance(c.get("img"), list) else []) if isinstance(k, str)}
     imgs, img_notes = load_images(args.images, wanted)
     if args.images_json:
-        extra = json.loads(Path(args.images_json).read_text(encoding="utf-8"))
+        extra = read_json(args.images_json, "圖片對照表（--images-json）")
+        if not isinstance(extra, dict):
+            sys.exit('圖片對照表（--images-json）要是一個 { } 物件：{"圖片代號": "data:image/…" 或路徑}。')
         unused = [k for k in extra if k not in wanted]
         if unused:
             img_notes.append(f"images.json 有 {len(unused)} 張圖沒有被題目用到，沒有放進練習簿。")
@@ -1044,9 +1080,9 @@ def main():
     errors, notes, nvoid = validate(bank, set(imgs))
     notes = img_notes + notes + oimg_width_notes(bank, imgs)
 
-    qs = [q for q in bank.get("questions", []) if isinstance(q, dict)]
-    mix = Counter(q.get("type", "mcq") for q in qs)
-    print("題型：" + "、".join(f"{TYPE_ZH.get(k, k)} {v}" for k, v in mix.items()) + f"、縮寫 {len(bank.get('abbr', []))}、易混淆組 {len(bank.get('groups', []))}"
+    qs = [q for q in as_list(bank, "questions") if isinstance(q, dict)]
+    mix = Counter(q.get("type") if isinstance(q.get("type"), str) else "mcq" for q in qs)
+    print("題型：" + "、".join(f"{TYPE_ZH.get(k, k)} {v}" for k, v in mix.items()) + f"、縮寫 {len(as_list(bank, 'abbr'))}、易混淆組 {len(as_list(bank, 'groups'))}"
           + (f"、情境題組 {len(bank['cases'])}" if isinstance(bank.get("cases"), list) and bank["cases"] else "")
           + (f"、章節 {len(bank['chapters'])}" if isinstance(bank.get("chapters"), list) and bank["chapters"] else "")
           + (f"、卷別 {len(bank['sets'])}" if isinstance(bank.get("sets"), list) and bank["sets"] else "")
@@ -1064,10 +1100,12 @@ def main():
     if errors and not args.force:
         sys.exit(f"有 {len(errors)} 個錯誤，沒有產生檔案。修正後再執行，或加 --force。")
 
-    tpl = Path(args.template).read_text(encoding="utf-8")
+    tpl = read_text(args.template, "範本")
     tpl = embed(tpl, "bank", bank)
     tpl = embed(tpl, "bank-images", imgs)
-    title = bank.get("config", {}).get("title") or "模擬考練習簿"
+    cfg = bank.get("config")
+    title = (cfg.get("title") if isinstance(cfg, dict) else None)
+    title = title if isinstance(title, str) and title.strip() else "模擬考練習簿"
     tpl = re.sub(r"<title>.*?</title>", lambda m: "<title>" + title.replace("&", "&amp;").replace("<", "&lt;") + "</title>", tpl, count=1)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

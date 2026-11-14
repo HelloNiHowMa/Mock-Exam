@@ -10,7 +10,7 @@ description: 把教材、投影片、規格或筆記做成「模擬考練習簿�
 這個 skill 的資料夾（下稱 `<skill>`，在 claude.ai 通常是 `/mnt/skills/user/mock-exam-workbook`）裡有：
 
 - `assets/template.html`：範本引擎，已內嵌一份範例題庫，可以直接開來看效果。
-- `assets/example-bank.json`：範例題庫，七種題型各三題，加上兩組易混淆題組、一組四題的情境題組，和兩題示範題幹表格、方框和逐選項解析的題目（第 19、20 題）；第 21 到 23 題是填空題。**這是格式和品質的標準。**
+- `assets/example-bank.json`：範例題庫，七種題型各 3 到 5 題，加上兩組易混淆題組、一組四題的情境題組，和兩題示範題幹表格、方框和逐選項解析的題目（第 19、20 題）；第 21 到 23 題是填空題。**這是格式和品質的標準。**
 - `references/schema.md`：題庫格式的完整說明。
 - `references/writing-guide.md`：出題指引（干擾選項、解析寫法、題型選擇）。
 - `scripts/build.py`：檢查題庫並產生 HTML；也能從現有練習簿取出題庫。

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """檢查這份 skill 的範本是不是最新版：比對 assets/template.html 的引擎版本和 GitHub 上 main 的版本。
 
-用 skill 出題或修改練習簿之前先執行一次（SKILL.md 的步驟 0）。只讀網路、不改任何檔案。
+用 skill 出題或修改練習簿之前先執行一次（SKILL.md 的「開始之前：檢查範本是不是最新版」）。只讀網路、不改任何檔案。
 
 用法：
   python3 scripts/check_update.py                # 和 GitHub 的 main 比
