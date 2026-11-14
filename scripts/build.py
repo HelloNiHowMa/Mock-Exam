@@ -9,19 +9,38 @@
 
 情境題組（cases）：題庫可以加一段共用的情境文字底下掛好幾題，檢查規則見 validate_cases 和 references/schema.md 第 5 節。
 卷別（sets）、題幹區塊（blk）、逐選項解析（oe）：檢查規則見 validate_sets、blk_error 和 references/schema.md 第 2.7 到 2.9 節、第 7 節。
+填空題（type: "fill"）：欄位檢查在 validate，提醒在 fill_notes；比對規則（fill_base、fill_norm）和頁面引擎的 fillBase、fillNorm 一致，見 references/schema.md 2.10。
 
 檢查分兩級：
   錯誤：格式不符，頁面會把那一題排除。有錯誤時預設不產生檔案（加 --force 仍然產生）。
   提醒：格式沒問題，但可能影響出題品質（例如正確答案老是放在同一個位置）。
 """
-import argparse, base64, io, json, mimetypes, re, sys
+import argparse, base64, io, json, mimetypes, re, sys, unicodedata
 from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_TEMPLATE = HERE.parent / "assets" / "template.html"
-TYPES = ("mcq", "multi", "cls", "order", "match")
-TYPE_ZH = {"mcq": "單選", "multi": "複選", "cls": "分類", "order": "排序", "match": "配對"}
+TYPES = ("mcq", "multi", "cls", "order", "match", "fill")
+TYPE_ZH = {"mcq": "單選", "multi": "複選", "cls": "分類", "order": "排序", "match": "配對", "fill": "填空"}
+FILL_CMP = ("exact", "nocase")   # 填空題分不分大小寫：exact 要相同，nocase 不分（預設）
+FILL_LONG = 40                   # 填空題的答案超過這個字數就提醒
+
+
+def fill_base(x):
+    """和頁面引擎的 fillBase 一致：全形轉半形（NFKC）、連續空白併成一個、去掉頭尾空白、逗號前後的空白拿掉。"""
+    return re.sub(r" ?, ?", ",", re.sub(r"\s+", " ", unicodedata.normalize("NFKC", x)).strip())
+
+
+def fill_norm(x, cmp):
+    """照這題的比對方式整理：exact 保留大小寫，nocase 轉小寫。符號、字尾的 s 一律保留。"""
+    b = fill_base(x)
+    return b if cmp == "exact" else b.lower()
+
+
+def fill_loose(x):
+    """只用來提醒：拿掉符號、空白、大小寫和字尾的 s 之後的樣子（頁面不會這樣比）。"""
+    return "".join(w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in re.findall(r"[^\W_]+", fill_base(x).lower()))
 
 
 def s(x):
@@ -224,6 +243,8 @@ def validate_config(cfg, errors):
     for k in ("multiCount", "passCount"):
         if k in cfg and not isinstance(cfg[k], bool):
             errors.append(f"config.{k} 要是 true 或 false（不加引號）。")
+    if "fillCmp" in cfg and cfg["fillCmp"] not in FILL_CMP:
+        errors.append('config.fillCmp（填空題預設分不分大小寫）要是 "exact"（大小寫要相同）或 "nocase"（不分大小寫）。')
     for k in ("fullNote", "notice", "printNotice", "printNoticeUnoff"):
         if k in cfg and not isinstance(cfg[k], str):
             errors.append(f"config.{k} 要是文字。")
@@ -375,7 +396,7 @@ def validate(bank, image_keys):
             bad("n 要是 1 到 999（題庫）或 1001 到 9998（頁面內建的補充題）的整數。"); continue
         if n in seen:
             bad("n 重複了。"); continue
-        if t in ("mcq", "multi", "cls") and not s(q.get("q")):
+        if t in ("mcq", "multi", "cls", "fill") and not s(q.get("q")):
             bad("缺少題目文字 q。"); continue
         if "q" in q and not isinstance(q["q"], str):
             bad("q 要是文字。"); continue
@@ -486,6 +507,14 @@ def validate(bank, image_keys):
             d = dup([p[0] for p in pairs]) or dup([p[1] for p in pairs])
             if d is not None:
                 bad(f"「{d}」重複了，配對會無法判定。"); continue
+        elif t == "fill":
+            ans = q.get("ans")
+            if not (isinstance(ans, str) and ans.strip() and len(ans.strip()) <= 80):
+                bad("填空題的 ans（標準答案）要是 1 到 80 個字的文字。"); continue
+            if "alts" in q and not (isinstance(q["alts"], list) and all(isinstance(x, str) and len(x.strip()) <= 80 for x in q["alts"])):
+                bad("alts（其他也算對的寫法）要是文字陣列，每個最多 80 個字。"); continue
+            if "cmp" in q and q["cmp"] not in FILL_CMP:
+                bad('cmp 要是 "exact"（大小寫要相同）或 "nocase"（不分大小寫）。'); continue
         seen.add(n)
         valid.append(q)
 
@@ -538,6 +567,7 @@ def validate(bank, image_keys):
         elif len([x for x in g["qs"] if x in vn and x not in void_n]) < 2:
             notes.append(f"易混淆組第 {i} 組（{g['name']}）：扣掉不可作答的題目後不到兩題，這一組不會出現在練習裡。")
     case_of = validate_cases(bank, valid, valid_ab, image_keys, errors, notes, {k: name for k, name, _ in chapters})
+    notes.extend(fill_notes(valid, case_of, cfg.get("fillCmp") if cfg.get("fillCmp") in FILL_CMP else "nocase"))
     if void_n or void_ab:
         which = ([f"第 {'、'.join(map(str, void_n))} 題"] if void_n else []) + ([f"縮寫題 {'、'.join(void_ab)}"] if void_ab else [])
         notes.append(f"有 {len(void_n) + len(void_ab)} 題標成不可作答（{'，'.join(which)}）：這些題目不計入題數，也不會出題；拿掉 void 就會恢復，原本的作答紀錄都還在。")
@@ -558,7 +588,7 @@ CASE_LONG = 800   # 情境文字超過這個字數就提醒：手機上大約要
 
 
 def validate_cases(bank, valid, valid_ab, image_keys, errors, notes, ch_names):
-    """檢查情境題組（cases），回傳 {題號: {"title", "img"}}，只含沒有錯誤的題組。
+    """檢查情境題組（cases），回傳 {題號: {"title", "img", "text", "qs"}}，只含沒有錯誤的題組。
     頁面引擎遇到題組本身的格式錯誤（id、title、text、qs、img）會整組略過；qs 裡個別題號有問題時只提醒、略過那一題。
     build.py 一律當成錯誤，因為頁面上那一題會變成不屬於任何題組，和出題的人想的不一樣。"""
     cs = bank.get("cases", [])
@@ -614,7 +644,7 @@ def validate_cases(bank, valid, valid_ab, image_keys, errors, notes, ch_names):
         title, text = c["title"].strip(), c["text"].strip()
         for n in members:
             owner[n] = title
-            out[n] = {"title": title, "img": img}
+            out[n] = {"title": title, "img": img, "text": text, "qs": members}
         live = [n for n in members if vq[n].get("void") is not True]
         if not live:
             notes.append(f"{where}：題目都標成不可作答，這一組不會出現。")
@@ -636,6 +666,80 @@ def validate_cases(bank, valid, valid_ab, image_keys, errors, notes, ch_names):
             notes.append(f"{where}：情境文字提到圖，但沒有附圖（img）。")
         if len(text) > CASE_LONG:
             notes.append(f"{where}：情境文字有 {len(text)} 字，超過 {CASE_LONG} 字。手機上要捲好幾個畫面才看完，建議刪掉和題目無關的背景，或拆成幾個情境題組。")
+    return out
+
+
+def blk_text(q):
+    """題幹區塊裡的文字（表格、方框、程式碼），用來檢查題目有沒有把填空題的答案寫出來。"""
+    out = []
+    for b in (q.get("blk") or []):
+        if not isinstance(b, dict):
+            continue
+        if b.get("t") == "table":
+            out.extend(str(c) for r in (b.get("rows") or []) if isinstance(r, list) for c in r)
+        elif b.get("t") in ("box", "pre"):
+            out.append(str(b.get("text", "")))
+    return "\n".join(out)
+
+
+def fill_notes(valid, case_of, default_cmp):
+    """填空題的提醒（格式沒問題，但值得出題的人再看一眼）。default_cmp：config.fillCmp，沒填就是 nocase。"""
+    out = []
+    vq = {q["n"]: q for q in valid}
+
+    for q in valid:
+        if q.get("type") != "fill":
+            continue
+        n, where = q["n"], f"第 {q['n']} 題"
+        cmp_ = q.get("cmp") or default_cmp
+
+        def has(ans, text, cmp_=cmp_):
+            """ans 有沒有原樣出現在 text 裡：大小寫照這題的比對方式（exact 的題目，大小寫不同就不算照抄）；
+            前後不能緊接英數字，免得 88 對到 1988。"""
+            a = fill_base(ans)
+            if len(a) < 2 or not text:
+                return False
+            return re.search(r"(?<![0-9A-Za-z])" + re.escape(a) + r"(?![0-9A-Za-z])", fill_base(text), 0 if cmp_ == "exact" else re.I) is not None
+
+        ans = q["ans"].strip()
+        alts = [x.strip() for x in q.get("alts", []) if x.strip()]
+        if len(alts) > 10:
+            out.append(f"{where}：alts 超過 10 個，頁面只用前 10 個。")
+        unused = [f for f in ("o", "a", "items", "groups", "pairs") if f in q]
+        if unused:
+            out.append(f"{where}：填空題用不到 {'、'.join(unused)}，頁面會略過。")
+        seen = {fill_norm(ans, cmp_): ans}
+        for a in alts:
+            k = fill_norm(a, cmp_)
+            if k in seen:
+                why = "只差大小寫，這題不分大小寫" if fill_norm(a, "exact") != fill_norm(seen[k], "exact") else "寫法相同"
+                out.append(f"{where}：alts 的「{a}」和「{seen[k]}」{why}，不用列。")
+            else:
+                seen[k] = a
+                if fill_loose(a) == fill_loose(ans):
+                    out.append(f"{where}：alts 的「{a}」和標準答案「{ans}」只差符號、空白或字尾的 s。請確認這個寫法在真實系統裡真的也對，不是為了放寬判定才加的。")
+        if len(ans) > FILL_LONG:
+            out.append(f"{where}：答案有 {len(ans)} 個字，超過 {FILL_LONG} 個字。填空題適合一個名稱、一個數字或一個路徑；整行指令的正確寫法太多，建議只問其中一段。")
+        if re.search(r"[\u3400-\u9fff]", ans):
+            out.append(f"{where}：答案裡有中文字。中文名詞常常不只一種寫法，請確認 alts 列齊了，或改用其他題型。")
+        both = [ans] + alts
+        if any(has(a, q.get("q", "")) or has(a, blk_text(q)) for a in both):
+            out.append(f"{where}：答案原樣出現在題目文字或題幹區塊裡，學員照抄就會對。")
+        cs = case_of.get(n)
+        if cs:
+            if any(has(a, cs.get("text", "")) for a in both):
+                out.append(f"{where}：答案原樣出現在情境題組「{cs['title']}」的情境文字裡，學員照抄就會對。")
+            members = cs.get("qs", [])
+            for m in members:
+                if m == n or m not in vq:
+                    continue
+                o = vq[m]
+                parts = [o.get("q", ""), blk_text(o)] + [str(x) for x in (o.get("o") or [])] + [str(x) for x in (o.get("items") or [])] \
+                    + [str(x) for p in (o.get("pairs") or []) if isinstance(p, list) for x in p]
+                if any(has(a, "\n".join(parts)) for a in both):
+                    out.append(f"{where}：答案出現在同一個情境題組第 {m} 題的題目或選項裡，同一組的題目會連續出現，學員看得到。")
+                elif members.index(m) < members.index(n) and any(has(a, o.get("e", "")) for a in both):
+                    out.append(f"{where}：答案出現在同一個情境題組前面第 {m} 題的解析裡，學員做完第 {m} 題就看得到。")
     return out
 
 

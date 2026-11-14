@@ -11,7 +11,21 @@
   2. id="bank-images"：題目用到的圖片，{"圖片代號": "data:image/...;base64,..." 或 "images/檔名.png"}。
   兩個區塊裡都不能出現 </script 這幾個字。
   下面的程式（引擎）不要改，之後有更新時才能直接換新版。
-  引擎版本：2026-10-29b（練習時每種題型都能「不會，直接看答案」。題庫格式沒有變。
+  引擎版本：2026-11-14（新增填空題：題庫格式多一種題型 type: "fill"。沒有填空題的練習簿，畫面和行為都和上一版相同。
+  1. 填空題：題目文字下方一個輸入框，學員自己把答案打出來。寫在 questions 裡、用一般題號，所以能放進情境題組、易混淆題組、章節和卷別。
+  欄位：q（題目）、ans（標準答案，1 到 80 個字）、alts（其他也算對的寫法，最多 10 個）、cmp（這題分不分大小寫：exact 要相同、nocase 不分；
+  沒寫就用 config.fillCmp，config 也沒寫就是 nocase）。
+  2. 判定（fillMatch）：符號、字尾的 s 和每一個字都要完全相同，沒有縮寫題那種寬鬆比對。比對前只做不影響內容的整理：全形轉半形（NFKC）、
+  去頭尾空白、連續空白併成一個、逗號前後的空白拿掉。nocase 的題目答對但大小寫不同時，回饋標出標準寫法；答錯時只差大小寫、
+  或只差符號或空白，多一句提示。縮寫題的判定（normAns、abbrMatch）沒有動。
+  3. 練習：輸入框下方在作答前就寫明這題怎麼比對；空白按送出不算作答；有「不會，直接看答案」（作答內容記 null）、「我其實答對了」、
+  「最近答錯時寫過」和「遮住再打」（和縮寫題相同，打錯時逐字元標出不同的地方）。答案全是數字時，手機跳出數字鍵盤。沒有先回想模式和 ○ × 記號。
+  4. 題型：算在主要題型（mainLabel）裡，和分類、排序、配對一樣，所以每日一題、考我一題預設抽得到；題型多一個「填空題」可以單獨練
+  （prefs.qtype 多一個值 "fill"）。模擬考題型多一個「填空題」，預設勾選（prefs.examTypes.fill）；模擬考裡輸入框可以改，交卷才判分。
+  5. 題庫地圖的題號格標「填空」，1001 以上的內建補充題另成一區「補充題：填空題」；考前快速瀏覽、列印（作答線「答：」和答案表）、成績頁、
+  不可作答和交卷後檢討都認得填空題。這一版頁面上不能新增填空題，填空題也沒有 AI 解析按鈕。
+  作答紀錄（stats）的結構沒有變：填空題的 p 存輸入的文字（最多 80 個字），直接看答案存 null。）
+  上一版 2026-10-29b：練習時每種題型都能「不會，直接看答案」。題庫格式沒有變。
   1. 練習時（模擬考和整套模擬考沒有），單選、複選、分類、排序、配對題在送出鈕旁多一個「不會，直接看答案」；單選題沒有送出鈕，放在選項下方。
   縮寫題原本的「想不起來，直接看答案」改成同樣的字，位置不變。「先回想再看選項」時，按「顯示選項」之後才有這個按鈕。
   2. 按下等於這次答錯：記一次答錯（錯題複習、到期複習、弱點題和每日一題的錯題排程都照答錯處理），作答內容記 null，
@@ -147,7 +161,7 @@
  "config": {
   "id": "example-5gsa",
   "title": "5G SA 協定架構練習簿（範例）",
-  "subtitle": "範本示範：六種題型各三題，另有一組三題的情境題組，和兩題題目裡有表格、方框並附逐選項解析的題目。答案都在架構概念裡，但只靠「看過」選不對，要真的想過才行。",
+  "subtitle": "範本示範：七種題型各三題，另有一組四題的情境題組，和兩題題目裡有表格、方框並附逐選項解析的題目。答案都在架構概念裡，但只靠「看過」選不對，要真的想過才行。",
   "mainLabel": "觀念題",
   "passLine": 80,
   "passNote": "",
@@ -689,6 +703,29 @@
     "F1 Setup 是 DU 開機時和 CU-CP 做一次的介面設定，題目說兩個 DU 都已經完成，換手不用再做。"
    ],
    "ref": "TS 38.401（Inter-gNB-DU mobility 程序）"
+  },
+  {
+   "n": 21,
+   "type": "fill",
+   "q": "CU-UP 和 DU 之間，專門傳使用者資料的介面叫什麼？只寫介面名稱。",
+   "ans": "F1-U",
+   "e": "F1 介面分成控制面的 F1-C 和使用者面的 F1-U。F1-U 在 CU-UP 和 DU 之間，用 GTP-U／UDP／IP 傳使用者資料。\n容易卡住的地方：只寫 F1 不夠，F1 同時包含 F1-C 和 F1-U。連字號也是名稱的一部分，寫成 F1U 會被判錯；大小寫則不影響判定。"
+  },
+  {
+   "n": 22,
+   "type": "fill",
+   "cmp": "exact",
+   "q": "DU 的 log 顯示 SCTP socket 開不起來，懷疑 Linux 核心沒有載入 SCTP 模組。用 modprobe 載入時，模組名稱要怎麼寫？只寫模組名稱。",
+   "ans": "sctp",
+   "e": "Linux 的核心模組名稱分大小寫，SCTP 的模組叫 sctp，所以指令是 modprobe sctp；載入後用 lsmod 看到的也是小寫的 sctp。\n容易卡住的地方：協定名稱平常都寫成大寫的 SCTP，但指令裡要照模組實際的名稱寫小寫，寫成 SCTP 會找不到模組。這一題的大小寫要完全相同，就是因為真實系統會分。"
+  },
+  {
+   "n": 23,
+   "type": "fill",
+   "q": "工程師想在抓到的封包裡只留下 N2 的訊息，打算用 NGAP 的 SCTP 埠號來過濾。這個埠號是多少？只寫數字。",
+   "ans": "38412",
+   "e": "NGAP 的 SCTP 埠號是 38412，定義在 TS 38.412。F1AP 是 38472、E1AP 是 38462，三個控制面介面各有自己的埠號，所以用埠號就能把 N2、F1-C、E1 的訊息分開。\n容易卡住的地方：三個埠號只差一位數，容易記混。它們剛好和各自的規格編號相同：38.412 是 NG（N2）、38.472 是 F1、38.462 是 E1。",
+   "ref": "TS 38.412、38.472、38.462"
   }
  ],
  "abbr": [
@@ -750,7 +787,8 @@
    "qs": [
     16,
     17,
-    18
+    18,
+    23
    ]
   }
  ]
@@ -920,6 +958,17 @@ header.top{margin-bottom:26px}
 .abbr-form .row{flex-wrap:nowrap}
 .abbr-form input{flex:1;min-width:0}
 .abbr-result{display:grid;gap:4px;margin:0 0 8px}
+.fill-form{display:grid;gap:8px;max-width:640px}
+.fill-form .row{flex-wrap:nowrap}
+.fill-form input{flex:1;min-width:0}
+.fmono,.recall-input.fill-in,.fillcmp dd,.fdrill .dtyped,.fdrill input.recall-input,.ddiff.fdiff span[lang]{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono",monospace}
+.fill-result{display:grid;gap:6px;margin:0 0 8px}
+.fill-result p{margin:0}
+.fillcmp{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin:0;align-items:baseline}
+.fillcmp dt{color:var(--muted);font-size:.9rem;white-space:nowrap}
+.fillcmp dd{margin:0;font-weight:700;overflow-wrap:anywhere;white-space:pre-wrap}
+.fdiff del,.fdiff mark{white-space:pre}
+.bans.fmono{font-size:1.2rem;overflow-wrap:anywhere}
 .dnd{list-style:none;padding:0;margin:0;display:grid;gap:8px}
 .dnd-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:52px}
 .dnd-row.dragging{opacity:.45}
@@ -1446,6 +1495,9 @@ function loadBank(){
   if (xt !== undefined && !(typeof xt === "number" && xt > 0 && xt <= 1)) notes.push("config.extraTime（非母語加時的比例）要是大於 0、最多 1 的數字，例如 0.25 代表多 25%，這次不提供加時選項。");
   config.extraTime = typeof xt === "number" && xt > 0 && xt <= 1 ? xt : 0;
   ["multiCount", "passCount"].forEach(k => { if (config[k] !== undefined && typeof config[k] !== "boolean") notes.push(`config.${k} 要是 true 或 false（不加引號），這次當成 false。`); config[k] = config[k] === true; });
+  /* 填空題預設分不分大小寫：exact（要相同）或 nocase（不分，預設）。題目自己的 cmp 優先。格式不對時提醒，用預設值。 */
+  if (config.fillCmp !== undefined && config.fillCmp !== "exact" && config.fillCmp !== "nocase") notes.push('config.fillCmp 要是 "exact"（大小寫要相同）或 "nocase"（不分大小寫），已改用 "nocase"。');
+  config.fillCmp = config.fillCmp === "exact" ? "exact" : "nocase";
   if (!isObj(bank.config)) errors.push("缺少 config 設定。");
   if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(String(config.id || ""))){
     errors.push(`config.id「${config.id || ""}」要用 2 到 40 個小寫英文、數字或連字號，例如 "fw-upgrade-101"。目前暫用 "workbook"；不同練習簿放在同一個網站時會共用作答紀錄。`);
@@ -1533,7 +1585,7 @@ function loadBank(){
 
   /* 題目 */
   const questions = [], seen = new Set();
-  const TYPES = ["mcq", "multi", "cls", "order", "match"];
+  const TYPES = ["mcq", "multi", "cls", "order", "match", "fill"];
   const qsIn = Array.isArray(bank.questions) ? bank.questions : (errors.push("題庫缺少 questions 陣列。"), []);
   qsIn.forEach((q0, idx) => {
     const where = isObj(q0) && Number.isInteger(q0.n) ? `第 ${q0.n} 題` : `questions 裡的第 ${idx + 1} 筆`;
@@ -1541,11 +1593,11 @@ function loadBank(){
     if (!isObj(q0)) return bad("要是一個 { } 物件。");
     const q = Object.assign({}, q0);
     const type = q.type === undefined ? "mcq" : q.type;
-    if (!TYPES.includes(type)) return bad(`type「${q.type}」不認得，只能是 mcq、multi、cls、order、match（縮寫題放在 abbr）。`);
+    if (!TYPES.includes(type)) return bad(`type「${q.type}」不認得，只能是 mcq、multi、cls、order、match、fill（縮寫題放在 abbr）。`);
     if (type === "mcq") delete q.type;
     if (!Number.isInteger(q.n) || q.n < 1 || q.n > 9998 || q.n === 1000) return bad("n 要是 1 到 999（題庫）或 1001 到 9998（頁面內建的補充題）的整數。");
     if (seen.has(q.n)) return bad("n 重複了，每題的 n 都要不一樣。");
-    if (type === "mcq" || type === "multi" || type === "cls"){ if (!str(q.q)) return bad("缺少題目文字 q。"); }
+    if (type === "mcq" || type === "multi" || type === "cls" || type === "fill"){ if (!str(q.q)) return bad("缺少題目文字 q。"); }
     else if (q.q !== undefined && typeof q.q !== "string") return bad("q 要是文字。");
     if (q.e !== undefined && typeof q.e !== "string") return bad("解析 e 要是文字。");
     if (!str(q.e)) notes.push(`${where}：沒有解析 e。`);
@@ -1638,6 +1690,19 @@ function loadBank(){
       if (!Array.isArray(q.pairs) || q.pairs.length < 2 || !q.pairs.every(p => Array.isArray(p) && p.length === 2 && str(p[0]) && str(p[1]))) return bad("配對題的 pairs 要是至少 2 組 [左, 右]，兩邊都要有文字。");
       const dl = dupOf(q.pairs.map(p => p[0])); if (dl !== null) return bad(`左欄「${dl}」重複了。`);
       const dr = dupOf(q.pairs.map(p => p[1])); if (dr !== null) return bad(`右欄「${dr}」重複了，配對會無法判定。`);
+    } else if (type === "fill"){
+      /* 填空題：ans 是標準答案，alts 是其他也算對的寫法，cmp 是這題分不分大小寫（exact、nocase），沒寫就用 config.fillCmp。
+         符號、字尾的 s 和每一個字都要完全相同（fillMatch），沒有縮寫題那種寬鬆比對。 */
+      if (typeof q.ans !== "string" || !q.ans.trim() || q.ans.trim().length > 80) return bad("填空題的 ans（標準答案）要是 1 到 80 個字的文字。");
+      if (q.alts !== undefined && !(Array.isArray(q.alts) && q.alts.every(x => typeof x === "string" && x.trim().length <= 80))) return bad("alts（其他也算對的寫法）要是文字陣列，每個最多 80 個字。");
+      if (q.cmp !== undefined && q.cmp !== "exact" && q.cmp !== "nocase") return bad('cmp 要是 "exact"（大小寫要相同）或 "nocase"（不分大小寫）。');
+      q.ans = q.ans.trim();
+      const al = (q.alts || []).map(x => x.trim()).filter(Boolean);
+      if (al.length > 10) notes.push(`${where}：alts 超過 10 個，只用前 10 個。`);
+      q.alts = al.slice(0, 10);
+      q.cmp = q.cmp || config.fillCmp;
+      const unused = ["o", "a", "items", "groups", "pairs"].filter(f => q[f] !== undefined);
+      if (unused.length) notes.push(`${where}：填空題用不到 ${unused.join("、")}，已略過。`);
     }
     seen.add(q.n);
     questions.push(q);
@@ -1778,12 +1843,12 @@ const EXTRA_BASE = 10000;
 const LETTERS = ["A","B","C","D","E","F"];
 const byN = {};
 let EXTRA = [], ALLQ = Q.slice(), TOTAL = Q.length;
-const SEC_NAME = {c: "選擇題", v: "變化題", d: "拖拉題"};
+const SEC_NAME = {c: "選擇題", v: "變化題", d: "拖拉題", f: "填空題"};
 let SECNUM = {};
-function secKey(q){ return (q.type === "order" || q.type === "match" || q.type === "cls" || q.type === "imgdd") ? "d" : q.from ? "v" : "c"; }
+function secKey(q){ return q.type === "fill" ? "f" : (q.type === "order" || q.type === "match" || q.type === "cls" || q.type === "imgdd") ? "d" : q.from ? "v" : "c"; }
 function rebuildSec(){
   const rawK = n => isExtra(n) ? n - EXTRA_BASE : n - BANK_B;
-  const cnt = {c: 0, v: 0, d: 0};
+  const cnt = {c: 0, v: 0, d: 0, f: 0};
   SECNUM = {};
   ALLQ.filter(q => (isExtra(q.n) || isBankB(q.n)) && q.type !== "abbr").sort((x, y) => rawK(x.n) - rawK(y.n))
     .forEach(q => { const s = secKey(q); SECNUM[q.n] = {s, i: ++cnt[s]}; });
@@ -1964,23 +2029,86 @@ function abbrMatch(q, text){
   const t = normAns(text, q.q);
   return !!t && [q.ans].concat(q.alts || []).some(x => normAns(x, q.q) === t);
 }
+/* ---------- 填空題（type: "fill"）的判定 ----------
+   符號、字尾的 s 和每一個字都要完全相同；能選的只有分不分大小寫（q.cmp：exact 要相同，nocase 不分，loadBank 已經填好）。
+   比對前只做不影響內容的整理（fillBase）：全形英數和符號轉成半形（NFKC）、去掉頭尾空白、連續空白併成一個、逗號前後的空白拿掉。
+   縮寫題的 normAns、abbrMatch 不動，縮寫題維持寬鬆比對。 */
+function fillBase(s){ const t = String(s === null || s === undefined ? "" : s); return (t.normalize ? t.normalize("NFKC") : t).replace(/\s+/g, " ").trim().replace(/ ?, ?/g, ","); }
+function fillNorm(s, cmp){ return cmp === "exact" ? fillBase(s) : fillBase(s).toLowerCase(); }
+/* 比對到的那個寫法（ans 或某個 alts），沒有就是 null。cmp 不傳時用這題自己的。 */
+function fillHit(q, text, cmp){
+  const c = cmp || q.cmp, t = fillNorm(text, c); if (!t) return null;
+  const l = [q.ans].concat(q.alts || []);
+  for (let i = 0; i < l.length; i++) if (fillNorm(l[i], c) === t) return l[i];
+  return null;
+}
+function fillMatch(q, text){ return fillHit(q, text) !== null; }
+/* 答對但大小寫和比對到的寫法不同（只會發生在 nocase）：回傳那個寫法，回饋用來標出標準寫法；否則回傳 ""。 */
+function fillCaseNote(q, text){ const m = fillHit(q, text); return m !== null && fillBase(m) !== fillBase(text) ? m : ""; }
+/* 答錯時差一點的提示：只差大小寫（exact 的題目），或拿掉符號和空白後就相同。只差字尾的 s 不提示，上下並排的兩行看得出來。 */
+let FILL_SYM; try { FILL_SYM = new RegExp("[^\\p{L}\\p{N}]+", "gu"); } catch(e){ FILL_SYM = /[\s!-\/:-@\[-`{-~]+/g; }
+function fillNear(q, text){
+  if (!fillBase(text) || fillMatch(q, text)) return "";
+  const list = [q.ans].concat(q.alts || []);
+  if (q.cmp === "exact" && fillHit(q, text, "nocase") !== null) return "只差大小寫";
+  const sq = s => fillBase(s).replace(FILL_SYM, "");
+  const t = sq(text); if (!t) return "";
+  if (q.cmp === "exact"){
+    if (list.some(x => sq(x) === t)) return "只差符號或空白";
+    return list.some(x => sq(x).toLowerCase() === t.toLowerCase()) ? "只差大小寫和符號或空白" : "";
+  }
+  return list.some(x => sq(x).toLowerCase() === t.toLowerCase()) ? "只差符號或空白" : "";
+}
+function isFill(n){ const q = byN[n]; return !!(q && q.type === "fill"); }
+function isTyped(n){ return isAbbr(n) || isFill(n); }   // 打字作答的題型：縮寫題和填空題，共用輸入框、送出、改判和遮住再打
+function typedMatch(q, text){ return q.type === "fill" ? fillMatch(q, text) : abbrMatch(q, text); }
+function fillRule(q){ return q.cmp === "exact" ? "大小寫、符號和單複數都要完全相同。" : "符號和單複數要完全相同，大小寫不影響判定。"; }
+function fillNumeric(q){ return [q.ans].concat(q.alts || []).every(x => /^[0-9]+$/.test(fillBase(x))); }
+/* 輸入框的屬性：關掉自動修正；答案和 alts 全是數字時，手機跳出數字鍵盤。 */
+function fillInAttr(q){ return ` autocorrect="off"${fillNumeric(q) ? ` inputmode="numeric"` : ""}`; }
+function fillAltsHTML(q){ return q.alts && q.alts.length ? `<p>也接受：${q.alts.map(a => `<span class="fmono">${esc(a)}</span>`).join("、")}</p>` : ""; }
+function fillKeyHTML(q){ return `<p>正確答案：<strong class="fmono">${esc(q.ans)}</strong></p>${fillAltsHTML(q)}`; }
+/* 練習時的作答區。輸入框沿用縮寫題的 id（abbr-in），render() 保留草稿和按鍵處理才能共用。 */
+function fillFormHTML(n, q){
+  return `<div class="fill-form">
+    <label class="recall-label" for="abbr-in">你的答案</label>
+    <div class="row"><input id="abbr-in" class="recall-input fill-in" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false"${fillInAttr(q)} value="${esc(drafts[n] || "")}"><button class="btn primary" data-act="abbr-submit">送出</button></div>
+    <p class="fhint">${fillRule(q)}</p>
+    <div>${GIVEUP_BTN}</div>
+  </div>`;
+}
+/* 作答後的結果：上下並排「你寫的」和「正確答案」。cover：遮住再打第 2、3 次時，答案、也接受的寫法和會露出答案的提示都先遮住。 */
+function fillResultHTML(q, chosen, ok, cover, excluded){
+  const text = chosen && typeof chosen.text === "string" ? chosen.text : "";
+  const hid = `<span class="covered">已遮住，打完這一次就會顯示</span>`;
+  const note = ok && !cover ? fillCaseNote(q, text) : "";
+  const near = !ok && !cover && text ? fillNear(q, text) : "";
+  return `<div class="fill-result">
+        <dl class="fillcmp"><dt>你寫的</dt><dd>${text ? (cover && ok ? hid : esc(text)) : "（沒有作答）"}</dd><dt>正確答案</dt><dd>${cover ? hid : esc(q.ans)}</dd></dl>
+        ${cover ? "" : fillAltsHTML(q)}
+        ${note ? `<p class="nextrev">標準寫法是 <span class="fmono">${esc(note)}</span>，大小寫和你寫的不同。</p>` : ""}
+        ${near ? `<p class="nextrev">${near}。</p>` : ""}
+        ${!ok && !excluded && text ? `<p><button class="btn text" data-act="abbr-override">我其實答對了</button></p>` : ""}
+      </div>`;
+}
 function isRight(n, ans){
   const q = byN[n]; if (!q || ans === undefined) return false;
-  return q.type === "abbr" || q.type === "order" || q.type === "match" || q.type === "multi" || q.type === "imgdd" || q.type === "cls" ? !!(ans && ans.ok) : ans === q.a;
+  return q.type === "abbr" || q.type === "fill" || q.type === "order" || q.type === "match" || q.type === "multi" || q.type === "imgdd" || q.type === "cls" ? !!(ans && ans.ok) : ans === q.a;
 }
-function qType(n){ const q = byN[n]; if (!q) return ""; return q.type === "abbr" ? "abbr" : (q.type === "order" || q.type === "match" || q.type === "imgdd" || q.type === "cls") ? "drag" : "mcq"; }
+function qType(n){ const q = byN[n]; if (!q) return ""; return q.type === "abbr" ? "abbr" : q.type === "fill" ? "fill" : (q.type === "order" || q.type === "match" || q.type === "imgdd" || q.type === "cls") ? "drag" : "mcq"; }
 let srcFilter = "all";
 function isVariant(n){ const q = byN[n]; return !!(q && q.from); }
 function srcOk(n){ return srcFilter === "all" || (srcFilter === "orig" || srcFilter === "bankA" ? n < BANK_B : srcFilter === "bankB" ? isBankB(n) : srcFilter === "variant" ? isVariant(n) : isSupp(n)); }
 /* 題型篩選：mcq（config.mainLabel，所有非縮寫題，不分題庫或補充題）、abbr（縮寫題）、drag（分類、排序、配對，是 mcq 的子集合）、all。
    選擇存在 prefs.qtype，跟著帳號同步，開頁面時讀回來。讀回的題型目前沒有題目時，畫面先用 mcq，但不改存下來的選擇。 */
 let typeFilter = "mcq";
-function typeOk(n){ if (typeFilter === "all") return true; const t = qType(n); return t === typeFilter || (typeFilter === "mcq" && t === "drag"); }
+function typeOk(n){ if (typeFilter === "all") return true; const t = qType(n); return t === typeFilter || (typeFilter === "mcq" && (t === "drag" || t === "fill")); }
 function syncTypeFilter(){
   const v = pref("qtype");
-  let t = v === "abbr" || v === "drag" || v === "all" ? v : "mcq";
+  let t = v === "abbr" || v === "drag" || v === "fill" || v === "all" ? v : "mcq";
   if (t === "abbr" && !ALLQ.some(q => q.type === "abbr" && !q.void)) t = "mcq";
   if (t === "drag" && !ALLQ.some(q => qType(q.n) === "drag" && !q.void)) t = "mcq";
+  if (t === "fill" && !ALLQ.some(q => q.type === "fill" && !q.void)) t = "mcq";
   typeFilter = t;
 }
 /* ---------- 章節 ----------
@@ -2242,7 +2370,7 @@ function startFull(k){
 }
 const KEY = SK.local;
 /* 和最上方說明的「引擎版本」一致，寫進匯出的備份檔。scripts/package_skill.py 會檢查兩邊有沒有對上。 */
-const ENGINE_VERSION = "2026-10-29b";
+const ENGINE_VERSION = "2026-11-14";
 /* 主頁最下方的「檢查新版」：按下才連 GitHub，讀 main 分支 repo 根目錄的 VERSION（還沒有時改讀範本最上方的引擎版本）。
    連不到（離線、逾時，或 Claude artifact 不能連外）就給連結讓使用者自己看。引擎版本是日期加一個可有可無的小寫字母，直接比字串排先後。 */
 const ENGINE_REPO = "https://github.com/HelloNiHowMa/Mock-Exam";
@@ -2251,7 +2379,7 @@ const ENGINE_VER_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/;
 const engineVer = {st: "idle", latest: ""};   // st：idle、checking、same、newer（GitHub 上較新）、ahead（這裡較新）、fail
 const STATUS_LABEL = {new:"未作答", red:"答錯待複習", amber:"複習中", green:"已掌握", master:"熟練"};
 
-const PREF_DEFAULTS = {recall:true, timerMode:"off", pace:CONFIG.pace, examMode:false, skipMastered:true, examTypes:{mcq:true, multi:true, cls:true, abbr:false, drag:true}, statRows:{orig:true, extra:false, abbr:false, sum:false}, caseWhole:true};
+const PREF_DEFAULTS = {recall:true, timerMode:"off", pace:CONFIG.pace, examMode:false, skipMastered:true, examTypes:{mcq:true, multi:true, cls:true, abbr:false, drag:true, fill:true}, statRows:{orig:true, extra:false, abbr:false, sum:false}, caseWhole:true};
 function blankState(){ return {v:1, stats:{}, marks:{}, extras:{}, groups:{}, resetAt:0, prefs:{recall:true, t:0}, session:null, updatedAt:0}; }
 function pref(k){ return state.prefs && state.prefs[k] !== undefined ? state.prefs[k] : PREF_DEFAULTS[k]; }
 /* 倒計時的每題秒數。config.extraTime 有填時多一個「非母語加時」選項：pace 乘上 1 + extraTime（取到小數一位，例如 90 秒加 25% 是 112.5 秒）。
@@ -2337,7 +2465,7 @@ function ansVal(n, ans){
   /* 直接看答案：不算任何選擇（縮寫題照舊是空字串）。sel、arr、place 只是給舊版引擎讀的，不能當成作答內容。 */
   if (ans && ans.gaveUp && q.type !== "abbr") return null;
   if (q.type === "multi") return ans && Array.isArray(ans.sel) ? ans.sel.slice() : null;
-  if (q.type === "abbr") return ans && typeof ans.text === "string" ? ans.text.slice(0, 80) : null;
+  if (q.type === "abbr" || q.type === "fill") return ans && typeof ans.text === "string" ? ans.text.slice(0, 80) : null;
   if (q.type === "order" || q.type === "match") return ans && Array.isArray(ans.arr) ? ans.arr.slice() : null;
   if (q.type === "cls") return ans && Array.isArray(ans.place) ? ans.place.slice() : null;
   if (q.type === "imgdd") return null;
@@ -2838,11 +2966,12 @@ function submitMulti(){
    記一次答錯，作答內容記 null，不算進誤選分析；畫面直接列出正確答案。session.answers[n] 是 {ok: false, gaveUp: true}，
    複選題多 sel: []，排序、配對題多 arr、分類題多 place（按下時的排列）。畫面和判分都不看這三個欄位，只是讓舊版引擎讀到存檔時不會出錯。 */
 const GIVEUP_BTN = `<button class="btn ghost" data-act="giveup">不會，直接看答案</button>`;
+const FINE_POINTER = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
 function giveUp(){
   const s = state.session; if (!s || s.exam) return;
   const n = currentN(); const q = byN[n];
   if (!q || isVoid(n) || q.type === "imgdd" || s.answers[n] !== undefined || timerHalted() || isHidden(n)) return;
-  if (isAbbr(n)){ submitAbbr(true); return; }
+  if (isTyped(n)){ submitAbbr(true); return; }
   timerStop();
   const ans = {ok: false, gaveUp: true};
   if (q.type === "multi") ans.sel = [];
@@ -2857,17 +2986,20 @@ function giveUp(){
 }
 function submitAbbr(giveUp){
   const s = state.session; if (!s) return;
-  const n = currentN(); if (!isAbbr(n) || s.answers[n] !== undefined) return;
+  const n = currentN(); if (!isTyped(n) || s.answers[n] !== undefined) return;
   if (timerHalted()) return;
+  const fill = isFill(n);
   const inp = document.getElementById("abbr-in");
   const text = giveUp ? "" : (inp ? inp.value : (drafts[n] || "")).trim().slice(0, 300);
+  /* 填空題：空白按送出不算作答（它有自己的「不會，直接看答案」），游標回到輸入框。縮寫題照舊，空白送出等於直接看答案。 */
+  if (fill && !giveUp && !fillBase(text)){ if (inp) inp.focus(); return; }
   timerStop();
-  const ok = abbrMatch(byN[n], text);
+  const ok = typedMatch(byN[n], text);
   if (!s.snap) s.snap = {};
   s.snap[n] = state.stats[n] ? clone(state.stats[n]) : null;
   s.answers[n] = giveUp || !text ? {text, ok, gaveUp: true} : {text, ok};
   delete drafts[n];
-  record(n, ok, text);
+  record(n, ok, fill && giveUp ? null : text);   // 填空題直接看答案記 null，不算進「最近答錯時寫過」；縮寫題照舊記空字串
   commit();
   render();
   const h = document.getElementById("fbh"); if (h) h.focus({preventScroll:false});
@@ -2908,7 +3040,7 @@ function drillCheck(i){
   const inp = document.getElementById("drill-" + i);
   const text = (inp ? inp.value : d.rows[i].text).trim().slice(0, 300);
   if (!text){ if (inp) inp.focus(); return; }
-  d.rows[i] = {text, st: abbrMatch(byN[n], text) ? "ok" : "bad"};
+  d.rows[i] = {text, st: typedMatch(byN[n], text) ? "ok" : "bad"};
   render();
   if (d.rows[i].st === "ok") drillFocus(i + 1 < DRILL_N ? "#drill-" + (i + 1) : "#drill-done");
   else if (i === 0) drillFocus("#drill-0");
@@ -2923,7 +3055,7 @@ function drillAgain(i){
 }
 function drillOpen(){
   const s = state.session; if (!s || s.exam) return;
-  const n = currentN(); if (!isAbbr(n) || s.answers[n] === undefined) return;
+  const n = currentN(); if (!isTyped(n) || s.answers[n] === undefined) return;
   drillOf(n, true).open = true;
   render();
   drillFocus("#drill-" + Math.max(drillAt(drills[n]), 0));
@@ -2968,8 +3100,23 @@ function drillDiffHTML(q, text){
   return `<p class="ddiff">你打的：<span lang="en">${drillMark(text, best.r.badA, "del")}</span></p>
     <p class="ddiff">正確寫法：<span lang="en">${drillMark(best.t, best.r.badB, "mark")}</span></p>`;
 }
+/* 填空題打錯時逐字元標示：大小寫照這題的 cmp 比，在正確答案和其他寫法裡挑差最少的一個對照。 */
+function fillDiffHTML(q, text){
+  const fold = c => q.cmp === "exact" ? c : c.toLowerCase();
+  const mine = Array.from(fillBase(text));
+  let best = null;
+  [q.ans].concat(q.alts || []).forEach(t => {
+    const want = Array.from(fillBase(t)), r = drillLcs(mine.map(fold), want.map(fold));
+    const miss = r.badA.filter(Boolean).length + r.badB.filter(Boolean).length;
+    if (!best || miss < best.miss) best = {want, r, miss};
+  });
+  const mark = (chars, flags, tag) => chars.map((c, i) => flags[i] ? `<${tag}>${esc(c)}</${tag}>` : esc(c)).join("");
+  return `<p class="ddiff fdiff">你打的：<span lang="en">${mark(mine, best.r.badA, "del")}</span></p>
+    <p class="ddiff fdiff">正確寫法：<span lang="en">${mark(best.want, best.r.badB, "mark")}</span></p>`;
+}
 function drillHTML(n, q, d){
-  if (!d.open) return `<p class="nextrev"><button class="btn text" data-act="drill-open">再練一次：遮住打 ${DRILL_N} 次全名</button></p>`;
+  const fill = q.type === "fill", what = fill ? "答案" : "全名", inAttr = fill ? fillInAttr(q) : ` lang="en"`;
+  if (!d.open) return `<p class="nextrev"><button class="btn text" data-act="drill-open">再練一次：遮住打 ${DRILL_N} 次${what}</button></p>`;
   const a = drillAt(d), hide = drillCovered(d);
   const rows = d.rows.map((r, i) => {
     const lbl = i === 0 ? "第 1 次：看著答案打" : `第 ${i + 1} 次：答案先遮住，憑記憶打`;
@@ -2977,13 +3124,13 @@ function drillHTML(n, q, d){
     if (i !== a) return `<li class="drow wait"><label class="dlabel" for="drill-${i}">${lbl}</label><div class="dline"><input id="drill-${i}" class="recall-input" type="text" disabled placeholder="先打完上一格"></div></li>`;
     const lock = r.st === "bad" && i > 0;
     return `<li class="drow cur${r.st === "bad" ? " bad" : ""}"><label class="dlabel" for="drill-${i}">${lbl}</label>
-      <div class="dline"><input id="drill-${i}" data-drill="${i}" class="recall-input" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" enterkeyhint="${lock ? "go" : "done"}" value="${esc(r.text)}"${lock ? " readonly" : ""}>${lock
+      <div class="dline"><input id="drill-${i}" data-drill="${i}" class="recall-input" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false"${inAttr} enterkeyhint="${lock ? "go" : "done"}" value="${esc(r.text)}"${lock ? " readonly" : ""}>${lock
         ? `<button class="btn ghost" data-act="drill-again" data-i="${i}">遮住再打一次</button>`
         : `<button class="btn primary" data-act="drill-check" data-i="${i}">確認</button>`}</div>
-      ${r.st === "bad" ? `${drillDiffHTML(q, r.text)}<p class="fhint">${lock ? "對照好了，按「遮住再打一次」，答案會再遮起來。" : "改好後再按「確認」。"}</p>` : ""}</li>`;
+      ${r.st === "bad" ? `${fill ? fillDiffHTML(q, r.text) : drillDiffHTML(q, r.text)}<p class="fhint">${lock ? "對照好了，按「遮住再打一次」，答案會再遮起來。" : "改好後再按「確認」。"}</p>` : ""}</li>`;
   }).join("");
-  return `<div class="drill" role="group" aria-labelledby="drill-h">
-    <h4 id="drill-h">遮住再打：把全名打 ${DRILL_N} 次</h4>
+  return `<div class="drill${fill ? " fdrill" : ""}" role="group" aria-labelledby="drill-h">
+    <h4 id="drill-h">遮住再打：把${what}打 ${DRILL_N} 次</h4>
     <p class="fhint">第 1 次可以看著答案打，第 2、3 次打的時候答案會先遮住。這只是練習，不會記進作答紀錄。</p>
     <ol class="drill-rows">${rows}</ol>
     ${a < 0 ? `<p class="drill-done" id="drill-done" tabindex="-1">${DRILL_N} 次都打對了。</p>` : ""}
@@ -2998,7 +3145,7 @@ function examDone(s, n){
   const q = byN[n];
   if (p === undefined || p === null || !q) return false;
   if (q.type === "multi") return Array.isArray(p) && p.length > 0;
-  if (q.type === "abbr") return typeof p === "string" && p.trim().length > 0;
+  if (q.type === "abbr" || q.type === "fill") return typeof p === "string" && p.trim().length > 0;
   if (q.type === "order" || q.type === "match" || q.type === "cls") return p === true;
   return true;
 }
@@ -3033,6 +3180,7 @@ function submitExam(){
     let ans, ok;
     if (kind === "multi"){ const sel = p.slice().sort((x, y) => x - y); ok = sel.length === q.a.length && sel.every((x, i) => x === q.a[i]); ans = {sel, ok}; }
     else if (kind === "abbr"){ const text = String(p).trim().slice(0, 300); ok = abbrMatch(q, text); ans = {text, ok}; }
+    else if (kind === "fill"){ const text = String(p).trim().slice(0, 300); ok = fillMatch(q, text); ans = {text, ok}; }
     else if (kind === "cls"){ initPlace(s, n); const place = s.place[n].slice(); ok = clsGrade(q, place).ok; ans = {place, ok}; }
     else if (kind === "drag"){ initArr(s, n); const arr = s.arr[n].slice(); ok = arr.every((x, i) => x === i); ans = {arr, ok}; }
     else { ok = p === q.a; ans = p; }
@@ -3072,6 +3220,12 @@ function examBodyHTML(s, n, q){
     body = `<p class="abbr-prompt">寫出這個縮寫的英文全名</p><p class="abbr" lang="en">${esc(q.q)}</p><p class="abbr-cat">類別：${esc(q.cat || "自訂")}</p>
       <div class="abbr-form"><label class="recall-label" for="exam-abbr">英文全名</label><input id="exam-abbr" class="recall-input" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" value="${esc(v)}"></div>`;
     keys = "直接輸入英文全名（可以改），輸入框外按 ← → 換題，按 M 標記";
+  } else if (kind === "fill"){
+    /* 填空題：輸入框沿用縮寫題的 id（exam-abbr），輸入時存進 picks、有輸入才算已作答，交卷才判分。 */
+    const v = s.picks && typeof s.picks[n] === "string" ? s.picks[n] : "";
+    body = `${qStemHTML(q)}${qimgHTML(q)}
+      <div class="fill-form"><label class="recall-label" for="exam-abbr">你的答案</label><input id="exam-abbr" class="recall-input fill-in" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false"${fillInAttr(q)} value="${esc(v)}"><p class="fhint">${fillRule(q)}</p></div>`;
+    keys = "直接輸入答案（可以改），輸入框外按 ← → 換題，按 M 標記";
   } else if (kind === "cls"){
     body = clsBodyHTML(s, n, q, false, true);
     keys = "點項目再點格子（可以改），放過任何一格就算已作答，← → 換題，按 M 標記";
@@ -3079,7 +3233,7 @@ function examBodyHTML(s, n, q){
     body = dragBodyHTML(s, n, q, false, true);
     keys = "拖曳把手或用 ↑ ↓ 調整，移動過就算已作答";
   }
-  const tag = kind === "multi" ? "複選" : kind === "cls" ? "拖拉題" : kind === "drag" ? (q.type === "order" ? "拖拉排序" : "拖拉配對") : "";
+  const tag = kind === "multi" ? "複選" : kind === "fill" ? "填空" : kind === "cls" ? "拖拉題" : kind === "drag" ? (q.type === "order" ? "拖拉排序" : "拖拉配對") : "";
   const nav = s.ids.map((x, i) => {
     const d = examDone(s, x), mk = isMarked(x);
     const cs = caseOf(x);
@@ -3105,6 +3259,7 @@ function examBodyHTML(s, n, q){
 function reviewMissHTML(s, n, q){
   let ansHTML = "";
   if (q.type === "abbr") ansHTML = `<p>縮寫 <strong>${esc(q.q)}</strong> 的正確全名：<strong>${esc(q.ans)}</strong></p>`;
+  else if (q.type === "fill") ansHTML = fillKeyHTML(q);
   else if (q.type === "order") ansHTML = `<p>正確順序：</p><ol>${q.items.map(x => `<li>${esc(x)}</li>`).join("")}</ol>`;
   else if (q.type === "match") ansHTML = `<p>正確配對：</p><ul>${q.pairs.map(p => `<li>${esc(p[0])} → ${esc(p[1])}</li>`).join("")}</ul>`;
   else if (q.type === "cls") ansHTML = clsKeyHTML(q) + clsOrigHTML(q);
@@ -4113,7 +4268,7 @@ const PRINT_CSS = ".printdoc{background:#fff;color:#111;border:1.5px solid var(-
   /* 題幹區塊、逐選項解析和列印最後一行的說明：題庫有用到時才加進下載的列印檔。 */
   + (Q.some(q => (Array.isArray(q.blk) && q.blk.length) || Array.isArray(q.oe)) || CONFIG.printNotice || CONFIG.printNoticeUnoff ? "\n.qstem{margin:0 0 6px}.qstem .pstem{margin:0 0 6px}.qblk{margin:0 0 8px;max-width:100%}.qtbl{border-collapse:collapse;font-size:.88rem}.qtbl th,.qtbl td{border:1px solid #999;padding:.25em .55em;text-align:center;vertical-align:top}.qtbl th{background:#f0f0f0}.qtbl tbody th,.qtbl td:first-child{text-align:left}.qtbl caption{text-align:left;font-size:.82rem;color:#555;padding:0 0 4px}.qbox{border:1px solid #999;border-left:3px solid #666;border-radius:6px;padding:8px 10px;white-space:pre-line;font-size:.95rem}.qpre{border:1px solid #999;border-radius:6px;padding:8px 10px;margin:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.74rem;white-space:pre-wrap}.qfig{border:1px solid #999;border-radius:6px;padding:8px;display:inline-block;max-width:100%}.qfig .zoomable{display:block;padding:0;margin:0;border:0;background:none}.qfig img{display:block;max-width:100%;max-height:260px;width:auto;height:auto}.qfig svg{display:block;max-width:100%;height:auto;color:#111}.oexp{list-style:none;padding:0;margin:4px 0 0}.oexp li{display:flex;gap:8px;margin:2px 0}.oexp .let{flex:none;width:1.5em;height:1.5em;border:1px solid #333;border-radius:50%;display:inline-grid;place-items:center;font-size:.72rem;font-weight:700}.oexp li.ok .let{background:#333;color:#fff}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}.pnotice{margin-top:18px;font-size:.78rem;color:#555;font-family:sans-serif;white-space:pre-line}" : "");
 const SCOPE_NAME = {all:"全部題目", review:"錯題複習", weak:"弱點題", due:"到期複習", fresh:"還沒做過", marked:"已標記"};
-const TYPE_NAME = {mcq:CONFIG.mainLabel, abbr:"縮寫題", drag:"拖拉題", all:"全部題型"};
+const TYPE_NAME = {mcq:CONFIG.mainLabel, abbr:"縮寫題", drag:"拖拉題", fill:"填空題", all:"全部題型"};
 const SRC_NAME = {orig:"只有題庫", extra:"只有補充題", variant:"只有變化題"};
 const PLETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 let printCfg = null, printMsg = "", dlApi = null;
@@ -4130,7 +4285,7 @@ function seededOrder(len, seed, keepSame){
 function printRef(n){
   const q = byN[n];
   if (q.type === "abbr") return "縮寫題";
-  const kind = q.type === "imgdd" || q.type === "cls" ? "拖拉題" : q.type === "order" ? "排序題" : q.type === "match" ? "配對題" : q.type === "multi" ? "複選" : "";
+  const kind = q.type === "imgdd" || q.type === "cls" ? "拖拉題" : q.type === "order" ? "排序題" : q.type === "match" ? "配對題" : q.type === "multi" ? "複選" : q.type === "fill" ? "填空" : "";
   /* 有學習目標或認知層級的題目：「A 卷第 23 題（FL-4.2.4，K3，複選）」。 */
   if (!isExtra(n) && (q.lo || q.k)) return `${qLabel(n)}（${[q.lo, q.k, kind].filter(Boolean).join("，")}）`;
   if (!isExtra(n)) return qLabel(n) + (kind ? `（${kind}）` : "");
@@ -4170,6 +4325,9 @@ function printDocHTML(c){
     if (q.type === "abbr"){
       body = `<p class="pstem">寫出這個縮寫的英文全名：<strong>${esc(q.q)}</strong></p><p class="pline">答：</p>`;
       ans = esc(q.ans) + (q.alts && q.alts.length ? `（也接受：${esc(q.alts.join("、"))}）` : "");
+    } else if (q.type === "fill"){
+      body = `${qStemHTML(q, "pstem")}${qimgHTML(q, "pimg")}<p class="pline">答：</p>`;
+      ans = `<code>${esc(q.ans)}</code>` + (q.alts && q.alts.length ? `（也接受：${q.alts.map(a => `<code>${esc(a)}</code>`).join("、")}）` : "");
     } else if (q.type === "order"){
       const ord = seededOrder(q.items.length, n);
       body = `${qStemHTML(q, "pstem", q.q || DRAG_PROMPT.order)}<ol class="popts" type="A">${ord.map(i => `<li>${esc(q.items[i])}</li>`).join("")}</ol><p class="pline">正確順序：</p>`;
@@ -4250,7 +4408,7 @@ async function downloadPrint(){
 /* ---------- 誤選分析 ---------- */
 function pastPicksHTML(n, q){
   const wp = wrongPicks(n);
-  if (q.type === "abbr"){
+  if (q.type === "abbr" || q.type === "fill"){
     const texts = [];
     wp.forEach(v => { const t = String(v || "").trim(); if (t && !texts.some(x => x.toLowerCase() === t.toLowerCase())) texts.push(t); });
     return texts.length >= 2 ? `<p class="nextrev">最近答錯時寫過：${texts.slice(0, 3).map(t => "「" + esc(t) + "」").join("、")}</p>` : "";
@@ -4328,6 +4486,7 @@ function browseBody(n){
   const optList = (marks) => `<div class="bopts">${q.o.map((o, i) => `<div class="bopt${marks.includes(i) ? " ok" : ""}${optImgCls(q, i)}"><span class="let" aria-hidden="true">${LETTERS[i]}</span><span class="otext">${esc(o)}</span>${marks.includes(i) ? `<span class="tag">正確答案</span>` : ""}${optImgHTML(q, i)}</div>`).join("")}</div>`;
   if (q.type === "abbr") return `<p class="abbr" lang="en">${esc(q.q)}</p><p class="bans">${esc(q.ans)}</p>${q.alts && q.alts.length ? `<p class="nextrev">也接受：${esc(q.alts.join("、"))}</p>` : ""}<p class="abbr-cat">類別：${esc(q.cat || "自訂")}</p>`;
   const stem = `${qStemHTML(q, "qtext", q.q || DRAG_PROMPT[q.type] || "")}${qimgHTML(q)}`;
+  if (q.type === "fill") return `${stem}<p class="bans fmono">${esc(q.ans)}</p>${q.alts && q.alts.length ? `<p class="nextrev">也接受：${q.alts.map(a => `<span class="fmono">${esc(a)}</span>`).join("、")}</p>` : ""}`;
   if (q.type === "order") return `${stem}<ol class="blist">${q.items.map(x => `<li>${esc(x)}</li>`).join("")}</ol>`;
   if (q.type === "match") return `${stem}<ul class="blist bpairs">${q.pairs.map(p => `<li><span>${esc(p[0])}</span><span aria-hidden="true">→</span><span>${esc(p[1])}</span></li>`).join("")}</ul>`;
   if (q.type === "cls") return `${stem}${clsKeyHTML(q)}`;
@@ -4348,7 +4507,7 @@ function renderBrowse(){
       <div class="row"><button class="btn primary big" data-act="b-restart">從頭再看一次</button><button class="btn ghost" data-act="go-home">回到總覽</button></div>`;
   }
   const n = b.ids[b.i], q = byN[n];
-  const tag = q.type === "multi" ? "複選" : q.type === "order" ? "拖拉排序" : q.type === "match" ? "拖拉配對" : q.type === "cls" || q.type === "imgdd" ? "拖拉題" : "";
+  const tag = q.type === "multi" ? "複選" : q.type === "fill" ? "填空" : q.type === "order" ? "拖拉排序" : q.type === "match" ? "拖拉配對" : q.type === "cls" || q.type === "imgdd" ? "拖拉題" : "";
   return `
   <div class="qbar"><button class="btn text" data-act="go-home">結束瀏覽</button><span class="prog">${b.i + 1} / ${total}</span></div>
   <div class="pbar" aria-hidden="true"><span style="width:${Math.round((b.i + 1) / total * 100)}%"></span></div>
@@ -4701,9 +4860,9 @@ function renderHome(){
     }
     const st = status(q.n);
     const mk = isMarked(q.n);
-    const sub = q.type === "order" ? "排序" : q.type === "match" ? "配對" : q.type === "imgdd" ? "看圖" : q.type === "cls" ? "拖拉" : q.type === "multi" ? "複選" : q.from ? `原 ${dispNum(q.from)}` : "";
+    const sub = q.type === "order" ? "排序" : q.type === "match" ? "配對" : q.type === "imgdd" ? "看圖" : q.type === "cls" ? "拖拉" : q.type === "multi" ? "複選" : q.type === "fill" ? "填空" : q.from ? `原 ${dispNum(q.from)}` : "";
     const cs = caseOf(q.n);
-    const label = `${esc(qLabel(q.n))}${q.type === "order" || q.type === "match" ? `（拖拉${sub}）` : q.type === "imgdd" ? "（拖拉題，看圖自評）" : q.type === "cls" ? "（拖拉題）" : q.from ? `（變化自${esc(qLabel(q.from))}）` : ""}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}${q.flag ? "，爭議題" : ""}${cs ? `，情境題組：${esc(cs.title)}` : ""}`;
+    const label = `${esc(qLabel(q.n))}${q.type === "order" || q.type === "match" ? `（拖拉${sub}）` : q.type === "imgdd" ? "（拖拉題，看圖自評）" : q.type === "cls" ? "（拖拉題）" : q.type === "fill" ? "（填空題）" : q.from ? `（變化自${esc(qLabel(q.from))}）` : ""}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}${q.flag ? "，爭議題" : ""}${cs ? `，情境題組：${esc(cs.title)}` : ""}`;
     const tn = totalNote(q.n);
     const tip = `${label}\n最近作答 ${boxesText(q.n)}${tn ? "\n" + tn : ""}`;
     const num = dispNum(q.n);
@@ -4738,7 +4897,9 @@ function renderHome(){
     .concat(bankB.filter(q => !q.type || q.type === "mcq" || q.type === "multi")).sort((x, y) => dispNum(x.n) - dispNum(y.n));
   const extraDrag = extraMcq.filter(q => q.type === "order" || q.type === "match")
     .concat(bankB.filter(q => q.type === "order" || q.type === "match" || q.type === "cls" || q.type === "imgdd")).sort((x, y) => dispNum(x.n) - dispNum(y.n));
+  const extraFill = bankB.filter(q => q.type === "fill").sort((x, y) => dispNum(x.n) - dispNum(y.n));
   const extraCells = extraChoice.map(cell).join("");
+  const fillCells = extraFill.map(cell).join("");
   const dragCells = extraDrag.map(cell).join("");
   const variantCells = extraVariant.map(cell).join("");
   const chips = abbrQs.map(q => {
@@ -4751,7 +4912,8 @@ function renderHome(){
     const label = `${qLabel(q.n)}，${STATUS_LABEL[st]}${mk ? "，已標記" : ""}`;
     return `<button class="chip s-${st}${mk ? " marked" : ""}" data-q="${q.n}" aria-label="${esc(label)}，${boxesLabel(q.n)}" title="${esc(label)}&#10;最近作答 ${boxesText(q.n)}">${esc(q.q)}</button>`;
   }).join("");
-  const mcqCount = liveQ.filter(q => qType(q.n) === "mcq" || qType(q.n) === "drag").length;   // 和 typeOk 一致：所有非縮寫題
+  const mcqCount = liveQ.filter(q => qType(q.n) !== "abbr").length;   // 和 typeOk 一致：所有非縮寫題（含拖拉題和填空題）
+  const fillCount = liveQ.filter(q => qType(q.n) === "fill").length;
   const dragCount = liveQ.filter(q => qType(q.n) === "drag").length;
   const exam = !!pref("examMode") && scope !== "pairs";
   const exTypes = Object.assign({}, PREF_DEFAULTS.examTypes, pref("examTypes") || {});
@@ -4910,7 +5072,8 @@ function renderHome(){
     ${mapBlocks}
     ${extraChoice.length ? `<h3 class="subgrid-title">補充題：選擇題</h3><div class="grid">${extraCells}</div>` : ""}
     ${variantCount ? `<h3 class="subgrid-title">補充題：變化題</h3><div class="grid">${variantCells}</div>` : ""}
-    ${extraDrag.length ? `<h3 class="subgrid-title">補充題：拖拉題</h3><div class="grid">${dragCells}</div>` : ""}
+    ${extraDrag.length ? `<h3 class="subgrid-title">補充題：拖拉題</h3><div class="grid">${dragCells}</div>` : ""}${extraFill.length ? `
+    <h3 class="subgrid-title">補充題：填空題</h3><div class="grid">${fillCells}</div>` : ""}
     ${abbrQs.length ? `<h3 class="subgrid-title">縮寫題</h3><div class="chips">${chips}</div>` : ""}
     <ul class="legend">
       <li><span class="sw"></span>未作答 ${counts.new}</li>
@@ -4942,20 +5105,21 @@ function renderHome(){
     ${exam ? `<div class="field">
       <span class="flabel" id="lab-extypes">模擬考題型（可以複選）</span>
       <div class="statpick" role="group" aria-labelledby="lab-extypes" style="margin:0">
-        ${[["mcq", "單選題"], ["multi", "複選題"], ["cls", "分類題"], ["abbr", "縮寫題"], ["drag", "排序與配對題"]].filter(([k]) => kindCount(k)).map(([k, label]) =>
+        ${[["mcq", "單選題"], ["multi", "複選題"], ["cls", "分類題"], ["fill", "填空題"], ["abbr", "縮寫題"], ["drag", "排序與配對題"]].filter(([k]) => kindCount(k)).map(([k, label]) =>
           `<label class="chk"><input type="checkbox" data-extype="${k}" ${exTypes[k] ? "checked" : ""}>${label}<span class="n" style="opacity:.7;margin-left:.2em">${kindCount(k)}</span></label>`).join("")}
       </div>
       ${Object.keys(exTypes).some(k => exTypes[k] && kindCount(k)) ? (exTypes.abbr ? `<p class="note">縮寫題是輔助練習；加入後，這回比較像綜合測驗。</p>` : "") : `<p class="note">至少勾選一種題型才能開始。</p>`}
     </div>` : ""}` : ""}
-    ${!isGroups && !exam && (abbrLive.length || dragCount) ? `<div class="field">
+    ${!isGroups && !exam && (abbrLive.length || dragCount || fillCount) ? `<div class="field">
       <span class="flabel" id="lab-type">題型</span>
       <div class="seg" role="radiogroup" aria-labelledby="lab-type">
         <button role="radio" aria-checked="${typeFilter === "mcq"}" data-qtype="mcq">${esc(CONFIG.mainLabel)}<span class="n">${mcqCount}</span></button>
         ${abbrLive.length ? `<button role="radio" aria-checked="${typeFilter === "abbr"}" data-qtype="abbr">縮寫題<span class="n">${abbrLive.length}</span></button>` : ""}
-        ${dragCount ? `<button role="radio" aria-checked="${typeFilter === "drag"}" data-qtype="drag">拖拉題<span class="n">${dragCount}</span></button>` : ""}
+        ${dragCount ? `<button role="radio" aria-checked="${typeFilter === "drag"}" data-qtype="drag">拖拉題<span class="n">${dragCount}</span></button>` : ""}${fillCount ? `
+        <button role="radio" aria-checked="${typeFilter === "fill"}" data-qtype="fill">填空題<span class="n">${fillCount}</span></button>` : ""}
         <button role="radio" aria-checked="${typeFilter === "all"}" data-qtype="all">全部題型<span class="n">${TOTAL}</span></button>
       </div>
-      ${typeFilter === "drag" ? `<p class="note">拖拉題：分類題先點項目再點格子，每一格都放對才算答對，同一類裡沒有標籤的格子不計順序；排序題和配對題拖曳把手，或用 ↑ ↓ 調整。</p>` : typeFilter === "abbr" ? `<p class="note">縮寫題是輔助練習，幫你把專有名詞記熟。</p>` : ""}
+      ${typeFilter === "drag" ? `<p class="note">拖拉題：分類題先點項目再點格子，每一格都放對才算答對，同一類裡沒有標籤的格子不計順序；排序題和配對題拖曳把手，或用 ↑ ↓ 調整。</p>` : typeFilter === "abbr" ? `<p class="note">縮寫題是輔助練習，幫你把專有名詞記熟。</p>` : typeFilter === "fill" ? `<p class="note">填空題要自己把答案打出來：符號和單複數要完全相同，分不分大小寫看每一題輸入框下方的說明。</p>` : ""}
     </div>` : ""}
     ${setField}${chField}${caseField}
     <div class="field">
@@ -5104,7 +5268,8 @@ function renderQuiz(){
   const drag = q.type === "order" || q.type === "match";
   const idd = q.type === "imgdd";
   const cq = q.type === "cls";
-  const order = abbr || drag || idd || cq ? [] : (s.orders[n] || optIdx(n));
+  const fill = q.type === "fill";
+  const order = abbr || drag || idd || cq || fill ? [] : (s.orders[n] || optIdx(n));
   const chosen = s.answers[n];
   const reviewMiss = !!(s.exam && s.submitted && chosen === undefined);
   const answered = chosen !== undefined;
@@ -5152,13 +5317,13 @@ function renderQuiz(){
   const hidden = isHidden(n);
   const note = s.notes && s.notes[n] ? s.notes[n] : "";
   const guessVal = drafts[n] !== undefined ? drafts[n] : note;
-  const drill = abbr && answered && !s.exam ? drillOf(n, ok) : null;
+  const drill = (abbr || fill) && answered && !s.exam ? drillOf(n, ok) : null;
   const cover = drillCovered(drill);
 
   /* 沒作答的複選、縮寫、拖拉題交卷後由 reviewMissHTML 顯示（見下方），這裡不組 fb，否則會讀到 undefined 的作答內容。 */
   const fb = answered || (reviewMiss && examKind(n) === "mcq") ? `
     <div class="fb ${ok ? "ok" : "bad"}" aria-live="polite">
-      <h3 id="fbh" tabindex="-1">${gave ? `已直接看答案（記為答錯）${mq ? `，正確答案是 ${q.a.map(i => LETTERS[order.indexOf(i)]).sort().join("、")}` : !abbr && !drag && !cq ? `，正確答案是 ${LETTERS[order.indexOf(q.a)]}` : ""}` : idd ? (ok ? "自評：全部放對" : "自評：有放錯，記為答錯") : cq ? (ok ? "答對了" : `答錯了，有 ${clsGrade(q, (chosen && chosen.place) || []).wrong} 格不對`) : mq ? (ok ? "答對了" : `答錯了，正確答案是 ${q.a.map(i => LETTERS[order.indexOf(i)]).sort().join("、")}`) : reviewMiss ? `沒有作答，正確答案是 ${LETTERS[order.indexOf(q.a)]}` : drag ? (ok ? "答對了" : `答錯了，有 ${chosen.arr.filter((x, i) => x !== i).length} 個位置不對`) : abbr ? (ok ? (chosen.override ? "已改判為答對" : "答對了") : chosen.gaveUp ? "已直接看答案（記為答錯）" : "答錯了") : ok ? "答對了" : `答錯了，正確答案是 ${LETTERS[order.indexOf(q.a)]}`}</h3>
+      <h3 id="fbh" tabindex="-1">${gave ? `已直接看答案（記為答錯）${mq ? `，正確答案是 ${q.a.map(i => LETTERS[order.indexOf(i)]).sort().join("、")}` : !abbr && !drag && !cq && !fill ? `，正確答案是 ${LETTERS[order.indexOf(q.a)]}` : ""}` : idd ? (ok ? "自評：全部放對" : "自評：有放錯，記為答錯") : cq ? (ok ? "答對了" : `答錯了，有 ${clsGrade(q, (chosen && chosen.place) || []).wrong} 格不對`) : mq ? (ok ? "答對了" : `答錯了，正確答案是 ${q.a.map(i => LETTERS[order.indexOf(i)]).sort().join("、")}`) : reviewMiss ? `沒有作答，正確答案是 ${LETTERS[order.indexOf(q.a)]}` : drag ? (ok ? "答對了" : `答錯了，有 ${chosen.arr.filter((x, i) => x !== i).length} 個位置不對`) : abbr || fill ? (ok ? (chosen.override ? "已改判為答對" : "答對了") : chosen.gaveUp ? "已直接看答案（記為答錯）" : "答錯了") : ok ? "答對了" : `答錯了，正確答案是 ${LETTERS[order.indexOf(q.a)]}`}</h3>
       ${excluded ? `<p class="excl-tag">不列入紀錄</p>` : ""}
       ${q.flag ? `<span class="flag">爭議題</span>` : ""}
       ${mq && !ok && !gave ? (() => {
@@ -5173,7 +5338,7 @@ function renderQuiz(){
         <p>你的答案：${chosen.text ? esc(chosen.text) : "（沒有作答）"}</p>
         ${!ok && !excluded && chosen.text ? `<p><button class="btn text" data-act="abbr-override">我其實答對了</button></p>` : ""}
       </div>` : ""}
-      ${drill ? drillHTML(n, q, drill) : ""}
+      ${fill ? fillResultHTML(q, chosen, ok, cover, excluded) : ""}${drill ? drillHTML(n, q, drill) : ""}
       ${idd ? imgsHTML(q.ans, "qimg", "拖拉題正確答案") : ""}
       ${cq ? (ok ? "" : gave ? clsUnusedHTML(q) : clsKeyHTML(q)) + clsOrigHTML(q) : ""}
       ${cover ? (q.e || (q.eimg && q.eimg.length) ? `<p class="nextrev">解析先遮住，打完這一次就會顯示。</p>` : "") : `${q.e ? (isExtra(n) ? `<p>${esc(q.e)}</p>` : `<p class="pre"><span class="srclbl">${isBankB(n) ? "解析" : "題庫解析"}</span>${esc(q.e)}</p>`) : ""}${oeListHTML(q, order)}${imgsHTML(q.eimg, "qimg", "解析附圖")}${loTagHTML(q)}`}
@@ -5192,7 +5357,7 @@ function renderQuiz(){
       ${s.exam && s.submitted && s.i > 0 ? `<button class="btn ghost" data-act="review-prev">上一題</button>` : ""}
       ${!s.exam && s.ids.length > 1 ? `<button class="btn ghost" data-act="go-prev" ${s.i === 0 ? "disabled" : ""}>上一題</button>` : ""}
       <button class="btn primary big" data-act="next">${nextLabel}</button>
-    </div>` : `<div class="nextrow"><span class="keys">${idd ? "想好後按 Enter 看答案，再自己評分；按 M 標記" : cq ? "點項目再點格子，放好後按「送出答案」；Esc 取消選取，按 M 標記" : mq && !hidden ? "按數字或字母勾選，Shift + 數字刪去、Shift + 字母標為可能，按 Enter 送出，按 M 標記" : drag ? "排好後按「送出答案」，按 M 標記" : abbr ? "輸入後按 Enter 送出" : hidden ? "想好後按 Enter 顯示選項" : `可以按 1–${order.length} 或 A–${LETTERS[order.length - 1]} 作答，Shift + 數字刪去、Shift + 字母標為可能，按 M 標記`}</span>${!s.exam && s.ids.length > 1 ? `
+    </div>` : `<div class="nextrow"><span class="keys">${idd ? "想好後按 Enter 看答案，再自己評分；按 M 標記" : cq ? "點項目再點格子，放好後按「送出答案」；Esc 取消選取，按 M 標記" : mq && !hidden ? "按數字或字母勾選，Shift + 數字刪去、Shift + 字母標為可能，按 Enter 送出，按 M 標記" : drag ? "排好後按「送出答案」，按 M 標記" : abbr || fill ? "輸入後按 Enter 送出" : hidden ? "想好後按 Enter 顯示選項" : `可以按 1–${order.length} 或 A–${LETTERS[order.length - 1]} 作答，Shift + 數字刪去、Shift + 字母標為可能，按 M 標記`}</span>${!s.exam && s.ids.length > 1 ? `
       <button class="btn ghost" data-act="go-prev" ${s.i === 0 ? "disabled" : ""}>上一題</button>
       <button class="btn ghost" data-act="skip-next">${s.i === s.ids.length - 1 ? "結束，看結果" : "下一題"}</button>` : ""}</div>`;
 
@@ -5226,7 +5391,7 @@ function renderQuiz(){
   return bar + `
   <div class="pbar" aria-hidden="true"><span style="width:${pct}%"></span></div>
   ${gtag}${casePanelHTML(n)}
-  <div class="qhead"><h2 id="qh" tabindex="-1">${abbr ? "縮寫題" : headLabel(n)}</h2><span class="src${isUserExtra(n) ? " src-extra" : ""}">${srcName(n)}</span>${drag ? `<span class="src">${q.type === "order" ? "拖拉排序" : "拖拉配對"}</span>` : ""}${idd ? `<span class="src">拖拉題・看圖自評</span>` : ""}${cq ? `<span class="src">拖拉題</span>` : ""}${q.from ? `<span class="src">變化自${esc(qLabel(q.from))}</span>` : ""}${mq ? `<span class="src">複選</span>` : ""}${boxesHTML(n, answered && !excluded && canExclude(n))}${pill}<button class="markbtn" id="markbtn" data-act="mark" aria-pressed="${isMarked(n)}"><svg viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5h10v13l-5-3.6-5 3.6z"/></svg>${isMarked(n) ? "已標記" : "標記這題"}</button></div>
+  <div class="qhead"><h2 id="qh" tabindex="-1">${abbr ? "縮寫題" : headLabel(n)}</h2><span class="src${isUserExtra(n) ? " src-extra" : ""}">${srcName(n)}</span>${drag ? `<span class="src">${q.type === "order" ? "拖拉排序" : "拖拉配對"}</span>` : ""}${idd ? `<span class="src">拖拉題・看圖自評</span>` : ""}${cq ? `<span class="src">拖拉題</span>` : ""}${q.from ? `<span class="src">變化自${esc(qLabel(q.from))}</span>` : ""}${mq ? `<span class="src">複選</span>` : ""}${fill ? `<span class="src">填空</span>` : ""}${boxesHTML(n, answered && !excluded && canExclude(n))}${pill}<button class="markbtn" id="markbtn" data-act="mark" aria-pressed="${isMarked(n)}"><svg viewBox="0 0 14 16" aria-hidden="true"><path d="M2 1.5h10v13l-5-3.6-5 3.6z"/></svg>${isMarked(n) ? "已標記" : "標記這題"}</button></div>
   ${idd ? ddBodyHTML(s, n, q, answered) : cq ? clsBodyHTML(s, n, q, answered) : drag ? dragBodyHTML(s, n, q, answered) : abbr ? `<p class="abbr-prompt">寫出這個縮寫的英文全名</p>
   <p class="abbr" lang="en">${esc(q.q)}</p>
   <p class="abbr-cat">類別：${esc(q.cat || "自訂")}</p>
@@ -5235,7 +5400,8 @@ function renderQuiz(){
     <div class="row"><input id="abbr-in" class="recall-input" type="text" maxlength="300" autocomplete="off" autocapitalize="off" spellcheck="false" lang="en" value="${esc(drafts[n] || "")}"><button class="btn primary" data-act="abbr-submit">送出</button></div>
     <p class="fhint">大小寫、標點、連字號和單複數都不影響判定。</p>
     <div><button class="btn ghost" data-act="abbr-giveup">不會，直接看答案</button></div>
-  </div>`}` : `${qStemHTML(q)}${qimgHTML(q)}
+  </div>`}` : fill ? `${qStemHTML(q)}${qimgHTML(q)}
+  ${answered ? "" : fillFormHTML(n, q)}` : `${qStemHTML(q)}${qimgHTML(q)}
   ${hidden ? `<div class="recall">
     <p class="recall-lead">先想想答案是什麼，想好再看選項。</p>
     <label class="recall-label" for="guess">你想到的答案（可以不寫）</label>
@@ -5331,7 +5497,8 @@ function render(scrollTop){
     if (view === "quiz"){
       const ai = document.getElementById("abbr-in") || document.getElementById("exam-abbr");
       const h = document.getElementById("qh");
-      if (ai) ai.focus({preventScroll:true}); else if (h) h.focus({preventScroll:true});
+      /* 填空題的題幹可能很長：只在有滑鼠的裝置把游標放進輸入框，手機上先停在題號，免得螢幕鍵盤一換題就蓋住題目。 */
+      if (ai && (!ai.classList.contains("fill-in") || FINE_POINTER)) ai.focus({preventScroll:true}); else if (h) h.focus({preventScroll:true});
     }
   }
 }
@@ -5722,12 +5889,12 @@ document.addEventListener("keydown", e => {
     if (k === "m" && !inInput){ e.preventDefault(); toggleMark(n); render(); }
     return;
   }
-  if (isAbbr(n) && !answered){
+  if (isTyped(n) && !answered){
     if (k === "enter" && inInput){ e.preventDefault(); submitAbbr(); return; }
     if (k === "m" && !inInput){ e.preventDefault(); toggleMark(n); render(); }
     return;
   }
-  if (isAbbr(n) && k === "enter" && e.target && e.target.dataset && e.target.dataset.drill !== undefined){
+  if (isTyped(n) && k === "enter" && e.target && e.target.dataset && e.target.dataset.drill !== undefined){
     e.preventDefault();
     const di = Number(e.target.dataset.drill);
     if (e.target.readOnly) drillAgain(di); else drillCheck(di);
